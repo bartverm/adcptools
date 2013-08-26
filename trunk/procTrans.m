@@ -24,6 +24,8 @@ function msh=procTrans(adcp,tid,varargin)
 %   - Residual removal
 %   - Improve depth matching (now a bit slow and possibly inaccurate)
 %   - Find direction minizing bathymetry variance?
+%   - Add help
+
 
 P=inputParser;
 P.FunctionName='procTrans';
@@ -31,12 +33,14 @@ P.addParamValue('DepthTransducer',0.3,@(x) isscalar(x) && isnumeric(x) && x>0);
 P.addParamValue('DeltaN',5,@(x) isscalar(x) && isnumeric(x) && x>0);
 P.addParamValue('DeltaZ',1,@(x) isscalar(x) && isnumeric(x) && x>0);
 P.addParamValue('MinimumSigma',0.04,@(x) isscalar(x) && isnumeric(x) && x>=0 && x <=1);
+P.addParamValue('Progressive',false,@(x) isscalar(x) && islogical(x));
 P.parse(varargin{:});
 
 depthtransd=P.Results.DepthTransducer;
 veldn=P.Results.DeltaN;
 veldz=P.Results.DeltaZ;
 sigmin=P.Results.MinimumSigma;
+progflag=P.Results.Progressive;
 
 %% Magic numbers
 % dprox=20;
@@ -66,9 +70,9 @@ mze=nanmean(mz,3);
 
 
 % velocity data
-[adcp.VEL,adcp.btvel] = filterADCP2(adcp,'edcf','echotres',20,'difecho',50,'cortres',70,'filterBT',true); % Filter velocity
-[vele,btvele]=coradcp(adcp,'e','UseExtHeading',true,'Beam3Misalign',misal); % transform to beam velocity
-[adcp.VEL, adcp.btvel]=coradcp(adcp,'b','UseExtHeading',true,'Beam3Misalign',misal); % transform to beam velocity
+[adcp.VEL,adcp.btvel] = filterADCP(adcp,'edcf','echotres',20,'difecho',50,'cortres',70,'filterBT',true); % Filter velocity
+[vele,btvele]=corADCP(adcp,'e','UseExtHeading',true,'Beam3Misalign',misal); % transform to beam velocity
+[adcp.VEL, adcp.btvel]=corADCP(adcp,'b','UseExtHeading',true,'Beam3Misalign',misal); % transform to beam velocity
 vel=adcp.VEL-repmat(shiftdim(adcp.btvel,-1),[size(adcp.VEL,1),1,1]); % remove bt from normal vel
 vele=vele-repmat(shiftdim(btvele,-1),[size(vele,1),1,1]); % remove bt from normal vel
 
@@ -175,29 +179,6 @@ end
 nIdx=floor(mn./veldn)+1;
 nIdxe=floor(mne./veldn)+1;
 
-
-% [davel, dastd, damse, daNvel, dax, day]=deal(cell(size(tid,1),1));
-% [davele, dastde, daxe, daye]=deal(cell(size(tid,1),1));
-
-% for ct=1:size(tid,1)
-%     fcur=bsxfun(@and,f_incs & f_close,tid(ct,:)>0);
-%     fcure=bsxfun(@and,f_incse & f_closee,tid(ct,:)>0);
-%     dax{ct}=accumarray(nIdx(fcur),mx(fcur),[],@nanmean,nan);
-%     day{ct}=accumarray(nIdx(fcur),my(fcur),[],@nanmean,nan);
-%     daxe{ct}=accumarray(nIdxe(fcure),mxe(fcure),[],@nanmean,nan);
-%     daye{ct}=accumarray(nIdxe(fcure),mye(fcure),[],@nanmean,nan);
-%     pIdxe=bsxfun(@plus,nIdxe*0,cat(3,1,2,3));
-%     davele{ct}=accumarray({nIdxe(fcure),pIdxe(fcure)},vele(fcure),[],@nanmean,nan);
-%     dastde{ct}=accumarray({nIdxe(fcure),pIdxe(fcure)},vele(fcure),[],@nanstd,nan);
-%     datacol=cellfun(@(x,y,z,w) [x y z w],...
-%         accumarray(nIdx(fcur),vel(fcur),[],@(x) {x},{}),...
-%         accumarray(nIdx(fcur),cTM1(fcur),[],@(x) {x},{}),...
-%         accumarray(nIdx(fcur),cTM2(fcur),[],@(x) {x},{}),...
-%         accumarray(nIdx(fcur),cTM3(fcur),[],@(x) {x},{}),'UniformOutput',false); % Collect beam velocity data and corresponding transformation matrix terms
-%     [davel{ct}, dastd{ct}, damse{ct}, daNvel{ct}] =cellfun(@estvel,datacol,'UniformOutput',false); % Estimate velocity with least squares estimates (see function estvel.m for procedure)
-%     davel{ct}=squeeze(cell2mat(davel{ct})); % reshape velocity data
-% end
-
 %% create mesh
 [nbnds, ncntr, d_ncntr, d_nbnds]=deal(cell(size(tid,1),1));
 nIdxd=floor((dn+veldn/4)/(veldn/2))+1;
@@ -302,25 +283,40 @@ for ct=1:size(tid,1)
     fnde=bsxfun(@and,tid(ct,:)>0,f_incse);
     sigIdxe(fnde)=floor((mSige(fnde)-sigmin)./dSige(fnde))+1;
 
-    % velocity
+
+ 
     
     fnd=bsxfun(@and,tid(ct,:)>0,f_incs & sigIdx<=size(msh(ct).Z,1));
-%     msh(ct).Xav=accumarray({sigIdx(fg) betIdx(fg)},cx(fg),size(msh(ct).Sig),@nanmean,nan);
-%     msh(ct).Yav=accumarray({sigIdx(fg) betIdx(fg)},cy(fg),size(msh(ct).Sig),@nanmean,nan);
-%     msh(ct).Zav=accumarray({sigIdx(fg) betIdx(fg)},cz(fg),size(msh(ct).Sig),@nanmean,nan);
-    msh(ct).datacol=cellfun(@(x,y,z,w) [x y z w],...
+   datacol=cellfun(@(x,y,z,w) [x y z w],...
         accumarray({sigIdx(fnd) nIdx(fnd)},vel(fnd),size(msh(ct).Z),@(x) {x},{}),...
         accumarray({sigIdx(fnd) nIdx(fnd)},cTM1(fnd),size(msh(ct).Z),@(x) {x},{}),...
         accumarray({sigIdx(fnd) nIdx(fnd)},cTM2(fnd),size(msh(ct).Z),@(x) {x},{}),...
         accumarray({sigIdx(fnd) nIdx(fnd)},cTM3(fnd),size(msh(ct).Z),@(x) {x},{}),'UniformOutput',false); % Collect beam velocity data and corresponding transformation matrix terms
-    
-    [msh(ct).vel, msh(ct).std, msh(ct).mse, msh(ct).Nvel] =cellfun(@estvel,msh(ct).datacol,'UniformOutput',false); % Estimate velocity with least squares estimates (see function estvel.m for procedure)
-%     
+   [msh(ct).vel, msh(ct).std, msh(ct).mse, msh(ct).Nvel] =cellfun(@estvel,datacol,'UniformOutput',false); % Estimate velocity with least squares estimates (see function estvel.m for procedure)
     msh(ct).vel=squeeze(cell2mat(msh(ct).vel)); % reshape velocity data
     msh(ct).mse=squeeze(cell2mat(msh(ct).mse)); % reshape mean squared error data
     msh(ct).std=squeeze(cell2mat(msh(ct).std)); % reshape standard deviation data
     msh(ct).Nvel=squeeze(cell2mat(msh(ct).Nvel)); % reshape Number of valid samples data
+  
+    if progflag
+       progdatacol=cell([size(msh(ct).Z), nanmax(tid(ct,:))]);
+        for ccr=1:nanmax(tid(ct,:))
+           fnd=bsxfun(@and,tid(ct,:)<=ccr & tid(ct,:)>0,f_incs & sigIdx<=size(msh(ct).Z,1));
+            progdatacol(:,:,ccr)=cellfun(@(x,y,z,w) [x y z w],...
+                accumarray({sigIdx(fnd) nIdx(fnd)},vel(fnd),size(msh(ct).Z),@(x) {x},{}),...
+                accumarray({sigIdx(fnd) nIdx(fnd)},cTM1(fnd),size(msh(ct).Z),@(x) {x},{}),...
+                accumarray({sigIdx(fnd) nIdx(fnd)},cTM2(fnd),size(msh(ct).Z),@(x) {x},{}),...
+                accumarray({sigIdx(fnd) nIdx(fnd)},cTM3(fnd),size(msh(ct).Z),@(x) {x},{}),'UniformOutput',false); % Collect beam velocity data and corresponding transformation matrix terms
+        end
+        [msh(ct).progvel, msh(ct).progstd, msh(ct).progmse, msh(ct).progNvel]=cellfun(@estvel,progdatacol,'UniformOutput',false); % Estimate velocity with least squares estimates (see function estvel.m for procedure)
+        msh(ct).progvel=squeeze(cell2mat(msh(ct).progvel)); % reshape velocity data
+        msh(ct).progmse=squeeze(cell2mat(msh(ct).progmse)); % reshape mean squared error data
+        msh(ct).progstd=squeeze(cell2mat(msh(ct).progstd)); % reshape standard deviation data
+        msh(ct).progNvel=squeeze(cell2mat(msh(ct).progNvel)); % reshape Number of valid samples data
+    end
+%     
 
+    
     fnde=bsxfun(@and,tid(ct,:)>0,repmat(f_incse & sigIdxe<=size(msh(ct).Z,1),[1 1 3]));
     tsigIdxe=repmat(sigIdxe,[1 1 3]);
     tnIdxe=repmat(nIdxe,[1 1 3]);
