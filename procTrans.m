@@ -1,5 +1,104 @@
 function msh=procTrans(adcp,tid,varargin)
-% msh=procTrans(ADCP,TID,...)
+% procTrans processes ADCP transect data
+%   MSH=procTrans(ADCP,TID,...) process the data in the ADCP structure (as
+%       read by readADCP. TID identifies sections and crossings. It is a
+%       NxM matrix with N equal to the amount of sections and M equal to
+%       the amount of ensembles in the ADCP structure. Every element in TID
+%       higher than zero at location (n,m) indicates that ensemble m
+%       belongs to section n. Each element in TID can contain a number
+%       which indicates the crossing an element belongs to.
+%       The output MSH is an N by 1 structure containing the results for
+%       each section. It contains the following fields:
+%           Tvec: The unit vector indicating the tangential direction of 
+%               the section
+%           Nvec: The unit vector orthogonal to Tvec
+%           Pm: Position vector indicating the center of the section
+%           eta: Vector containing the water level eta for each time
+%               processing step
+%           time: Average time of each time processing step
+%           Sig,N,X,Y: Coordinates of the centres of the processing cells.
+%               These matrices all have dimensions [Nz,Nn], being the
+%               maximum number of cells in depth and the number of cells in
+%               the width direction. They contain the Sigma coordinates,
+%               i.e. the relative elevation, N coordinate parallel to Tvec,
+%               X coordinate in UTM and Y coordinate in UTM.
+%           Z,T: Vertical coordinate and time for the cell centres. These
+%               matrices have dimensions [Nz,Nn,Nt], which includes and
+%               additional dimension for the time variation.
+%           vel: The velocity estimates. The matrix has dimensions
+%               [Nz,Nn,Nt,Nd], i.e. the cells in depth, width, time, and
+%               the Nd=3, being the three components of the velocity
+%               vector: eastward, northward, upward.
+%           std: Standard deviation in the velocity estimates. Has the same
+%               dimensions as vel
+%           mse: Mean square error of the velocity least square fitting
+%           Nvel: Number of individual beam velocity samples used in the
+%               velocity estimate
+%           vele,stde,Nvele: The same as vel, std and Nvel, but now
+%               computed directly combining beam velocity samples, instead
+%               of doing this afterwards.
+%           prog[vel, std, mse, Nvel, vele, stde, Nvele]: Same as above but
+%               now with the processing result progressively including a
+%               crossing. The have an additional dimension Nc, equal to the
+%               number of crossings. These are only generated when the
+%               'Progressive' paramter is set to true.
+%       Additionaly the structure contain another structure 'p' which is
+%       mainly meant for plotting. This structure contains:
+%           nbed, xbed, ybed, zbed: n,x,y and z coordinate of the bed
+%               computed at the cell boundaries and centers.
+%           fgood: mesh cells that are actually part of the section (not
+%               below the bottom or above the surface).
+%           N,X,Y,Sig: Coordinates of patches defining mesh cells in the
+%               cross-section (indicated by fgood). Size of the matrices is
+%               7xNcells, with Ncells being the amount on cells in the
+%               section.
+%           Z: Vertical coordinate of the patches defining the mesh-cells.
+%               This matrix has dimensions 7xNcellsxNt, with Nt being the
+%               number of time steps used in the processing
+%           
+%    MSH=procTrans(ADCP, TID,'PropertyName',PropertyValue) 
+%         allows to specify the following additional settings:
+%
+%         DepthTransducer
+%         A numerical scalar indicating the depth of the transducer (in m).
+%         Default is 0.3 m.
+%
+%         DeltaN
+%         Cross-section resolution of the mesh (in m). Default is 5 m.
+%
+%         DeltaZ
+%         Vertical resolution of the mesh (in m). Default is 1 m.
+%
+%         DeltaT
+%         Spatial resolution (in minutes). Setting this to 0 indicates
+%         temporal averaging over all data (No time variation in the data).
+%         Default is 0 minutes.
+%
+%         Eta
+%         Vector with as many elements as ensembles indicating the water
+%         level fluctuation in m. Default is 0 (no water level
+%         fluctuation).
+%
+%         MinimumSigma
+%         Minimum relative depth to include the data in the processing.
+%         Numerical scalar with values ranging from 0 to 1 (although
+%         usually close to 0). Default is 0.04.
+%
+%         Progressive
+%         true|{false}
+%         Indicates whether the velocity should be solved progressively
+%         including more crossings. This is especially usefull to evaluate
+%         the quality turbulence averaging.
+%
+%   Example: msh=procTrans(ADCP,tid,'Eta',eta,'Progressive',true,'DeltaT',
+%         60)
+%         Processes the data in ADCP for sections defined in tid. It will
+%         process the data progressively including crossing, defined by the
+%         numbers in tid. Water level fluctuation is given by eta. Time
+%         step will be 60 minutes.
+%   
+%   Author: Bart Vermeulen
+
 
 %    Copyright 2013 Bart Vermeulen
 %
@@ -19,19 +118,21 @@ function msh=procTrans(adcp,tid,varargin)
 %    along with ADCPTools.  If not, see <http://www.gnu.org/licenses/>.
 
 % TO DO:
-%   - Time variation
 %   - Check plotting
 %   - Residual removal
 %   - Improve depth matching (now a bit slow and possibly inaccurate)
 %   - Find direction minizing bathymetry variance?
-%   - Add help
+%   - Detect Eta from bathymetry
+%   - Add code documentation
 
-
+%% Handle input
 P=inputParser;
 P.FunctionName='procTrans';
 P.addParamValue('DepthTransducer',0.3,@(x) isscalar(x) && isnumeric(x) && x>0);
 P.addParamValue('DeltaN',5,@(x) isscalar(x) && isnumeric(x) && x>0);
 P.addParamValue('DeltaZ',1,@(x) isscalar(x) && isnumeric(x) && x>0);
+P.addParamValue('DeltaT',0,@(x) isscalar(x) && isnumeric(x) && x>0);
+P.addParamValue('Eta',0,@(x) isvector(x) && isnumeric(x))
 P.addParamValue('MinimumSigma',0.04,@(x) isscalar(x) && isnumeric(x) && x>=0 && x <=1);
 P.addParamValue('Progressive',false,@(x) isscalar(x) && islogical(x));
 P.parse(varargin{:});
@@ -39,34 +140,37 @@ P.parse(varargin{:});
 depthtransd=P.Results.DepthTransducer;
 veldn=P.Results.DeltaN;
 veldz=P.Results.DeltaZ;
+veldt=P.Results.DeltaT/24/60;
+eta=P.Results.Eta;
 sigmin=P.Results.MinimumSigma;
 progflag=P.Results.Progressive;
 
-%% Magic numbers
-% dprox=20;
+time=datenum(adcp.timeV)'; % Get time
+eta=eta(:)';    % Vectorize eta
+eta=eta.*ones(1,size(numel(time),1)); % Ensure eta has same number of elements as the number of ensembles
 
-%% fetch some adcp data
+%% Get ADCP positioning data
 [x,y]=utmADCP(adcp); % Get adcp position
 misal=getExtMisalign(adcp); % Get beam 3 misalignment
 
 % depth location
 [dx,dy,dz]=depthADCP(adcp,'Beam3Misalign',misal); % Get offsets from ADCP to measured depths
-dz=dz-depthtransd; % transform vertical offset to match with water surface
+dz=bsxfun(@plus,dz-depthtransd,eta); % transform vertical offset to match with water surface
 dx=bsxfun(@plus,x',dx); % transform offsets to depth to UTM coordinate system for horizontal
 dy=bsxfun(@plus,y',dy); % transform offsets to depth to UTM coordinate system for horizontal
-dxe=nanmean(dx,3);
-dye=nanmean(dy,3);
-dze=nanmean(dz,3);
+dxe=nanmean(dx,3); % determine beam average for conventional velocity processing
+dye=nanmean(dy,3); % determine beam average for conventional velocity processing
+dze=nanmean(dz,3); % determine beam average for conventional velocity processing
 
 
 % velocity location
 [mx,my,mz]=mapADCP(adcp,'IsUpward', false, 'Beam3Misalign',misal); % get offsets to velocity locations
-mz=mz-depthtransd; % Correct for depth of transducer
+mz=bsxfun(@plus,mz-depthtransd,eta); % Correct for depth of transducer and eta
 mx=bsxfun(@plus,x',mx); % transform offsets to vel data to UTM coordinate system for horizontal
 my=bsxfun(@plus,y',my); % transform offsets to vel data to UTM coordinate system for horizontal
-mxe=nanmean(mx,3);
-mye=nanmean(my,3);
-mze=nanmean(mz,3);
+mxe=nanmean(mx,3); % determine beam average for conventional velocity processing
+mye=nanmean(my,3); % determine beam average for conventional velocity processing
+mze=nanmean(mz,3); % determine beam average for conventional velocity processing
 
 
 % velocity data
@@ -82,159 +186,215 @@ pitch=double(adcp.pitch)/100/180*pi; % Get raw pitch
 roll=double(adcp.roll)/100/180*pi; % Get roll
 pitch=atan(tan(pitch).*cos(roll)); % Correct raw pitch to obtain real pitch
 
-bet=20/180*pi;
-cb=cos(bet);
-sb=sin(bet);
-cp=cos(pitch);
-sp=sin(pitch);
-cr=cos(roll);
-sr=sin(roll);
-ch=cos(heading');
-sh=sin(heading');
+bet=20/180*pi; % beam angle = beta
+cb=cos(bet); % cos beta
+sb=sin(bet); % sin beta
+cp=cos(pitch); % cos pitch
+sp=sin(pitch); % sin pitch
+cr=cos(roll); % cos roll
+sr=sin(roll); % sin roll
+ch=cos(heading'); % cos heading
+sh=sin(heading'); % sin heading
 
+% Determine transformation matrix (from beam coords to earth coords)
 TM=cat(3,cat(4,cb.*(ch.*sr - cr.*sh.*sp) + sb.*(ch.*cr + sh.*sp.*sr), - cb.*(sh.*sr + ch.*cr.*sp) - sb.*(cr.*sh - ch.*sp.*sr), cb.*cp.*cr - sb.*cp.*sr),...
          cat(4,cb.*(ch.*sr - cr.*sh.*sp) - sb.*(ch.*cr + sh.*sp.*sr),   sb.*(cr.*sh - ch.*sp.*sr) - cb.*(sh.*sr + ch.*cr.*sp), cb.*cp.*cr + sb.*cp.*sr),...
          cat(4,cb.*(ch.*sr - cr.*sh.*sp) - sb.*cp.*sh, - cb.*(sh.*sr + ch.*cr.*sp) - sb.*ch.*cp, cb.*cp.*cr - sb.*sp),...
          cat(4,cb.*(ch.*sr - cr.*sh.*sp) + sb.*cp.*sh, sb.*ch.*cp - cb.*(sh.*sr + ch.*cr.*sp), sb.*sp + cb.*cp.*cr));
 
+% Split in three matrices each with one term of the transformation matrix
 cTM1=repmat(TM(:,:,:,1),[size(vel,1),1,1,1]);
 cTM2=repmat(TM(:,:,:,2),[size(vel,1),1,1,1]);
 cTM3=repmat(TM(:,:,:,3),[size(vel,1),1,1,1]);
 
+%cleanup
 clear heading pitch roll bet cb sb cp sp cr sr ch sh TM
 
-%% find N
+%% Project positions to section
+% Initialize
 msh=repmat(struct(),[size(tid,1),1]); % Initialize final structure for output
-n=nan(size(x));
-dn=nan(size(dx)); 
-mn=nan(size(mx));
-ds=nan(size(dx));
-ms=nan(size(mx));
-dne=nan(size(dxe)); 
-mne=nan(size(mxe));
-dse=nan(size(dxe));
-mse=nan(size(mxe));
-T=nan(2,size(tid,1));
-N=nan(2,size(tid,1));
-Pm=nan(2,size(tid,1));
-% Pmid_cell=cell(size(tid,1),1);
-for ct=1:size(tid,1)
-    fcur=tid(ct,:)>0;
-    P=[x(fcur)';y(fcur)'];
-    Pm(:,ct)=nanmean(P,2);
-    T(:,ct)=princdir(P);
-    N(:,ct)=[T(2,ct); -T(1,ct)];
-    n(fcur)=T(1,ct)*(x(fcur)-Pm(1,ct))+T(2,ct)*(y(fcur)-Pm(2,ct));
-    dn(:,fcur,:)=T(1,ct)*(dx(:,fcur,:)-Pm(1,ct))+T(2,ct)*(dy(:,fcur,:)-Pm(2,ct));
-    ds(:,fcur,:)=N(1,ct)*(dx(:,fcur,:)-Pm(1,ct))+N(2,ct)*(dy(:,fcur,:)-Pm(2,ct));
-    mn(:,fcur,:)=T(1,ct)*(mx(:,fcur,:)-Pm(1,ct))+T(2,ct)*(my(:,fcur,:)-Pm(2,ct));
-    ms(:,fcur,:)=N(1,ct)*(mx(:,fcur,:)-Pm(1,ct))+N(2,ct)*(my(:,fcur,:)-Pm(2,ct));
-    dne(:,fcur,:)=T(1,ct)*(dxe(:,fcur,:)-Pm(1,ct))+T(2,ct)*(dye(:,fcur,:)-Pm(2,ct));
-    dse(:,fcur,:)=N(1,ct)*(dxe(:,fcur,:)-Pm(1,ct))+N(2,ct)*(dye(:,fcur,:)-Pm(2,ct));
-    mne(:,fcur,:)=T(1,ct)*(mxe(:,fcur,:)-Pm(1,ct))+T(2,ct)*(mye(:,fcur,:)-Pm(2,ct));
-    mse(:,fcur,:)=N(1,ct)*(mxe(:,fcur,:)-Pm(1,ct))+N(2,ct)*(mye(:,fcur,:)-Pm(2,ct));
-    msh(ct).Tvec=T(:,ct);
-    msh(ct).Nvec=N(:,ct);
-    msh(ct).Pm=Pm(:,ct);
+n=nan(size(x)); % n coordinate of boat location
+dn=nan(size(dx)); % n coordinate of depth detection
+mn=nan(size(mx)); % n coordinate of velocity sample
+ds=nan(size(dx)); % s coordinate of depth detection
+ms=nan(size(mx)); % s coordinate of velocity sample
+dne=nan(size(dxe)); % n coordinate for depth detection (conventional processing)
+mne=nan(size(mxe)); % n coordinate for velocity sample (conventional processing)
+dse=nan(size(dxe)); % s coordinate for depth detection (conventional processing)
+mse=nan(size(mxe)); % s coordinate for velocity sample (conventional processing)
+T=nan(2,size(tid,1)); % Unit vector tangential to section
+N=nan(2,size(tid,1)); % Unit vector orthogonal to section 
+Pm=nan(2,size(tid,1)); % Average section location vector
+
+% Start processing
+for ct=1:size(tid,1) % For all sections
+    fcur=tid(ct,:)>0; % mask, indicating data belonging to current section
+    
+    % Compute relevant vectors
+    P=[x(fcur)';y(fcur)']; % ADCP position vectors
+    Pm(:,ct)=nanmean(P,2); % Average ADCP position vector
+    T(:,ct)=princdir(P); % Section tangential vector, determined as largest eigenvector of P
+    N(:,ct)=[T(2,ct); -T(1,ct)]; % Section orthogonal vector (orthogonal to T)
+    
+    % Project positions (inner product with unit vectors)
+    n(fcur)=T(1,ct)*(x(fcur)-Pm(1,ct))+T(2,ct)*(y(fcur)-Pm(2,ct)); % ADCP position vector, n component
+    dn(:,fcur,:)=T(1,ct)*(dx(:,fcur,:)-Pm(1,ct))+T(2,ct)*(dy(:,fcur,:)-Pm(2,ct)); % depth position, n component
+    ds(:,fcur,:)=N(1,ct)*(dx(:,fcur,:)-Pm(1,ct))+N(2,ct)*(dy(:,fcur,:)-Pm(2,ct)); % depth position, s component
+    mn(:,fcur,:)=T(1,ct)*(mx(:,fcur,:)-Pm(1,ct))+T(2,ct)*(my(:,fcur,:)-Pm(2,ct)); % velocity position, n component
+    ms(:,fcur,:)=N(1,ct)*(mx(:,fcur,:)-Pm(1,ct))+N(2,ct)*(my(:,fcur,:)-Pm(2,ct)); % velocity position, s component
+    dne(:,fcur,:)=T(1,ct)*(dxe(:,fcur,:)-Pm(1,ct))+T(2,ct)*(dye(:,fcur,:)-Pm(2,ct)); % depth position, n component (conventional processing)
+    dse(:,fcur,:)=N(1,ct)*(dxe(:,fcur,:)-Pm(1,ct))+N(2,ct)*(dye(:,fcur,:)-Pm(2,ct)); % depth position, s component (conventional processing)
+    mne(:,fcur,:)=T(1,ct)*(mxe(:,fcur,:)-Pm(1,ct))+T(2,ct)*(mye(:,fcur,:)-Pm(2,ct)); % velocity position, n component (conventional processing)
+    mse(:,fcur,:)=N(1,ct)*(mxe(:,fcur,:)-Pm(1,ct))+N(2,ct)*(mye(:,fcur,:)-Pm(2,ct)); % velocity position, s component (conventional processing)
+    
+    % Store important vectors
+    msh(ct).Tvec=T(:,ct); % tangential vector
+    msh(ct).Nvec=N(:,ct); % orthogonal vector
+    msh(ct).Pm=Pm(:,ct); % mean position vector
 end
 
+%% Calculate sigma for velocity locations
+% Finite depth and velocity masks
+dfg=isfinite(dn) & isfinite(ds) & isfinite(dz); % Mask for finite depth locations
+mfg=isfinite(mn) & isfinite(ms); % Mask for finite velocity locations
+dfge=isfinite(dne) & isfinite(dse) & isfinite(dze); % Mask for finite depth locations (conventional processing)
+mfge=isfinite(mne) & isfinite(mse); % Mask for finite velocity locations (conventional processing)
 
-%% Get depth averaged velocity
-% Calculate sigma for velocity locations
-dfg=isfinite(dn) & isfinite(ds) & isfinite(dz);
-mfg=isfinite(mn) & isfinite(ms);
-md=nan(size(mx));
-dfge=isfinite(dne) & isfinite(dse) & isfinite(dze);
-mfge=isfinite(mne) & isfinite(mse);
-mde=nan(size(mxe));
-for ct=1:size(tid,1)
-    fcur=tid(ct,:)>0;
-    Int=scatteredInterpolant(ds(bsxfun(@and,fcur,dfg)),dn(bsxfun(@and,fcur,dfg)),dz(bsxfun(@and,fcur,dfg)),'natural','linear');
-    md(bsxfun(@and,fcur,mfg))=Int(ms(bsxfun(@and,fcur,mfg)),mn(bsxfun(@and,fcur,mfg)));
-    Inte=scatteredInterpolant(dse(bsxfun(@and,fcur,dfge))',dne(bsxfun(@and,fcur,dfge))',dze(bsxfun(@and,fcur,dfge))','natural','linear');
-    mde(bsxfun(@and,fcur,mfge))=Inte(mse(bsxfun(@and,fcur,mfge)),mne(bsxfun(@and,fcur,mfge)));
-end
-mSig=1-mz./md;
-f_incs=mSig<1 & mSig>sigmin;
-% f_close=abs(ms)<dprox;
-mSige=1-mze./mde;
-f_incse=mSige<1 & mSige>sigmin;
-% f_closee=abs(mse)<dprox;
-
-% create n index
-ncells=nan(size(tid,1),1);
-Pn=nan(2,size(tid,1));
-for ct=1:size(tid,1)
-    fcur=tid(ct,:)>0;
-    nmin=nanmin(mn(bsxfun(@and,fcur,f_incs)));
-    Pn(:,ct)=Pm(:,ct)+T(:,ct)*nmin;
-    mn(:,fcur,:)=mn(:,fcur,:)-nmin;
-    dn(:,fcur,:)=dn(:,fcur,:)-nmin;
-    mne(:,fcur,:)=mne(:,fcur,:)-nmin;
-    dne(:,fcur,:)=dne(:,fcur,:)-nmin;
-    nmax=nanmax(mn(bsxfun(@and,fcur,f_incs)));
-    ncells(ct)=ceil(nmax./veldn);
+% Initialize variables
+md=nan(size(mx)); % Bed elevation at velocity locations
+mde=nan(size(mxe)); % Bed elevation at velocity locations (conventional processing)
+ 
+% Compute Bed elevations at velocity sample locations (use accumarray instead?)
+for ct=1:size(tid,1) % For all sections
+    fcur=tid(ct,:)>0; % Mask current data
+    Int=scatteredInterpolant(ds(bsxfun(@and,fcur,dfg)),dn(bsxfun(@and,fcur,dfg)),dz(bsxfun(@and,fcur,dfg)),'natural','linear'); % Create interpolant (natural interpolation with linear extrapolation)
+    md(bsxfun(@and,fcur,mfg))=Int(ms(bsxfun(@and,fcur,mfg)),mn(bsxfun(@and,fcur,mfg))); % interpolate bed elevation at velocity locations
+    Inte=scatteredInterpolant(dse(bsxfun(@and,fcur,dfge))',dne(bsxfun(@and,fcur,dfge))',dze(bsxfun(@and,fcur,dfge))','natural','linear'); % Create interpolant (natural interpolation with linear extrapolation) (conventional processing)
+    mde(bsxfun(@and,fcur,mfge))=Inte(mse(bsxfun(@and,fcur,mfge)),mne(bsxfun(@and,fcur,mfge))); % interpolate bed elevation at velocity locations (conventional processing)
 end
 
-nIdx=floor(mn./veldn)+1;
-nIdxe=floor(mne./veldn)+1;
+% Compute sigma
+mSig=1-bsxfun(@minus,mz,eta)./bsxfun(@minus,md,eta); % Compute sigma for velocity locations
+f_incs=mSig<1 & mSig>sigmin; % Create mask for velocity locations in the cross-section
+mSige=1-bsxfun(@minus,mze,eta)./bsxfun(@minus,mde,eta); % Compute sigma for velocity locations (conventional processing)
+f_incse=mSige<1 & mSige>sigmin; % Create mask for velocity locations in the cross-section (conventional processing)
 
-%% create mesh
-[nbnds, ncntr, d_ncntr, d_nbnds]=deal(cell(size(tid,1),1));
-nIdxd=floor((dn+veldn/4)/(veldn/2))+1;
-fgood=isfinite(nIdxd) & nIdxd>0 & abs(ds)<10;
-fleft=mod(floor(mn/veldn*2),2)==0;
-flefte=mod(floor(mne/veldn*2),2)==0;
-fright=~fleft;
-frighte=~flefte;
-dSig=nan(size(mn));
-sigIdx=nan(size(mn));
-dSige=nan(size(mne));
-sigIdxe=nan(size(mne));
+%% create n index (maps velocity to correct n vertical)
+% Initialize variables
+ncells=nan(size(tid,1),1); % Number of n verticals in section
+Pn=nan(2,size(tid,1)); % Vector pointing to location at which n=0
+for ct=1:size(tid,1) % for all sections 
+    fcur=tid(ct,:)>0; % mask current section
+    nmin=nanmin(mn(bsxfun(@and,fcur,f_incs))); % determine minimum n
+    Pn(:,ct)=Pm(:,ct)+T(:,ct)*nmin; % compute vector pointing to minimum n location (projected on section)
+    mn(:,fcur,:)=mn(:,fcur,:)-nmin; % remove minimum n from velocity n coordinates (now they range between 0 and maximum n)
+    dn(:,fcur,:)=dn(:,fcur,:)-nmin; % remove minimum n from depth n coordinates (now they range between 0 and maximum n)
+    mne(:,fcur,:)=mne(:,fcur,:)-nmin; % remove minimum n from velocity n coordinates (now they range between 0 and maximum n) (conventional processing)
+    dne(:,fcur,:)=dne(:,fcur,:)-nmin; % remove minimum n from depth n coordinates (now they range between 0 and maximum n) (conventional processing)
+    nmax=nanmax(mn(bsxfun(@and,fcur,f_incs))); % compute maximum n
+    ncells(ct)=ceil(nmax./veldn); % determine number of vertical in section
+end
 
+% Compute n indices
+nIdx=floor(mn./veldn)+1; % Compute N index, mapping velocity data to correct vertical
+nIdxe=floor(mne./veldn)+1; % Compute N index, mapping velocity data to correct vertical (conventional processing)
+
+%% create time index (mapping to right time cell)
+% Initialize variables
+tIdx=ones(size(time));
+
+% Compute time index
+if veldt>0 % Only compute if positive time step is given
+    tIdx=floor((time-min(time))./veldt)+1;
+end
+
+% Compute average time and eta for time cells
+time_cnt=shiftdim(accumarray(tIdx',time',[],@nanmean,nan),-2);
+eta_cnt=shiftdim(accumarray(tIdx',eta',[],@nanmean,nan),-2);
+
+% Replicate time index matrix
+tIdx=repmat(tIdx,[size(mn,1),1,size(mn,3)]);
+
+%% Meshing
+% Initialize variables
+[nbnds, ncntr, d_ncntr, d_nleft, d_nright, d_nbnds]=deal(cell(size(tid,1),1)); % Initialize, n coordinate for cell boundaries and center, depth at cell center, at cell boundaries, at cell left boundary and cell right boundary
+dSig=nan(size(mn)); % Step in sigma
+sigIdx=nan(size(mn)); % Sigma index (mapping to right depth cell)
+dSige=nan(size(mne)); % Step in sigma (conventional processing)
+sigIdxe=nan(size(mne)); % Sigma index (mapping to right depth cell) (conventional processing)
+
+% Preliminary computations
+nIdxd=floor((dn+veldn/4)/(veldn/2))+1; % Index to determine depth at cell boundaries and centres
+fgood=isfinite(nIdxd) & nIdxd>0 & abs(ds)<10; % MAGIC NUMBER!!!! % Select data to include in depth calculation at cell edges and center
+fleft=mod(floor(mn/veldn*2),2)==0; % Selects data on the left half of a cell
+flefte=mod(floor(mne/veldn*2),2)==0; % Selects data on the left half of a cell (conventional processing)
+fright=~fleft; % Selects data on the left half of a cell
+frighte=~flefte; % Selects data on the left half of a cell (conventional processing)
+
+% All Remaining processing (split in chunks?)
 for ct=1:size(tid,1)
-    fcur=tid(ct,:)>0;
-    nbnds{ct}=(0:ncells(ct))*veldn;
-    ncntr{ct}=((0:ncells(ct)-1)+0.5)*veldn;
-    msh(ct).p.nbed=(0:0.5:ncells(ct))*veldn;
-    msh(ct).p.xbed=Pn(1,ct)+T(1,ct)*msh(ct).p.nbed;
-    msh(ct).p.ybed=Pn(2,ct)+T(2,ct)*msh(ct).p.nbed;
-    dtmp=accumarray(nIdxd(bsxfun(@and,fgood,fcur)),dz(bsxfun(@and,fgood,fcur)),[ncells(ct)*2+1,1],@nanmean,nan);
-    fgoodd=isfinite(dtmp);
-    Int=griddedInterpolant(find(fgoodd),dtmp(fgoodd));
-    dtmp(~fgoodd)=Int(find(~fgoodd)); %#ok<FNDSB>
-    msh(ct).p.zbed=dtmp';
-    d_nbnds{ct}=dtmp(1:2:end);
-    d_ncntr{ct}=dtmp(2:2:end);
-    minz_bnd=(1-sigmin)*d_nbnds{ct}; % minimum z for each vertical
-    minz_left=minz_bnd(1:end-1);
-    minz_right=minz_bnd(2:end);
-    minz_cnt=(1-sigmin)*d_ncntr{ct};
-    [maxsig, maxloc]=nanmax(mSig(bsxfun(@and,fcur,f_incs)));
-    idxf=find(bsxfun(@and,fcur,f_incs));
-    maxz=(1-maxsig)*d_ncntr{ct}(nIdx(idxf(maxloc)));
+    msh(ct).eta=eta_cnt; % store average eta for time steps
+    msh(ct).time=time_cnt; % store average time for time steps
+    fcur=tid(ct,:)>0; % Select data from current sections
+    
+    % determine n coordinate and depth of cell edges and centres
+    nbnds{ct}=(0:ncells(ct))*veldn; % n coordinate of cell boundaries
+    ncntr{ct}=((0:ncells(ct)-1)+0.5)*veldn; % n coordinate of cell centres
+    msh(ct).p.nbed=(0:0.5:ncells(ct))*veldn; % n coordinate of both cell centres and boundaries
+    msh(ct).p.xbed=Pn(1,ct)+T(1,ct)*msh(ct).p.nbed; % x coordinate of both cell centres and boundaries
+    msh(ct).p.ybed=Pn(2,ct)+T(2,ct)*msh(ct).p.nbed; % y coordinate of both cell centres and boundaries
+    dtmp=accumarray(nIdxd(bsxfun(@and,fgood,fcur)),dz(bsxfun(@and,fgood,fcur)),[ncells(ct)*2+1,1],@nanmean,nan); % Determine elevation (z) at cell centres and boundaries (where available)
+    fgoodd=isfinite(dtmp); % find all available elevations at cell centres and boundaries
+    Int=griddedInterpolant(find(fgoodd),dtmp(fgoodd)); % create interpolant to calculate elevation where it's missing (probably at the edges)
+    dtmp(~fgoodd)=Int(find(~fgoodd)); %#ok<FNDSB> % interpolate at cell centres or boundaries with missing depth
+    msh(ct).p.zbed=dtmp'; % store the z coordinate of the bed for cell centres and boundaries
+    d_nbnds{ct}=dtmp(1:2:end); % get average bed elevation at cell boundaries
+    d_nleft{ct}=d_nbnds{ct}(1:end-1); % get average bed elevation at cell left boundary
+    d_nright{ct}=d_nbnds{ct}(2:end); % get average bed elevation at cell left boundary
+    d_ncntr{ct}=dtmp(2:2:end); % get elevation at cell centres
+    
+    % Compute minimum and maximum z and sigma for verticals
+    minz_bnd=(1-sigmin)*d_nbnds{ct}; % minimum z for each vertical at cell boundaries
+    minz_left=minz_bnd(1:end-1); % minimum z for each vertical at cell left boundaries
+    minz_right=minz_bnd(2:end); % minimum z for each vertical at cell right boundaries
+    minz_cnt=(1-sigmin)*d_ncntr{ct}; % minimum z for each vertical at cell centres
+    [maxsig, maxloc]=nanmax(mSig(bsxfun(@and,fcur,f_incs))); % maximum Sigma measured in all data belonging to current section
+    idxf=find(bsxfun(@and,fcur,f_incs)); % get indices to which index of maximum computed in line above refers to
+    maxz=(1-maxsig)*d_ncntr{ct}(nIdx(idxf(maxloc))); % Transform maximum sigma to maximum mesh elevation at section location
+    maxsig=1-maxz./d_ncntr{ct}';
+    
+    % Compute number of cells in each vertical and cell-size (in sigma and zed)
     nz_cnt=round((maxz-minz_cnt)/veldz); % best guess number of z values in vertical giving a dz as close as possible to the given one
-    dzed_cnt=(maxz-minz_cnt)./nz_cnt; % compute final dz
-    dzed_left=(maxz-minz_left)./nz_cnt;
-    dzed_right=(maxz-minz_right)./nz_cnt;
-    msh(ct).Z=cumsum([minz_cnt'+dzed_cnt'/2; repmat(dzed_cnt',nanmax(nz_cnt)-1,1)]); % generate z positions
-    msh(ct).N=repmat(ncntr{ct},nanmax(nz_cnt),1);
-    msh(ct).X=Pn(1,ct)+T(1,ct)*msh(ct).N;
-    msh(ct).Y=Pn(2,ct)+T(2,ct)*msh(ct).N;
-    msh(ct).Z(bsxfun(@gt,msh(ct).Z,maxz))=nan; % remove points above maxz
-   
-    % for visualization (compute vertices of mesh cells (previous vectors/matrices give the centers of these cells)
-    ZLmin=cumsum([minz_left'; repmat(dzed_left',nanmax(nz_cnt)-1,1)]);
-    ZLmax=cumsum([minz_left'+dzed_left'; repmat(dzed_left',nanmax(nz_cnt)-1,1)]);
-    ZMmin=cumsum([minz_cnt'; repmat(dzed_cnt',nanmax(nz_cnt)-1,1)]);
-    ZMmax=cumsum([minz_cnt'+dzed_cnt'; repmat(dzed_cnt',nanmax(nz_cnt)-1,1)]);
-    ZRmin=cumsum([minz_right'; repmat(dzed_right',nanmax(nz_cnt)-1,1)]);
-    ZRmax=cumsum([minz_right'+dzed_right'; repmat(dzed_right',nanmax(nz_cnt)-1,1)]);
-    LN=repmat(nbnds{ct}(1:end-1),size(ZLmin,1),1); % n of left vertices (same for upper and lower)
-    MN=repmat(ncntr{ct},size(ZLmin,1),1); % n of left vertices (same for upper and lower)
-    RN=repmat(nbnds{ct}(2:end),size(ZLmin,1),1); % n of right vertices (same for upper and lower)
+    dzed_cnt=(maxz-minz_cnt)./nz_cnt; % compute dz at cell centers
+    dsig_cnt=-dzed_cnt./d_ncntr{ct}; % compute dsigma at cell centers
+    dzed_left=(maxz-minz_left)./nz_cnt; % compute dz at left cell boundary
+    dsig_left=-dzed_left./d_nleft{ct}; % compute dsigma at left cell boundary
+    dzed_right=(maxz-minz_right)./nz_cnt; % compute dz at right cell boundary
+    dsig_right=-dzed_right./d_nright{ct}; % comput dsigma at right cell boundary
+    
+    % Generate mesh (only cell centres)
+    msh(ct).Sig=cumsum([sigmin+dsig_cnt'/2; repmat(dsig_cnt',nanmax(nz_cnt)-1,1)]); % generate sigma positions of cell centres
+    msh(ct).Sig(bsxfun(@gt,msh(ct).Sig,maxsig))=nan; % Remove cell centers outside the section
+    msh(ct).N=repmat(ncntr{ct},nanmax(nz_cnt),1); % Create N position matrix for cell centres
+    msh(ct).X=Pn(1,ct)+T(1,ct)*msh(ct).N; % Create X position matrix for cell centres
+    msh(ct).Y=Pn(2,ct)+T(2,ct)*msh(ct).N; % Create Y position matrix for cell centres
+    msh(ct).Z=bsxfun(@plus,bsxfun(@times,1-msh(ct).Sig,bsxfun(@minus,d_ncntr{ct}',eta_cnt)),eta_cnt); % Compute time-varying Z position for cell centers
+    msh(ct).T=repmat(time_cnt,size(msh(ct).X,1),size(msh(ct).X,2)); % Create Time matrix for cells
+    
+    % Determine Sigma coordinates of vertices of cells
+    SLmin=cumsum([sigmin'+dsig_left'*0; repmat(dsig_left',nanmax(nz_cnt)-1,1)]); % lower left
+    SLmax=cumsum([sigmin'+dsig_left'; repmat(dsig_left',nanmax(nz_cnt)-1,1)]); % upper left
+    SMmin=cumsum([sigmin'+dsig_cnt'*0; repmat(dsig_cnt',nanmax(nz_cnt)-1,1)]); % 
+    SMmax=cumsum([sigmin'+dsig_cnt'; repmat(dsig_cnt',nanmax(nz_cnt)-1,1)]);
+    SRmin=cumsum([sigmin'+dsig_right'*0; repmat(dsig_right',nanmax(nz_cnt)-1,1)]);
+    SRmax=cumsum([sigmin'+dsig_right'; repmat(dsig_right',nanmax(nz_cnt)-1,1)]);
+    
+    
+    LN=repmat(nbnds{ct}(1:end-1),size(SLmin,1),1); % n of left vertices (same for upper and lower)
+    MN=repmat(ncntr{ct},size(SLmin,1),1); % n of left vertices (same for upper and lower)
+    RN=repmat(nbnds{ct}(2:end),size(SLmin,1),1); % n of right vertices (same for upper and lower)
     nz_cnt(isnan(nz_cnt))=0;
-    msh(ct).p.fgood=bsxfun(@le,cumsum(ones(size(msh(ct).Z)),1),nz_cnt');
+    msh(ct).p.fgood=bsxfun(@le,cumsum(ones(size(msh(ct).Sig)),1),nz_cnt');
     msh(ct).p.N=[LN(msh(ct).p.fgood)';...
                  MN(msh(ct).p.fgood)';...
                  RN(msh(ct).p.fgood)';...
@@ -244,38 +404,32 @@ for ct=1:size(tid,1)
                  LN(msh(ct).p.fgood)']; % Generate matrix with n positions as is needed for patch (each column is one cell, each row a vertex)
     msh(ct).p.X=Pn(1,ct)+T(1,ct)*msh(ct).p.N;
     msh(ct).p.Y=Pn(2,ct)+T(2,ct)*msh(ct).p.N;
-    msh(ct).p.Z=[ZLmin(msh(ct).p.fgood)';...
-                 ZMmin(msh(ct).p.fgood)';...
-                 ZRmin(msh(ct).p.fgood)';...
-                 ZRmax(msh(ct).p.fgood)';...
-                 ZMmax(msh(ct).p.fgood)';...
-                 ZLmax(msh(ct).p.fgood)';...
-                 ZLmin(msh(ct).p.fgood)']; % Generate matrix with z positions as is needed for patch (each column is one cell, each row a vertex)
-     [~, nidx]=ind2sub(size(msh(ct).Z),find(msh(ct).p.fgood));
-     msh(ct).p.ZBED=[d_nbnds{ct}(nidx)';...
+    msh(ct).p.Sig=[SLmin(msh(ct).p.fgood)';...
+                 SMmin(msh(ct).p.fgood)';...
+                 SRmin(msh(ct).p.fgood)';...
+                 SRmax(msh(ct).p.fgood)';...
+                 SMmax(msh(ct).p.fgood)';...
+                 SLmax(msh(ct).p.fgood)';...
+                 SLmin(msh(ct).p.fgood)']; % Generate matrix with z positions as is needed for patch (each column is one cell, each row a vertex)
+     [~, nidx]=ind2sub(size(msh(ct).Sig),find(msh(ct).p.fgood));
+     ZBED=[d_nbnds{ct}(nidx)';...
                      d_ncntr{ct}(nidx)';...
                      d_nbnds{ct}(nidx+1)';...
                      d_nbnds{ct}(nidx+1)';...
                      d_ncntr{ct}(nidx)';...
                      d_nbnds{ct}(nidx)';...
                      d_nbnds{ct}(nidx)'];                   
-     msh(ct).p.Sig=1-msh(ct).p.Z./msh(ct).p.ZBED;
-%     nel2=numel(msh(ct).p.zbed)/2; % compute element idx halfway the nvector
-%     msh(ct).p.n_watsurf=[interp1(msh(ct).p.zbed(1:floor(nel2)),msh(ct).p.nvec(1:floor(nel2)),0),...
-%                      interp1(msh(ct).p.zbed(ceil(nel2):end),msh(ct).p.nvec(ceil(nel2):end),0)]; % Interpolate left and right n-coordinate of water surface line
-    dSigl=-dzed_left./d_nbnds{ct}(1:end-1);
-    dSigc=-dzed_cnt./d_ncntr{ct}(1:end);
-    dSigr=-dzed_right./d_nbnds{ct}(2:end);
+     msh(ct).p.Z=bsxfun(@plus,bsxfun(@times,1-msh(ct).p.Sig,bsxfun(@minus,ZBED,eta_cnt)),eta_cnt);
 
     fnd=bsxfun(@and,tid(ct,:)>0,f_incs & fleft);
-    dSig(fnd)=dSigl(nIdx(fnd))+(dSigc(nIdx(fnd))-dSigl(nIdx(fnd)))/veldn*2.*(mn(fnd)-nbnds{ct}(nIdx(fnd))');
+    dSig(fnd)=dsig_left(nIdx(fnd))+(dsig_cnt(nIdx(fnd))-dsig_left(nIdx(fnd)))/veldn*2.*(mn(fnd)-nbnds{ct}(nIdx(fnd))');
     fnd=bsxfun(@and,tid(ct,:)>0,f_incs & fright);
-    dSig(fnd)=dSigc(nIdx(fnd))+(dSigr(nIdx(fnd))-dSigc(nIdx(fnd)))/veldn*2.*(mn(fnd)-ncntr{ct}(nIdx(fnd))');
+    dSig(fnd)=dsig_cnt(nIdx(fnd))+(dsig_right(nIdx(fnd))-dsig_cnt(nIdx(fnd)))/veldn*2.*(mn(fnd)-ncntr{ct}(nIdx(fnd))');
 
     fnde=bsxfun(@and,tid(ct,:)>0,f_incse & flefte);
-    dSige(fnde)=dSigl(nIdxe(fnde))+(dSigc(nIdxe(fnde))-dSigl(nIdxe(fnde)))/veldn*2.*(mne(fnde)-nbnds{ct}(nIdxe(fnde))');
+    dSige(fnde)=dsig_left(nIdxe(fnde))+(dsig_cnt(nIdxe(fnde))-dsig_left(nIdxe(fnde)))/veldn*2.*(mne(fnde)-nbnds{ct}(nIdxe(fnde))');
     fnde=bsxfun(@and,tid(ct,:)>0,f_incse & frighte);
-    dSige(fnde)=dSigc(nIdxe(fnde))+(dSigr(nIdxe(fnde))-dSigc(nIdxe(fnde)))/veldn*2.*(mne(fnde)-ncntr{ct}(nIdxe(fnde))');
+    dSige(fnde)=dsig_cnt(nIdxe(fnde))+(dsig_right(nIdxe(fnde))-dsig_cnt(nIdxe(fnde)))/veldn*2.*(mne(fnde)-ncntr{ct}(nIdxe(fnde))');
 
     fnd=bsxfun(@and,tid(ct,:)>0,f_incs);
     sigIdx(fnd)=floor((mSig(fnd)-sigmin)./dSig(fnd))+1;
@@ -283,15 +437,13 @@ for ct=1:size(tid,1)
     fnde=bsxfun(@and,tid(ct,:)>0,f_incse);
     sigIdxe(fnde)=floor((mSige(fnde)-sigmin)./dSige(fnde))+1;
 
-
- 
     
     fnd=bsxfun(@and,tid(ct,:)>0,f_incs & sigIdx<=size(msh(ct).Z,1));
    datacol=cellfun(@(x,y,z,w) [x y z w],...
-        accumarray({sigIdx(fnd) nIdx(fnd)},vel(fnd),size(msh(ct).Z),@(x) {x},{}),...
-        accumarray({sigIdx(fnd) nIdx(fnd)},cTM1(fnd),size(msh(ct).Z),@(x) {x},{}),...
-        accumarray({sigIdx(fnd) nIdx(fnd)},cTM2(fnd),size(msh(ct).Z),@(x) {x},{}),...
-        accumarray({sigIdx(fnd) nIdx(fnd)},cTM3(fnd),size(msh(ct).Z),@(x) {x},{}),'UniformOutput',false); % Collect beam velocity data and corresponding transformation matrix terms
+        accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},vel(fnd),size(msh(ct).Z),@(x) {x},{}),...
+        accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM1(fnd),size(msh(ct).Z),@(x) {x},{}),...
+        accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM2(fnd),size(msh(ct).Z),@(x) {x},{}),...
+        accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM3(fnd),size(msh(ct).Z),@(x) {x},{}),'UniformOutput',false); % Collect beam velocity data and corresponding transformation matrix terms
    [msh(ct).vel, msh(ct).std, msh(ct).mse, msh(ct).Nvel] =cellfun(@estvel,datacol,'UniformOutput',false); % Estimate velocity with least squares estimates (see function estvel.m for procedure)
     msh(ct).vel=squeeze(cell2mat(msh(ct).vel)); % reshape velocity data
     msh(ct).mse=squeeze(cell2mat(msh(ct).mse)); % reshape mean squared error data
@@ -302,11 +454,11 @@ for ct=1:size(tid,1)
        progdatacol=cell([size(msh(ct).Z), nanmax(tid(ct,:))]);
         for ccr=1:nanmax(tid(ct,:))
            fnd=bsxfun(@and,tid(ct,:)<=ccr & tid(ct,:)>0,f_incs & sigIdx<=size(msh(ct).Z,1));
-            progdatacol(:,:,ccr)=cellfun(@(x,y,z,w) [x y z w],...
-                accumarray({sigIdx(fnd) nIdx(fnd)},vel(fnd),size(msh(ct).Z),@(x) {x},{}),...
-                accumarray({sigIdx(fnd) nIdx(fnd)},cTM1(fnd),size(msh(ct).Z),@(x) {x},{}),...
-                accumarray({sigIdx(fnd) nIdx(fnd)},cTM2(fnd),size(msh(ct).Z),@(x) {x},{}),...
-                accumarray({sigIdx(fnd) nIdx(fnd)},cTM3(fnd),size(msh(ct).Z),@(x) {x},{}),'UniformOutput',false); % Collect beam velocity data and corresponding transformation matrix terms
+            progdatacol(:,:,:,ccr)=cellfun(@(x,y,z,w) [x y z w],...
+                accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},vel(fnd),size(msh(ct).Z),@(x) {x},{}),...
+                accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM1(fnd),size(msh(ct).Z),@(x) {x},{}),...
+                accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM2(fnd),size(msh(ct).Z),@(x) {x},{}),...
+                accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM3(fnd),size(msh(ct).Z),@(x) {x},{}),'UniformOutput',false); % Collect beam velocity data and corresponding transformation matrix terms
         end
         [msh(ct).progvel, msh(ct).progstd, msh(ct).progmse, msh(ct).progNvel]=cellfun(@estvel,progdatacol,'UniformOutput',false); % Estimate velocity with least squares estimates (see function estvel.m for procedure)
         msh(ct).progvel=squeeze(cell2mat(msh(ct).progvel)); % reshape velocity data
@@ -320,10 +472,11 @@ for ct=1:size(tid,1)
     fnde=bsxfun(@and,tid(ct,:)>0,repmat(f_incse & sigIdxe<=size(msh(ct).Z,1),[1 1 3]));
     tsigIdxe=repmat(sigIdxe,[1 1 3]);
     tnIdxe=repmat(nIdxe,[1 1 3]);
+    ttIdxe=repmat(tIdx(:,:,1),[1 1 3]);
     pIdxe=bsxfun(@plus,tnIdxe*0,cat(3,1,2,3));
-    msh(ct).vele=accumarray({tsigIdxe(fnde), tnIdxe(fnde), pIdxe(fnde)},vele(fnde),[size(msh(ct).Z) 3],@nanmean,nan);
-    msh(ct).stde=accumarray({tsigIdxe(fnde), tnIdxe(fnde), pIdxe(fnde)},vele(fnde),[size(msh(ct).Z) 3],@nanstd,nan);
-    msh(ct).Nvele=accumarray({tsigIdxe(fnde), tnIdxe(fnde), pIdxe(fnde)},vele(fnde),[size(msh(ct).Z) 3],@numel,0);
+    msh(ct).vele=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},vele(fnde),[size(msh(ct).Z) 3],@nanmean,nan);
+    msh(ct).stde=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},vele(fnde),[size(msh(ct).Z) 3],@nanstd,nan);
+    msh(ct).Nvele=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},vele(fnde),[size(msh(ct).Z) 3],@numel,0);
 end
 
 function [vel, std, mse, nin]=estvel(in)
