@@ -90,6 +90,11 @@ function msh=procTrans(adcp,tid,varargin)
 %         including more crossings. This is especially usefull to evaluate
 %         the quality turbulence averaging.
 %
+%         RemoveOutliers
+%         Numerical scalar Nr, indicating to remove beam velocities which 
+%         have a residual exceeding Nr times the median residual of a 
+%         velocity estimate. If Nr=0 no outliers are removed. Default is 0.
+%
 %   Example: msh=procTrans(ADCP,tid,'Eta',eta,'Progressive',true,'DeltaT',
 %         60)
 %         Processes the data in ADCP for sections defined in tid. It will
@@ -135,7 +140,11 @@ P.addParamValue('DeltaT',0,@(x) isscalar(x) && isnumeric(x) && x>0);
 P.addParamValue('Eta',0,@(x) isvector(x) && isnumeric(x))
 P.addParamValue('MinimumSigma',0.04,@(x) isscalar(x) && isnumeric(x) && x>=0 && x <=1);
 P.addParamValue('Progressive',false,@(x) isscalar(x) && islogical(x));
+P.addParamValue('RemoveOutliers',0,@(x) isscalar(x) && isnumeric(x) && x>=0);
 P.parse(varargin{:});
+
+assert(isADCPstruct(adcp));
+assert(size(tid,2)==size(adcp.VEL,2));
 
 depthtransd=P.Results.DepthTransducer;
 veldn=P.Results.DeltaN;
@@ -144,6 +153,7 @@ veldt=P.Results.DeltaT/24/60;
 eta=P.Results.Eta;
 sigmin=P.Results.MinimumSigma;
 progflag=P.Results.Progressive;
+rmresid=P.Results.RemoveOutliers;
 
 time=datenum(adcp.timeV)'; % Get time
 eta=eta(:)';    % Vectorize eta
@@ -384,83 +394,88 @@ for ct=1:size(tid,1)
     % Determine Sigma coordinates of vertices of cells
     SLmin=cumsum([sigmin'+dsig_left'*0; repmat(dsig_left',nanmax(nz_cnt)-1,1)]); % lower left
     SLmax=cumsum([sigmin'+dsig_left'; repmat(dsig_left',nanmax(nz_cnt)-1,1)]); % upper left
-    SMmin=cumsum([sigmin'+dsig_cnt'*0; repmat(dsig_cnt',nanmax(nz_cnt)-1,1)]); % 
-    SMmax=cumsum([sigmin'+dsig_cnt'; repmat(dsig_cnt',nanmax(nz_cnt)-1,1)]);
-    SRmin=cumsum([sigmin'+dsig_right'*0; repmat(dsig_right',nanmax(nz_cnt)-1,1)]);
-    SRmax=cumsum([sigmin'+dsig_right'; repmat(dsig_right',nanmax(nz_cnt)-1,1)]);
+    SMmin=cumsum([sigmin'+dsig_cnt'*0; repmat(dsig_cnt',nanmax(nz_cnt)-1,1)]); % lower central
+    SMmax=cumsum([sigmin'+dsig_cnt'; repmat(dsig_cnt',nanmax(nz_cnt)-1,1)]); % upper central
+    SRmin=cumsum([sigmin'+dsig_right'*0; repmat(dsig_right',nanmax(nz_cnt)-1,1)]); % lower right
+    SRmax=cumsum([sigmin'+dsig_right'; repmat(dsig_right',nanmax(nz_cnt)-1,1)]); % upper right
     
     
     LN=repmat(nbnds{ct}(1:end-1),size(SLmin,1),1); % n of left vertices (same for upper and lower)
-    MN=repmat(ncntr{ct},size(SLmin,1),1); % n of left vertices (same for upper and lower)
+    MN=repmat(ncntr{ct},size(SLmin,1),1); % n of central vertices (same for upper and lower)
     RN=repmat(nbnds{ct}(2:end),size(SLmin,1),1); % n of right vertices (same for upper and lower)
-    nz_cnt(isnan(nz_cnt))=0;
-    msh(ct).p.fgood=bsxfun(@le,cumsum(ones(size(msh(ct).Sig)),1),nz_cnt');
-    msh(ct).p.N=[LN(msh(ct).p.fgood)';...
+    nz_cnt(isnan(nz_cnt))=0; % use number of cells in vertical to generate fgood
+    msh(ct).p.fgood=bsxfun(@le,cumsum(ones(size(msh(ct).Sig)),1),nz_cnt'); % fgood masks the data that is in the section
+    msh(ct).p.N=[LN(msh(ct).p.fgood)';... % Store patch edges N coordinate
                  MN(msh(ct).p.fgood)';...
                  RN(msh(ct).p.fgood)';...
                  RN(msh(ct).p.fgood)';...
                  MN(msh(ct).p.fgood)';...
                  LN(msh(ct).p.fgood)';...
                  LN(msh(ct).p.fgood)']; % Generate matrix with n positions as is needed for patch (each column is one cell, each row a vertex)
-    msh(ct).p.X=Pn(1,ct)+T(1,ct)*msh(ct).p.N;
-    msh(ct).p.Y=Pn(2,ct)+T(2,ct)*msh(ct).p.N;
-    msh(ct).p.Sig=[SLmin(msh(ct).p.fgood)';...
+    msh(ct).p.X=Pn(1,ct)+T(1,ct)*msh(ct).p.N; % Compute X coordinates of patch vertices
+    msh(ct).p.Y=Pn(2,ct)+T(2,ct)*msh(ct).p.N; % Compute Y coordinates of patch vertices
+    msh(ct).p.Sig=[SLmin(msh(ct).p.fgood)';... % Store patch edges Sigma coordinates
                  SMmin(msh(ct).p.fgood)';...
                  SRmin(msh(ct).p.fgood)';...
                  SRmax(msh(ct).p.fgood)';...
                  SMmax(msh(ct).p.fgood)';...
                  SLmax(msh(ct).p.fgood)';...
                  SLmin(msh(ct).p.fgood)']; % Generate matrix with z positions as is needed for patch (each column is one cell, each row a vertex)
-     [~, nidx]=ind2sub(size(msh(ct).Sig),find(msh(ct).p.fgood));
-     ZBED=[d_nbnds{ct}(nidx)';...
+     [~, nidx]=ind2sub(size(msh(ct).Sig),find(msh(ct).p.fgood)); % N index of patch edges to get bed elevation at patch corners
+     ZBED=[d_nbnds{ct}(nidx)';... % Get bed elevation for patch vertices
                      d_ncntr{ct}(nidx)';...
                      d_nbnds{ct}(nidx+1)';...
                      d_nbnds{ct}(nidx+1)';...
                      d_ncntr{ct}(nidx)';...
                      d_nbnds{ct}(nidx)';...
                      d_nbnds{ct}(nidx)'];                   
-     msh(ct).p.Z=bsxfun(@plus,bsxfun(@times,1-msh(ct).p.Sig,bsxfun(@minus,ZBED,eta_cnt)),eta_cnt);
-
-    fnd=bsxfun(@and,tid(ct,:)>0,f_incs & fleft);
-    dSig(fnd)=dsig_left(nIdx(fnd))+(dsig_cnt(nIdx(fnd))-dsig_left(nIdx(fnd)))/veldn*2.*(mn(fnd)-nbnds{ct}(nIdx(fnd))');
-    fnd=bsxfun(@and,tid(ct,:)>0,f_incs & fright);
-    dSig(fnd)=dsig_cnt(nIdx(fnd))+(dsig_right(nIdx(fnd))-dsig_cnt(nIdx(fnd)))/veldn*2.*(mn(fnd)-ncntr{ct}(nIdx(fnd))');
-
-    fnde=bsxfun(@and,tid(ct,:)>0,f_incse & flefte);
-    dSige(fnde)=dsig_left(nIdxe(fnde))+(dsig_cnt(nIdxe(fnde))-dsig_left(nIdxe(fnde)))/veldn*2.*(mne(fnde)-nbnds{ct}(nIdxe(fnde))');
-    fnde=bsxfun(@and,tid(ct,:)>0,f_incse & frighte);
-    dSige(fnde)=dsig_cnt(nIdxe(fnde))+(dsig_right(nIdxe(fnde))-dsig_cnt(nIdxe(fnde)))/veldn*2.*(mne(fnde)-ncntr{ct}(nIdxe(fnde))');
-
-    fnd=bsxfun(@and,tid(ct,:)>0,f_incs);
-    sigIdx(fnd)=floor((mSig(fnd)-sigmin)./dSig(fnd))+1;
+     msh(ct).p.Z=bsxfun(@plus,bsxfun(@times,1-msh(ct).p.Sig,bsxfun(@minus,ZBED,eta_cnt)),eta_cnt); % Compute time varying Z coordinate of patch vertices
     
-    fnde=bsxfun(@and,tid(ct,:)>0,f_incse);
-    sigIdxe(fnde)=floor((mSige(fnde)-sigmin)./dSige(fnde))+1;
+     %% Match vertical cells for velocity data
+    fnd=bsxfun(@and,tid(ct,:)>0,f_incs & fleft); % Select all data in current section, whithin the section and on the left side of cells
+    dSig(fnd)=dsig_left(nIdx(fnd))+(dsig_cnt(nIdx(fnd))-dsig_left(nIdx(fnd)))/veldn*2.*(mn(fnd)-nbnds{ct}(nIdx(fnd))'); % Determine local vertical cell size (in sigma coordinates) for velocity estimates
+    fnd=bsxfun(@and,tid(ct,:)>0,f_incs & fright); % Select all data in current section, whithin the section and on the right side 
+    dSig(fnd)=dsig_cnt(nIdx(fnd))+(dsig_right(nIdx(fnd))-dsig_cnt(nIdx(fnd)))/veldn*2.*(mn(fnd)-ncntr{ct}(nIdx(fnd))');% Determine local vertical cell size (in sigma coordinates) for velocity estimates 
 
+    fnde=bsxfun(@and,tid(ct,:)>0,f_incse & flefte);  % Select all data in current section, whithin the section and on the left side of cells (conventional processing)
+    dSige(fnde)=dsig_left(nIdxe(fnde))+(dsig_cnt(nIdxe(fnde))-dsig_left(nIdxe(fnde)))/veldn*2.*(mne(fnde)-nbnds{ct}(nIdxe(fnde))');  % Determine local vertical cell size (in sigma coordinates) for velocity estimates (conventional processing)
+    fnde=bsxfun(@and,tid(ct,:)>0,f_incse & frighte); % Select all data in current section, whithin the section and on the right side of cells (conventional processing)
+    dSige(fnde)=dsig_cnt(nIdxe(fnde))+(dsig_right(nIdxe(fnde))-dsig_cnt(nIdxe(fnde)))/veldn*2.*(mne(fnde)-ncntr{ct}(nIdxe(fnde))'); % Determine local vertical cell size (in sigma coordinates) for velocity estimates (conventional processing)
+
+    fnd=bsxfun(@and,tid(ct,:)>0,f_incs); % find velocity data belonging to current section, within the section
+    sigIdx(fnd)=floor((mSig(fnd)-sigmin)./dSig(fnd))+1; % Calculate Index mapping to the right vertical cell
     
-    fnd=bsxfun(@and,tid(ct,:)>0,f_incs & sigIdx<=size(msh(ct).Z,1));
-   datacol=cellfun(@(x,y,z,w) [x y z w],...
+    fnde=bsxfun(@and,tid(ct,:)>0,f_incse); % find velocity data belonging to current section, within the section
+    sigIdxe(fnde)=floor((mSige(fnde)-sigmin)./dSige(fnde))+1; % Calculate Index mapping to the right vertical cell
+
+    %% Velocity processing
+    % Collect all velocity data
+    fnd=bsxfun(@and,tid(ct,:)>0,f_incs & sigIdx<=size(msh(ct).Z,1)); % Find all data belonging to current section and whithin a cell
+   datacol=cellfun(@(x,y,z,w) [x y z w],... % Collect velocity data and transformation matrix terms for each cell in mesh
         accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},vel(fnd),size(msh(ct).Z),@(x) {x},{}),...
         accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM1(fnd),size(msh(ct).Z),@(x) {x},{}),...
         accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM2(fnd),size(msh(ct).Z),@(x) {x},{}),...
         accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM3(fnd),size(msh(ct).Z),@(x) {x},{}),'UniformOutput',false); % Collect beam velocity data and corresponding transformation matrix terms
-   [msh(ct).vel, msh(ct).std, msh(ct).mse, msh(ct).Nvel] =cellfun(@estvel,datacol,'UniformOutput',false); % Estimate velocity with least squares estimates (see function estvel.m for procedure)
+    
+    % Estimate velocity (+ std, mse, Nvel)
+   [msh(ct).vel, msh(ct).std, msh(ct).mse, msh(ct).Nvel] =cellfun(@(x) estvel(x,rmresid),datacol,'UniformOutput',false); % Estimate velocity with least squares estimates (see function estvel.m for procedure)
     msh(ct).vel=squeeze(cell2mat(msh(ct).vel)); % reshape velocity data
     msh(ct).mse=squeeze(cell2mat(msh(ct).mse)); % reshape mean squared error data
     msh(ct).std=squeeze(cell2mat(msh(ct).std)); % reshape standard deviation data
     msh(ct).Nvel=squeeze(cell2mat(msh(ct).Nvel)); % reshape Number of valid samples data
   
-    if progflag
-       progdatacol=cell([size(msh(ct).Z), nanmax(tid(ct,:))]);
-        for ccr=1:nanmax(tid(ct,:))
-           fnd=bsxfun(@and,tid(ct,:)<=ccr & tid(ct,:)>0,f_incs & sigIdx<=size(msh(ct).Z,1));
-            progdatacol(:,:,:,ccr)=cellfun(@(x,y,z,w) [x y z w],...
+    % progressive velocity processing
+    if progflag % if progressive processing is needed
+       progdatacol=cell([size(msh(ct).Z), nanmax(tid(ct,:))]); % Initialize variable to collect velocity and tr. matrix data
+        for ccr=1:nanmax(tid(ct,:)) % loop over all crossings
+           fnd=bsxfun(@and,tid(ct,:)<=ccr & tid(ct,:)>0,f_incs & sigIdx<=size(msh(ct).Z,1)); % find data in current section, in all crossing up to current, and belonging to any cell
+            progdatacol(:,:,:,ccr)=cellfun(@(x,y,z,w) [x y z w],... %  collect velocity data and 
                 accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},vel(fnd),size(msh(ct).Z),@(x) {x},{}),...
                 accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM1(fnd),size(msh(ct).Z),@(x) {x},{}),...
                 accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM2(fnd),size(msh(ct).Z),@(x) {x},{}),...
                 accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM3(fnd),size(msh(ct).Z),@(x) {x},{}),'UniformOutput',false); % Collect beam velocity data and corresponding transformation matrix terms
         end
-        [msh(ct).progvel, msh(ct).progstd, msh(ct).progmse, msh(ct).progNvel]=cellfun(@estvel,progdatacol,'UniformOutput',false); % Estimate velocity with least squares estimates (see function estvel.m for procedure)
+        [msh(ct).progvel, msh(ct).progstd, msh(ct).progmse, msh(ct).progNvel]=cellfun(@(x) estvel(x,rmresid), progdatacol,'UniformOutput',false); % Estimate velocity with least squares estimates (see function estvel.m for procedure)
         msh(ct).progvel=squeeze(cell2mat(msh(ct).progvel)); % reshape velocity data
         msh(ct).progmse=squeeze(cell2mat(msh(ct).progmse)); % reshape mean squared error data
         msh(ct).progstd=squeeze(cell2mat(msh(ct).progstd)); % reshape standard deviation data
@@ -468,37 +483,38 @@ for ct=1:size(tid,1)
     end
 %     
 
-    
-    fnde=bsxfun(@and,tid(ct,:)>0,repmat(f_incse & sigIdxe<=size(msh(ct).Z,1),[1 1 3]));
-    tsigIdxe=repmat(sigIdxe,[1 1 3]);
-    tnIdxe=repmat(nIdxe,[1 1 3]);
-    ttIdxe=repmat(tIdx(:,:,1),[1 1 3]);
-    pIdxe=bsxfun(@plus,tnIdxe*0,cat(3,1,2,3));
-    msh(ct).vele=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},vele(fnde),[size(msh(ct).Z) 3],@nanmean,nan);
-    msh(ct).stde=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},vele(fnde),[size(msh(ct).Z) 3],@nanstd,nan);
-    msh(ct).Nvele=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},vele(fnde),[size(msh(ct).Z) 3],@numel,0);
+    % conventional velocity processing
+    fnde=bsxfun(@and,tid(ct,:)>0,repmat(f_incse & sigIdxe<=size(msh(ct).Z,1),[1 1 3])); % find data whithin section
+    tsigIdxe=repmat(sigIdxe,[1 1 3]); % reshape sigma indices
+    tnIdxe=repmat(nIdxe,[1 1 3]); % reshape n indices 
+    ttIdxe=repmat(tIdx(:,:,1),[1 1 3]); % reshape time indices
+    pIdxe=bsxfun(@plus,tnIdxe*0,cat(3,1,2,3)); % create dimension indices
+    msh(ct).vele=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},vele(fnde),[size(msh(ct).Z) 3],@nanmean,nan); % Average velocity data
+    msh(ct).stde=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},vele(fnde),[size(msh(ct).Z) 3],@nanstd,nan); % Determine std in velocity
+    msh(ct).Nvele=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},vele(fnde),[size(msh(ct).Z) 3],@numel,0); % Determine number of velocity estimates in cells
 end
 
-function [vel, std, mse, nin]=estvel(in)
+function [vel, std, mse, nin]=estvel(in,rmresid)
 % estimates cartesian velocities given beam velocities and correspoding
 % transformation matrix terms. IN is Nx4, N being the amount of beam
 % velocity samples. Each row is composed of a beam velocity and the three
 % terms from the transformation matrix
 
 in(any(isnan(in),2),:)=[]; % Throw out bad data
-%rmvel=true; % initialize variable holding indices to outliers
+rmvel=true; % initialize variable holding indices to outliers
 
-% while any(rmvel) % iterate until no outliers are found
+while any(rmvel) % iterate until no outliers are found
     if isempty(in) || rank(in(:,2:4),1)<3 % if no velocity is available or matrix is rank deficient
         vel=[nan;nan;nan];std=vel; mse=nan; % return nans
-%       break; % We're done here
+        break; % Exit loop
     else
         [vel, std, mse]=lscov(in(:,2:4),in(:,1)); % Perform least squares estimate of velocities
     end
-%    res=abs(in(:,1)-in(:,2:4)*vel); % Determine residuals in beam velocity
-%    res>6*median(res); % Detect outliers from residuals
-%     in(rmvel,:)=[]; % Remove outliers
-%end
+    if rmresid==0, break, end % if rmvel == 0, no outlier removal needed, exit loop
+    res=abs(in(:,1)-in(:,2:4)*vel); % Determine residuals in beam velocity
+    rmvel=res>rmresid*median(res); % Detect outliers from residuals
+    in(rmvel,:)=[]; % Remove outliers
+end
 nin=shiftdim(size(in,1),-3); % compute amount of points used for final velocity computation
 vel=shiftdim(vel,-3); % shift dimension to output 1x1x1x3 vector
 std=shiftdim(std,-3); % shift dimension to output 1x1x1x3 vector
