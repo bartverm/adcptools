@@ -95,6 +95,10 @@ function msh=procTrans(adcp,tid,varargin)
 %         have a residual exceeding Nr times the median residual of a 
 %         velocity estimate. If Nr=0 no outliers are removed. Default is 0.
 %
+%         Proximity
+%         Numerical scalar indicating a maximum distance from the section
+%         for velocity data to be included in the velocity estimates
+%
 %   Example: msh=procTrans(ADCP,tid,'Eta',eta,'Progressive',true,'DeltaT',
 %         60)
 %         Processes the data in ADCP for sections defined in tid. It will
@@ -129,6 +133,7 @@ function msh=procTrans(adcp,tid,varargin)
 %   - Find direction minizing bathymetry variance?
 %   - Detect Eta from bathymetry
 %   - Add code documentation
+%   - Change to covariance matrix instead of standard deviation
 
 %% Handle input
 P=inputParser;
@@ -141,6 +146,7 @@ P.addParamValue('Eta',0,@(x) isvector(x) && isnumeric(x))
 P.addParamValue('MinimumSigma',0.04,@(x) isscalar(x) && isnumeric(x) && x>=0 && x <=1);
 P.addParamValue('Progressive',false,@(x) isscalar(x) && islogical(x));
 P.addParamValue('RemoveOutliers',0,@(x) isscalar(x) && isnumeric(x) && x>=0);
+P.addParamValue('Proximity',0,@(x) isscalar(x) && isnumeric(x) && x>=0);
 P.parse(varargin{:});
 
 assert(isADCPstruct(adcp));
@@ -154,7 +160,7 @@ eta=P.Results.Eta;
 sigmin=P.Results.MinimumSigma;
 progflag=P.Results.Progressive;
 rmresid=P.Results.RemoveOutliers;
-
+proxim=P.Results.Proximity;
 time=datenum(adcp.timeV)'; % Get time
 eta=eta(:)';    % Vectorize eta
 eta=eta.*ones(1,size(numel(time),1)); % Ensure eta has same number of elements as the number of ensembles
@@ -451,11 +457,15 @@ for ct=1:size(tid,1)
     %% Velocity processing
     % Collect all velocity data
     fnd=bsxfun(@and,tid(ct,:)>0,f_incs & sigIdx<=size(msh(ct).Z,1)); % Find all data belonging to current section and whithin a cell
-   datacol=cellfun(@(x,y,z,w) [x y z w],... % Collect velocity data and transformation matrix terms for each cell in mesh
-        accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},vel(fnd),size(msh(ct).Z),@(x) {x},{}),...
-        accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM1(fnd),size(msh(ct).Z),@(x) {x},{}),...
-        accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM2(fnd),size(msh(ct).Z),@(x) {x},{}),...
-        accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM3(fnd),size(msh(ct).Z),@(x) {x},{}),'UniformOutput',false); % Collect beam velocity data and corresponding transformation matrix terms
+    if proxim>0 % if a proximity is given
+        fnd=fnd & abs(ms)<=proxim; % only include data within proxim distance from the section
+    end
+    siz=[size(msh(ct).Z,1) size(msh(ct).Z,2), numel(time_cnt)];
+    datacol=cellfun(@(x,y,z,w) [x y z w],... % Collect velocity data and transformation matrix terms for each cell in mesh
+        accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},vel(fnd),siz,@(x) {x},{}),...
+        accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM1(fnd),siz,@(x) {x},{}),...
+        accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM2(fnd),siz,@(x) {x},{}),...
+        accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM3(fnd),siz,@(x) {x},{}),'UniformOutput',false); % Collect beam velocity data and corresponding transformation matrix terms
     
     % Estimate velocity (+ std, mse, Nvel)
    [msh(ct).vel, msh(ct).std, msh(ct).mse, msh(ct).Nvel] =cellfun(@(x) estvel(x,rmresid),datacol,'UniformOutput',false); % Estimate velocity with least squares estimates (see function estvel.m for procedure)
@@ -469,7 +479,10 @@ for ct=1:size(tid,1)
        progdatacol=cell([size(msh(ct).Z), nanmax(tid(ct,:))]); % Initialize variable to collect velocity and tr. matrix data
         for ccr=1:nanmax(tid(ct,:)) % loop over all crossings
            fnd=bsxfun(@and,tid(ct,:)<=ccr & tid(ct,:)>0,f_incs & sigIdx<=size(msh(ct).Z,1)); % find data in current section, in all crossing up to current, and belonging to any cell
-            progdatacol(:,:,:,ccr)=cellfun(@(x,y,z,w) [x y z w],... %  collect velocity data and 
+            if proxim>0 % if a proximity is given
+                fnd=fnd & abs(ms)<=proxim; % only include data within proxim distance from the section
+            end
+           progdatacol(:,:,:,ccr)=cellfun(@(x,y,z,w) [x y z w],... %  collect velocity data and 
                 accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},vel(fnd),size(msh(ct).Z),@(x) {x},{}),...
                 accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM1(fnd),size(msh(ct).Z),@(x) {x},{}),...
                 accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM2(fnd),size(msh(ct).Z),@(x) {x},{}),...
@@ -489,9 +502,12 @@ for ct=1:size(tid,1)
     tnIdxe=repmat(nIdxe,[1 1 3]); % reshape n indices 
     ttIdxe=repmat(tIdx(:,:,1),[1 1 3]); % reshape time indices
     pIdxe=bsxfun(@plus,tnIdxe*0,cat(3,1,2,3)); % create dimension indices
-    msh(ct).vele=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},vele(fnde),[size(msh(ct).Z) 3],@nanmean,nan); % Average velocity data
-    msh(ct).stde=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},vele(fnde),[size(msh(ct).Z) 3],@nanstd,nan); % Determine std in velocity
-    msh(ct).Nvele=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},vele(fnde),[size(msh(ct).Z) 3],@numel,0); % Determine number of velocity estimates in cells
+    msh(ct).vele=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},vele(fnde),[siz 3],@nanmean,nan); % Average velocity data
+    msh(ct).stde=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},vele(fnde),[siz 3],@nanstd,nan); % Determine std in velocity
+    msh(ct).Nvele=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},vele(fnde),[siz 3],@numel,0); % Determine number of velocity estimates in cells
+    msh(ct).vele=squeeze(msh(ct).vele);
+    msh(ct).stde=squeeze(msh(ct).stde);
+    msh(ct).Nvele=squeeze(msh(ct).Nvele);
 end
 
 function [vel, std, mse, nin]=estvel(in,rmresid)

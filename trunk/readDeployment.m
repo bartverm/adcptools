@@ -53,7 +53,7 @@ else
         nfiles=vertcat(nfiles(:).name);
     end    
     nfiles= [repmat(path,[size(nfiles,1),1]),nfiles];
-    outADCP.nFiles=readNMEAADCP2(outADCP,nfiles);
+    outADCP.nFiles=readNMEAADCP(outADCP,nfiles);
 end
 clear nfiles nfiles2
 
@@ -70,7 +70,7 @@ else
         dfiles=vertcat(dfiles(:).name);
     end    
     dfiles= [repmat(path,[size(dfiles,1),1]),dfiles];
-    outADCP.dFiles=readNMEAADCP2(outADCP,dfiles);
+    outADCP.dFiles=readNMEAADCP(outADCP,dfiles);
 end
 clear dfiles dfiles2
 
@@ -87,6 +87,6 @@ else
         hfiles=vertcat(hfiles(:).name);
     end
     hfiles= [repmat(path,[size(hfiles,1),1]),hfiles];
-    outADCP.hFiles=readNMEAADCP2(outADCP,hfiles);
+    outADCP.hFiles=readNMEAADCP(outADCP,hfiles);
 end
 clear hfiles hfiles2
