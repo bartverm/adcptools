@@ -86,7 +86,12 @@ else
             warning('utmADCP:QualInd','No Quality indicator found')
         end
     else
-        error('utmADCP:NoData','Could not find coordinates information in ADCP file')
+        if isfield(inadcp,'tFiles') && all(isfield(inadcp.tFiles,{'lat','long'}))
+            lat=inadcp.tFiles.lat;
+            long=inadcp.tFiles.long;
+        else
+            error('utmADCP:NoData','Could not find coordinates information in ADCP file')
+        end
     end
 end
 

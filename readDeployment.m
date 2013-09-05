@@ -89,4 +89,20 @@ else
     hfiles= [repmat(path,[size(hfiles,1),1]),hfiles];
     outADCP.hFiles=readNMEAADCP(outADCP,hfiles);
 end
-clear hfiles hfiles2
+
+%% Read Transect files
+tfiles=dir([path,DepName,'*t.*']);                                         % Look for WinRiver external heading files
+% hfiles2 = dir([path,DepName,'*EH.TXT']);                                   % Look for WinRiverII external heading files
+if isempty(tfiles) %&&isempty(hfiles2)                                       % Continue running
+    warning('ReadDeployment:NoTFiles','Could not find transect files')
+else
+    disp('Reading WinRiver transect files...')
+%     if isempty(tfiles)&&~isempty(hfiles2)                                  % Choose the ~empty structure
+%         hfiles=vertcat(hfiles2(:).name);
+%     elseif isempty(hfiles2)&&~isempty(hfiles)
+     tfiles=vertcat(tfiles(:).name);
+%     end
+    tfiles= [repmat(path,[size(tfiles,1),1]),tfiles];
+    outADCP.tFiles=readTfiles(outADCP,tfiles);
+end
+clear tfiles
