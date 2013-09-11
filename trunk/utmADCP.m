@@ -1,10 +1,17 @@
 function [UTMx,UTMy,zone]=utmADCP(inadcp)
 % Calculates UTM coordinates and zone for lat long coordinates in adcp
 % files
+%   
+%   [UTMx,UTMy,zone]=utmADCP(inadcp) converts lat long coordinates (assumed
+%       to be measured on WGS84 into UTMx and UTMy coordinates, in the
+%       projected UTM coordinate system. Also the zone is returned based on
+%       the average location in the data. 
 %
-% Requires mapping toolbox
-% Requires external gps data in adcp file
-% Assumes latitude and longitude are in the same zone
+%       If GeographicLib is available, computation is performed with it.
+%       Otherwise the computation is done with the mapping toolbox. If
+%       mapping toolbox is unavailable computation is done within this
+%       script (according to Wikipedia description). Latter method seems to
+%       return same result as mapping toolbox algorithm.
 
 %    Copyright 2009,2010 Bart Vermeulen, Maximiliano Sassi
 %
