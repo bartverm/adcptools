@@ -134,6 +134,8 @@ function msh=procTrans(adcp,tid,varargin)
 %   - Detect Eta from bathymetry
 %   - Add code documentation
 %   - Change to covariance matrix instead of standard deviation
+%   - Somewhere p.zbed is generated above water surface... could be a
+%       problem!
 
 %% Handle input
 P=inputParser;
@@ -219,101 +221,33 @@ TM=cat(3,cat(4,cb.*(ch.*sr - cr.*sh.*sp) + sb.*(ch.*cr + sh.*sp.*sr), - cb.*(sh.
          cat(4,cb.*(ch.*sr - cr.*sh.*sp) + sb.*cp.*sh, sb.*ch.*cp - cb.*(sh.*sr + ch.*cr.*sp), sb.*sp + cb.*cp.*cr));
 
 % Split in three matrices each with one term of the transformation matrix
-cTM1=repmat(TM(:,:,:,1),[size(vel,1),1,1,1]);
-cTM2=repmat(TM(:,:,:,2),[size(vel,1),1,1,1]);
-cTM3=repmat(TM(:,:,:,3),[size(vel,1),1,1,1]);
+TM1=repmat(TM(:,:,:,1),[size(vel,1),1,1,1]);
+TM2=repmat(TM(:,:,:,2),[size(vel,1),1,1,1]);
+TM3=repmat(TM(:,:,:,3),[size(vel,1),1,1,1]);
 
 %cleanup
 clear heading pitch roll bet cb sb cp sp cr sr ch sh TM
 
+
+
 %% Project positions to section
 % Initialize
-msh=repmat(struct(),[size(tid,1),1]); % Initialize final structure for output
-n=nan(size(x)); % n coordinate of boat location
-dn=nan(size(dx)); % n coordinate of depth detection
-mn=nan(size(mx)); % n coordinate of velocity sample
-ds=nan(size(dx)); % s coordinate of depth detection
-ms=nan(size(mx)); % s coordinate of velocity sample
-dne=nan(size(dxe)); % n coordinate for depth detection (conventional processing)
-mne=nan(size(mxe)); % n coordinate for velocity sample (conventional processing)
-dse=nan(size(dxe)); % s coordinate for depth detection (conventional processing)
-mse=nan(size(mxe)); % s coordinate for velocity sample (conventional processing)
+nsec=size(tid,1);
+msh=repmat(struct(),[nsec,1]); % Initialize final structure for output
+% n=cell(nsec,1); % n coordinate of boat location
+% dn=cell(nsec,1); % n coordinate of depth detection
+% mn=cell(nsec,1); % n coordinate of velocity sample
+% ds=cell(nsec,1); % s coordinate of depth detection
+% ms=cell(nsec,1); % s coordinate of velocity sample
+% dne=cell(nsec,1); % n coordinate for depth detection (conventional processing)
+% mne=cell(nsec,1); % n coordinate for velocity sample (conventional processing)
+% dse=cell(nsec,1); % s coordinate for depth detection (conventional processing)
+% mse=cell(nsec,1); % s coordinate for velocity sample (conventional processing)
 T=nan(2,size(tid,1)); % Unit vector tangential to section
 N=nan(2,size(tid,1)); % Unit vector orthogonal to section 
 Pm=nan(2,size(tid,1)); % Average section location vector
+Pn=nan(2,size(tid,1)); % Average section location vector
 
-% Start processing
-for ct=1:size(tid,1) % For all sections
-    fcur=tid(ct,:)>0; % mask, indicating data belonging to current section
-    
-    % Compute relevant vectors
-    P=[x(fcur)';y(fcur)']; % ADCP position vectors
-    Pm(:,ct)=nanmean(P,2); % Average ADCP position vector
-    T(:,ct)=princdir(P); % Section tangential vector, determined as largest eigenvector of P
-    N(:,ct)=[T(2,ct); -T(1,ct)]; % Section orthogonal vector (orthogonal to T)
-    
-    % Project positions (inner product with unit vectors)
-    n(fcur)=T(1,ct)*(x(fcur)-Pm(1,ct))+T(2,ct)*(y(fcur)-Pm(2,ct)); % ADCP position vector, n component
-    dn(:,fcur,:)=T(1,ct)*(dx(:,fcur,:)-Pm(1,ct))+T(2,ct)*(dy(:,fcur,:)-Pm(2,ct)); % depth position, n component
-    ds(:,fcur,:)=N(1,ct)*(dx(:,fcur,:)-Pm(1,ct))+N(2,ct)*(dy(:,fcur,:)-Pm(2,ct)); % depth position, s component
-    mn(:,fcur,:)=T(1,ct)*(mx(:,fcur,:)-Pm(1,ct))+T(2,ct)*(my(:,fcur,:)-Pm(2,ct)); % velocity position, n component
-    ms(:,fcur,:)=N(1,ct)*(mx(:,fcur,:)-Pm(1,ct))+N(2,ct)*(my(:,fcur,:)-Pm(2,ct)); % velocity position, s component
-    dne(:,fcur,:)=T(1,ct)*(dxe(:,fcur,:)-Pm(1,ct))+T(2,ct)*(dye(:,fcur,:)-Pm(2,ct)); % depth position, n component (conventional processing)
-    dse(:,fcur,:)=N(1,ct)*(dxe(:,fcur,:)-Pm(1,ct))+N(2,ct)*(dye(:,fcur,:)-Pm(2,ct)); % depth position, s component (conventional processing)
-    mne(:,fcur,:)=T(1,ct)*(mxe(:,fcur,:)-Pm(1,ct))+T(2,ct)*(mye(:,fcur,:)-Pm(2,ct)); % velocity position, n component (conventional processing)
-    mse(:,fcur,:)=N(1,ct)*(mxe(:,fcur,:)-Pm(1,ct))+N(2,ct)*(mye(:,fcur,:)-Pm(2,ct)); % velocity position, s component (conventional processing)
-    
-    % Store important vectors
-    msh(ct).Tvec=T(:,ct); % tangential vector
-    msh(ct).Nvec=N(:,ct); % orthogonal vector
-    msh(ct).Pm=Pm(:,ct); % mean position vector
-end
-
-%% Calculate sigma for velocity locations
-% Finite depth and velocity masks
-dfg=isfinite(dn) & isfinite(ds) & isfinite(dz); % Mask for finite depth locations
-mfg=isfinite(mn) & isfinite(ms); % Mask for finite velocity locations
-dfge=isfinite(dne) & isfinite(dse) & isfinite(dze); % Mask for finite depth locations (conventional processing)
-mfge=isfinite(mne) & isfinite(mse); % Mask for finite velocity locations (conventional processing)
-
-% Initialize variables
-md=nan(size(mx)); % Bed elevation at velocity locations
-mde=nan(size(mxe)); % Bed elevation at velocity locations (conventional processing)
- 
-% Compute Bed elevations at velocity sample locations (use accumarray instead?)
-for ct=1:size(tid,1) % For all sections
-    fcur=tid(ct,:)>0; % Mask current data
-    Int=scatteredInterpolant(ds(bsxfun(@and,fcur,dfg)),dn(bsxfun(@and,fcur,dfg)),dz(bsxfun(@and,fcur,dfg)),'natural','linear'); % Create interpolant (natural interpolation with linear extrapolation)
-    md(bsxfun(@and,fcur,mfg))=Int(ms(bsxfun(@and,fcur,mfg)),mn(bsxfun(@and,fcur,mfg))); % interpolate bed elevation at velocity locations
-    Inte=scatteredInterpolant(dse(bsxfun(@and,fcur,dfge))',dne(bsxfun(@and,fcur,dfge))',dze(bsxfun(@and,fcur,dfge))','natural','linear'); % Create interpolant (natural interpolation with linear extrapolation) (conventional processing)
-    mde(bsxfun(@and,fcur,mfge))=Inte(mse(bsxfun(@and,fcur,mfge)),mne(bsxfun(@and,fcur,mfge))); % interpolate bed elevation at velocity locations (conventional processing)
-end
-
-% Compute sigma
-mSig=1-bsxfun(@minus,mz,eta)./bsxfun(@minus,md,eta); % Compute sigma for velocity locations
-f_incs=mSig<1 & mSig>sigmin; % Create mask for velocity locations in the cross-section
-mSige=1-bsxfun(@minus,mze,eta)./bsxfun(@minus,mde,eta); % Compute sigma for velocity locations (conventional processing)
-f_incse=mSige<1 & mSige>sigmin; % Create mask for velocity locations in the cross-section (conventional processing)
-
-%% create n index (maps velocity to correct n vertical)
-% Initialize variables
-ncells=nan(size(tid,1),1); % Number of n verticals in section
-Pn=nan(2,size(tid,1)); % Vector pointing to location at which n=0
-for ct=1:size(tid,1) % for all sections 
-    fcur=tid(ct,:)>0; % mask current section
-    nmin=nanmin(mn(bsxfun(@and,fcur,f_incs))); % determine minimum n
-    Pn(:,ct)=Pm(:,ct)+T(:,ct)*nmin; % compute vector pointing to minimum n location (projected on section)
-    mn(:,fcur,:)=mn(:,fcur,:)-nmin; % remove minimum n from velocity n coordinates (now they range between 0 and maximum n)
-    dn(:,fcur,:)=dn(:,fcur,:)-nmin; % remove minimum n from depth n coordinates (now they range between 0 and maximum n)
-    mne(:,fcur,:)=mne(:,fcur,:)-nmin; % remove minimum n from velocity n coordinates (now they range between 0 and maximum n) (conventional processing)
-    dne(:,fcur,:)=dne(:,fcur,:)-nmin; % remove minimum n from depth n coordinates (now they range between 0 and maximum n) (conventional processing)
-    nmax=nanmax(mn(bsxfun(@and,fcur,f_incs))); % compute maximum n
-    ncells(ct)=ceil(nmax./veldn); % determine number of vertical in section
-end
-
-% Compute n indices
-nIdx=floor(mn./veldn)+1; % Compute N index, mapping velocity data to correct vertical
-nIdxe=floor(mne./veldn)+1; % Compute N index, mapping velocity data to correct vertical (conventional processing)
 
 %% create time index (mapping to right time cell)
 % Initialize variables
@@ -329,73 +263,141 @@ time_cnt=shiftdim(accumarray(tIdx',time',[],@nanmean,nan),-2);
 eta_cnt=shiftdim(accumarray(tIdx',eta',[],@nanmean,nan),-2);
 
 % Replicate time index matrix
-tIdx=repmat(tIdx,[size(mn,1),1,size(mn,3)]);
+tIdx=repmat(tIdx,[size(mx,1),1,size(mx,3)]);
 
-%% Meshing
-% Initialize variables
-[nbnds, ncntr, d_ncntr, d_nleft, d_nright, d_nbnds]=deal(cell(size(tid,1),1)); % Initialize, n coordinate for cell boundaries and center, depth at cell center, at cell boundaries, at cell left boundary and cell right boundary
-dSig=nan(size(mn)); % Step in sigma
-sigIdx=nan(size(mn)); % Sigma index (mapping to right depth cell)
-dSige=nan(size(mne)); % Step in sigma (conventional processing)
-sigIdxe=nan(size(mne)); % Sigma index (mapping to right depth cell) (conventional processing)
 
-% Preliminary computations
-nIdxd=floor((dn+veldn/4)/(veldn/2))+1; % Index to determine depth at cell boundaries and centres
-fgood=isfinite(nIdxd) & nIdxd>0 & abs(ds)<10; % MAGIC NUMBER!!!! % Select data to include in depth calculation at cell edges and center
-fleft=mod(floor(mn/veldn*2),2)==0; % Selects data on the left half of a cell
-flefte=mod(floor(mne/veldn*2),2)==0; % Selects data on the left half of a cell (conventional processing)
-fright=~fleft; % Selects data on the left half of a cell
-frighte=~flefte; % Selects data on the left half of a cell (conventional processing)
-
-% All Remaining processing (split in chunks?)
-for ct=1:size(tid,1)
+% Start processing
+for ct=1:size(tid,1) % For all sections  
     msh(ct).eta=eta_cnt; % store average eta for time steps
     msh(ct).time=time_cnt; % store average time for time steps
-    fcur=tid(ct,:)>0; % Select data from current sections
+
+    fcur=tid(ct,:)>0; % mask, indicating data belonging to current section
     
+    % Compute relevant vectors
+    P=[x(fcur)';y(fcur)']; % ADCP position vectors
+    Pm(:,ct)=nanmean(P,2); % Average ADCP position vector
+    T(:,ct)=princdir(P); % Section tangential vector, determined as largest eigenvector of P
+    N(:,ct)=[T(2,ct); -T(1,ct)]; % Section orthogonal vector (orthogonal to T)
+    
+    % Project positions (inner product with unit vectors)
+%     n=T(1,ct)*(x(fcur)-Pm(1,ct))+T(2,ct)*(y(fcur)-Pm(2,ct)); % ADCP position vector, n component
+    dn=T(1,ct)*(dx(:,fcur,:)-Pm(1,ct))+T(2,ct)*(dy(:,fcur,:)-Pm(2,ct)); % depth position, n component
+    ds=N(1,ct)*(dx(:,fcur,:)-Pm(1,ct))+N(2,ct)*(dy(:,fcur,:)-Pm(2,ct)); % depth position, s component
+    mn=T(1,ct)*(mx(:,fcur,:)-Pm(1,ct))+T(2,ct)*(my(:,fcur,:)-Pm(2,ct)); % velocity position, n component
+    ms=N(1,ct)*(mx(:,fcur,:)-Pm(1,ct))+N(2,ct)*(my(:,fcur,:)-Pm(2,ct)); % velocity position, s component
+    dne=T(1,ct)*(dxe(:,fcur,:)-Pm(1,ct))+T(2,ct)*(dye(:,fcur,:)-Pm(2,ct)); % depth position, n component (conventional processing)
+    dse=N(1,ct)*(dxe(:,fcur,:)-Pm(1,ct))+N(2,ct)*(dye(:,fcur,:)-Pm(2,ct)); % depth position, s component (conventional processing)
+    mne=T(1,ct)*(mxe(:,fcur,:)-Pm(1,ct))+T(2,ct)*(mye(:,fcur,:)-Pm(2,ct)); % velocity position, n component (conventional processing)
+    mse=N(1,ct)*(mxe(:,fcur,:)-Pm(1,ct))+N(2,ct)*(mye(:,fcur,:)-Pm(2,ct)); % velocity position, s component (conventional processing)
+    
+    % Store important vectors
+    msh(ct).Tvec=T(:,ct); % tangential vector
+    msh(ct).Nvec=N(:,ct); % orthogonal vector
+    msh(ct).Pm=Pm(:,ct); % mean position vector
+    
+    %% Calculate sigma for velocity locations
+    cdz=dz(:,fcur,:);
+    cdze=dze(:,fcur);
+    
+    % Finite depth and velocity masks
+    dfg=isfinite(dn) & isfinite(ds) & isfinite(cdz); % Mask for finite depth locations
+    mfg=isfinite(mn) & isfinite(ms); % Mask for finite velocity locations
+    dfge=isfinite(dne) & isfinite(dse) & isfinite(cdze); % Mask for finite depth locations (conventional processing)
+    mfge=isfinite(mne) & isfinite(mse); % Mask for finite velocity locations (conventional processing)
+
+    % Initialize variables
+    md=nan(size(mn)); % Bed elevation at velocity locations
+    mde=nan(size(mne)); % Bed elevation at velocity locations (conventional processing)
+
+    % Compute Bed elevations at velocity sample locations (use accumarray instead?)
+    Int=scatteredInterpolant(ds(dfg),dn(dfg),cdz(dfg),'natural','linear'); % Create interpolant (natural interpolation with linear extrapolation)
+    md(mfg)=Int(ms(mfg),mn(mfg)); % interpolate bed elevation at velocity locations
+    Inte=scatteredInterpolant(dse(dfge)',dne(dfge)',cdze(dfge)','natural','linear'); % Create interpolant (natural interpolation with linear extrapolation) (conventional processing)
+    mde(mfge)=Inte(mse(mfge),mne(mfge)); % interpolate bed elevation at velocity locations (conventional processing)
+
+    % Compute sigma
+    cmz=mz(:,fcur,:);
+    cmze=mze(:,fcur,:);
+    if numel(eta)>1, ceta=eta(fcur); else ceta=eta; end
+    mSig=1-bsxfun(@minus,cmz,ceta)./bsxfun(@minus,md,ceta); % Compute sigma for velocity locations
+    f_incs=mSig<1 & mSig>sigmin; % Create mask for velocity locations in the cross-section
+    mSige=1-bsxfun(@minus,cmze,eta)./bsxfun(@minus,mde,eta); % Compute sigma for velocity locations (conventional processing)
+    f_incse=mSige<1 & mSige>sigmin; % Create mask for velocity locations in the cross-section (conventional processing)
+    
+    %% create n index (maps velocity to correct n vertical)
+    nmin=nanmin(mn(f_incs)); % determine minimum n
+    Pn(:,ct)=Pm(:,ct)+T(:,ct)*nmin; % compute vector pointing to minimum n location (projected on section)
+    mn=mn-nmin; % remove minimum n from velocity n coordinates (now they range between 0 and maximum n)
+    dn=dn-nmin; % remove minimum n from depth n coordinates (now they range between 0 and maximum n)
+    mne=mne-nmin; % remove minimum n from velocity n coordinates (now they range between 0 and maximum n) (conventional processing)
+%     dne=dne-nmin; % remove minimum n from depth n coordinates (now they range between 0 and maximum n) (conventional processing)
+    nmax=nanmax(mn(f_incs)); % compute maximum n
+    ncells=ceil(nmax./veldn); % determine number of vertical in section
+
+    % Compute n indices
+    nIdx=floor(mn./veldn)+1; % Compute N index, mapping velocity data to correct vertical
+    nIdxe=floor(mne./veldn)+1; % Compute N index, mapping velocity data to correct vertical (conventional processing)
+
+    %% Meshing
+    % Initialize variables
+%     [nbnds, ncntr, d_ncntr, d_nleft, d_nright, d_nbnds]=deal(cell(size(tid,1),1)); % Initialize, n coordinate for cell boundaries and center, depth at cell center, at cell boundaries, at cell left boundary and cell right boundary
+    dSig=nan(size(mn)); % Step in sigma
+    sigIdx=nan(size(mn)); % Sigma index (mapping to right depth cell)
+    dSige=nan(size(mne)); % Step in sigma (conventional processing)
+    sigIdxe=nan(size(mne)); % Sigma index (mapping to right depth cell) (conventional processing)
+
+    % Preliminary computations
+    nIdxd=floor((dn+veldn/4)/(veldn/2))+1; % Index to determine depth at cell boundaries and centres
+    fgood=isfinite(nIdxd) & nIdxd>0 & abs(ds)<10; % MAGIC NUMBER!!!! % Select data to include in depth calculation at cell edges and center
+    fleft=mod(floor(mn/veldn*2),2)==0; % Selects data on the left half of a cell
+    flefte=mod(floor(mne/veldn*2),2)==0; % Selects data on the left half of a cell (conventional processing)
+    fright=~fleft; % Selects data on the left half of a cell
+    frighte=~flefte; % Selects data on the left half of a cell (conventional processing)
+
     % determine n coordinate and depth of cell edges and centres
-    nbnds{ct}=(0:ncells(ct))*veldn; % n coordinate of cell boundaries
-    ncntr{ct}=((0:ncells(ct)-1)+0.5)*veldn; % n coordinate of cell centres
-    msh(ct).p.nbed=(0:0.5:ncells(ct))*veldn; % n coordinate of both cell centres and boundaries
+    nbnds=(0:ncells)*veldn; % n coordinate of cell boundaries
+    ncntr=((0:ncells-1)+0.5)*veldn; % n coordinate of cell centres
+    msh(ct).p.nbed=(0:0.5:ncells)*veldn; % n coordinate of both cell centres and boundaries
     msh(ct).p.xbed=Pn(1,ct)+T(1,ct)*msh(ct).p.nbed; % x coordinate of both cell centres and boundaries
     msh(ct).p.ybed=Pn(2,ct)+T(2,ct)*msh(ct).p.nbed; % y coordinate of both cell centres and boundaries
-    dtmp=accumarray(nIdxd(bsxfun(@and,fgood,fcur)),dz(bsxfun(@and,fgood,fcur)),[ncells(ct)*2+1,1],@nanmean,nan); % Determine elevation (z) at cell centres and boundaries (where available)
+    dtmp=accumarray(nIdxd(fgood),cdz(fgood),[ncells*2+1,1],@nanmean,nan); % Determine elevation (z) at cell centres and boundaries (where available)
     fgoodd=isfinite(dtmp); % find all available elevations at cell centres and boundaries
     Int=griddedInterpolant(find(fgoodd),dtmp(fgoodd)); % create interpolant to calculate elevation where it's missing (probably at the edges)
     dtmp(~fgoodd)=Int(find(~fgoodd)); %#ok<FNDSB> % interpolate at cell centres or boundaries with missing depth
     msh(ct).p.zbed=dtmp'; % store the z coordinate of the bed for cell centres and boundaries
-    d_nbnds{ct}=dtmp(1:2:end); % get average bed elevation at cell boundaries
-    d_nleft{ct}=d_nbnds{ct}(1:end-1); % get average bed elevation at cell left boundary
-    d_nright{ct}=d_nbnds{ct}(2:end); % get average bed elevation at cell left boundary
-    d_ncntr{ct}=dtmp(2:2:end); % get elevation at cell centres
-    
+    d_nbnds=dtmp(1:2:end); % get average bed elevation at cell boundaries
+    d_nleft=d_nbnds(1:end-1); % get average bed elevation at cell left boundary
+    d_nright=d_nbnds(2:end); % get average bed elevation at cell left boundary
+    d_ncntr=dtmp(2:2:end); % get elevation at cell centres
+
     % Compute minimum and maximum z and sigma for verticals
-    minz_bnd=(1-sigmin)*d_nbnds{ct}; % minimum z for each vertical at cell boundaries
+    minz_bnd=(1-sigmin)*d_nbnds; % minimum z for each vertical at cell boundaries
     minz_left=minz_bnd(1:end-1); % minimum z for each vertical at cell left boundaries
     minz_right=minz_bnd(2:end); % minimum z for each vertical at cell right boundaries
-    minz_cnt=(1-sigmin)*d_ncntr{ct}; % minimum z for each vertical at cell centres
-    [maxsig, maxloc]=nanmax(mSig(bsxfun(@and,fcur,f_incs))); % maximum Sigma measured in all data belonging to current section
-    idxf=find(bsxfun(@and,fcur,f_incs)); % get indices to which index of maximum computed in line above refers to
-    maxz=(1-maxsig)*d_ncntr{ct}(nIdx(idxf(maxloc))); % Transform maximum sigma to maximum mesh elevation at section location
-    maxsig=1-maxz./d_ncntr{ct}';
-    
+    minz_cnt=(1-sigmin)*d_ncntr; % minimum z for each vertical at cell centres
+    [maxsig, maxloc]=nanmax(mSig(f_incs)); % maximum Sigma measured in all data belonging to current section
+    idxf=find(f_incs); % get indices to which index of maximum computed in line above refers to
+    maxz=(1-maxsig)*d_ncntr(nIdx(idxf(maxloc))); % Transform maximum sigma to maximum mesh elevation at section location
+    maxsig=1-maxz./d_ncntr';
+
     % Compute number of cells in each vertical and cell-size (in sigma and zed)
     nz_cnt=round((maxz-minz_cnt)/veldz); % best guess number of z values in vertical giving a dz as close as possible to the given one
     dzed_cnt=(maxz-minz_cnt)./nz_cnt; % compute dz at cell centers
-    dsig_cnt=-dzed_cnt./d_ncntr{ct}; % compute dsigma at cell centers
+    dsig_cnt=-dzed_cnt./d_ncntr; % compute dsigma at cell centers
     dzed_left=(maxz-minz_left)./nz_cnt; % compute dz at left cell boundary
-    dsig_left=-dzed_left./d_nleft{ct}; % compute dsigma at left cell boundary
+    dsig_left=-dzed_left./d_nleft; % compute dsigma at left cell boundary
     dzed_right=(maxz-minz_right)./nz_cnt; % compute dz at right cell boundary
-    dsig_right=-dzed_right./d_nright{ct}; % comput dsigma at right cell boundary
-    
+    dsig_right=-dzed_right./d_nright; % comput dsigma at right cell boundary
+
     % Generate mesh (only cell centres)
     msh(ct).Sig=cumsum([sigmin+dsig_cnt'/2; repmat(dsig_cnt',nanmax(nz_cnt)-1,1)]); % generate sigma positions of cell centres
     msh(ct).Sig(bsxfun(@gt,msh(ct).Sig,maxsig))=nan; % Remove cell centers outside the section
-    msh(ct).N=repmat(ncntr{ct},nanmax(nz_cnt),1); % Create N position matrix for cell centres
+    msh(ct).N=repmat(ncntr,nanmax(nz_cnt),1); % Create N position matrix for cell centres
     msh(ct).X=Pn(1,ct)+T(1,ct)*msh(ct).N; % Create X position matrix for cell centres
     msh(ct).Y=Pn(2,ct)+T(2,ct)*msh(ct).N; % Create Y position matrix for cell centres
-    msh(ct).Z=bsxfun(@plus,bsxfun(@times,1-msh(ct).Sig,bsxfun(@minus,d_ncntr{ct}',eta_cnt)),eta_cnt); % Compute time-varying Z position for cell centers
+    msh(ct).Z=bsxfun(@plus,bsxfun(@times,1-msh(ct).Sig,bsxfun(@minus,d_ncntr,eta_cnt)'),eta_cnt); % Compute time-varying Z position for cell centers
     msh(ct).T=repmat(time_cnt,size(msh(ct).X,1),size(msh(ct).X,2)); % Create Time matrix for cells
+
     
     % Determine Sigma coordinates of vertices of cells
     SLmin=cumsum([sigmin'+dsig_left'*0; repmat(dsig_left',nanmax(nz_cnt)-1,1)]); % lower left
@@ -404,11 +406,10 @@ for ct=1:size(tid,1)
     SMmax=cumsum([sigmin'+dsig_cnt'; repmat(dsig_cnt',nanmax(nz_cnt)-1,1)]); % upper central
     SRmin=cumsum([sigmin'+dsig_right'*0; repmat(dsig_right',nanmax(nz_cnt)-1,1)]); % lower right
     SRmax=cumsum([sigmin'+dsig_right'; repmat(dsig_right',nanmax(nz_cnt)-1,1)]); % upper right
-    
-    
-    LN=repmat(nbnds{ct}(1:end-1),size(SLmin,1),1); % n of left vertices (same for upper and lower)
-    MN=repmat(ncntr{ct},size(SLmin,1),1); % n of central vertices (same for upper and lower)
-    RN=repmat(nbnds{ct}(2:end),size(SLmin,1),1); % n of right vertices (same for upper and lower)
+
+    LN=repmat(nbnds(1:end-1),size(SLmin,1),1); % n of left vertices (same for upper and lower)
+    MN=repmat(ncntr,size(SLmin,1),1); % n of central vertices (same for upper and lower)
+    RN=repmat(nbnds(2:end),size(SLmin,1),1); % n of right vertices (same for upper and lower)
     nz_cnt(isnan(nz_cnt))=0; % use number of cells in vertical to generate fgood
     msh(ct).p.fgood=bsxfun(@le,cumsum(ones(size(msh(ct).Sig)),1),nz_cnt'); % fgood masks the data that is in the section
     msh(ct).p.N=[LN(msh(ct).p.fgood)';... % Store patch edges N coordinate
@@ -428,41 +429,45 @@ for ct=1:size(tid,1)
                  SLmax(msh(ct).p.fgood)';...
                  SLmin(msh(ct).p.fgood)']; % Generate matrix with z positions as is needed for patch (each column is one cell, each row a vertex)
      [~, nidx]=ind2sub(size(msh(ct).Sig),find(msh(ct).p.fgood)); % N index of patch edges to get bed elevation at patch corners
-     ZBED=[d_nbnds{ct}(nidx)';... % Get bed elevation for patch vertices
-                     d_ncntr{ct}(nidx)';...
-                     d_nbnds{ct}(nidx+1)';...
-                     d_nbnds{ct}(nidx+1)';...
-                     d_ncntr{ct}(nidx)';...
-                     d_nbnds{ct}(nidx)';...
-                     d_nbnds{ct}(nidx)'];                   
+     ZBED= [ d_nbnds(nidx)';... % Get bed elevation for patch vertices
+             d_ncntr(nidx)';...
+             d_nbnds(nidx+1)';...
+             d_nbnds(nidx+1)';...
+             d_ncntr(nidx)';...
+             d_nbnds(nidx)';...
+             d_nbnds(nidx)'];                   
      msh(ct).p.Z=bsxfun(@plus,bsxfun(@times,1-msh(ct).p.Sig,bsxfun(@minus,ZBED,eta_cnt)),eta_cnt); % Compute time varying Z coordinate of patch vertices
-    
-     %% Match vertical cells for velocity data
-    fnd=bsxfun(@and,tid(ct,:)>0,f_incs & fleft); % Select all data in current section, whithin the section and on the left side of cells
-    dSig(fnd)=dsig_left(nIdx(fnd))+(dsig_cnt(nIdx(fnd))-dsig_left(nIdx(fnd)))/veldn*2.*(mn(fnd)-nbnds{ct}(nIdx(fnd))'); % Determine local vertical cell size (in sigma coordinates) for velocity estimates
-    fnd=bsxfun(@and,tid(ct,:)>0,f_incs & fright); % Select all data in current section, whithin the section and on the right side 
-    dSig(fnd)=dsig_cnt(nIdx(fnd))+(dsig_right(nIdx(fnd))-dsig_cnt(nIdx(fnd)))/veldn*2.*(mn(fnd)-ncntr{ct}(nIdx(fnd))');% Determine local vertical cell size (in sigma coordinates) for velocity estimates 
 
-    fnde=bsxfun(@and,tid(ct,:)>0,f_incse & flefte);  % Select all data in current section, whithin the section and on the left side of cells (conventional processing)
-    dSige(fnde)=dsig_left(nIdxe(fnde))+(dsig_cnt(nIdxe(fnde))-dsig_left(nIdxe(fnde)))/veldn*2.*(mne(fnde)-nbnds{ct}(nIdxe(fnde))');  % Determine local vertical cell size (in sigma coordinates) for velocity estimates (conventional processing)
-    fnde=bsxfun(@and,tid(ct,:)>0,f_incse & frighte); % Select all data in current section, whithin the section and on the right side of cells (conventional processing)
-    dSige(fnde)=dsig_cnt(nIdxe(fnde))+(dsig_right(nIdxe(fnde))-dsig_cnt(nIdxe(fnde)))/veldn*2.*(mne(fnde)-ncntr{ct}(nIdxe(fnde))'); % Determine local vertical cell size (in sigma coordinates) for velocity estimates (conventional processing)
+    %% Match vertical cells for velocity data
+    fnd=f_incs & fleft; % Select all data in current section, whithin the section and on the left side of cells
+    dSig(fnd)=dsig_left(nIdx(fnd))+(dsig_cnt(nIdx(fnd))-dsig_left(nIdx(fnd)))/veldn*2.*(mn(fnd)-nbnds(nIdx(fnd))'); % Determine local vertical cell size (in sigma coordinates) for velocity estimates
+    fnd=f_incs & fright; % Select all data in current section, whithin the section and on the right side 
+    dSig(fnd)=dsig_cnt(nIdx(fnd))+(dsig_right(nIdx(fnd))-dsig_cnt(nIdx(fnd)))/veldn*2.*(mn(fnd)-ncntr(nIdx(fnd))');% Determine local vertical cell size (in sigma coordinates) for velocity estimates 
 
-    fnd=bsxfun(@and,tid(ct,:)>0,f_incs); % find velocity data belonging to current section, within the section
+    fnde=f_incse & flefte;  % Select all data in current section, whithin the section and on the left side of cells (conventional processing)
+    dSige(fnde)=dsig_left(nIdxe(fnde))+(dsig_cnt(nIdxe(fnde))-dsig_left(nIdxe(fnde)))/veldn*2.*(mne(fnde)-nbnds(nIdxe(fnde))');  % Determine local vertical cell size (in sigma coordinates) for velocity estimates (conventional processing)
+    fnde=f_incse & frighte; % Select all data in current section, whithin the section and on the right side of cells (conventional processing)
+    dSige(fnde)=dsig_cnt(nIdxe(fnde))+(dsig_right(nIdxe(fnde))-dsig_cnt(nIdxe(fnde)))/veldn*2.*(mne(fnde)-ncntr(nIdxe(fnde))'); % Determine local vertical cell size (in sigma coordinates) for velocity estimates (conventional processing)
+
+    fnd=f_incs; % find velocity data belonging to current section, within the section
     sigIdx(fnd)=floor((mSig(fnd)-sigmin)./dSig(fnd))+1; % Calculate Index mapping to the right vertical cell
     
-    fnde=bsxfun(@and,tid(ct,:)>0,f_incse); % find velocity data belonging to current section, within the section
+    fnde=f_incse; % find velocity data belonging to current section, within the section
     sigIdxe(fnde)=floor((mSige(fnde)-sigmin)./dSige(fnde))+1; % Calculate Index mapping to the right vertical cell
 
     %% Velocity processing
+    cvel=vel(:,fcur,:);
+    cTM1=TM1(:,fcur,:);
+    cTM2=TM2(:,fcur,:);
+    cTM3=TM3(:,fcur,:);
     % Collect all velocity data
-    fnd=bsxfun(@and,tid(ct,:)>0,f_incs & sigIdx<=size(msh(ct).Z,1)); % Find all data belonging to current section and whithin a cell
+    fnd=f_incs & sigIdx<=size(msh(ct).Z,1) & sigIdx>0; % Find all data belonging to current section and whithin a cell
     if proxim>0 % if a proximity is given
         fnd=fnd & abs(ms)<=proxim; % only include data within proxim distance from the section
     end
     siz=[size(msh(ct).Z,1) size(msh(ct).Z,2), numel(time_cnt)];
     datacol=cellfun(@(x,y,z,w) [x y z w],... % Collect velocity data and transformation matrix terms for each cell in mesh
-        accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},vel(fnd),siz,@(x) {x},{}),...
+        accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cvel(fnd),siz,@(x) {x},{}),...
         accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM1(fnd),siz,@(x) {x},{}),...
         accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM2(fnd),siz,@(x) {x},{}),...
         accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM3(fnd),siz,@(x) {x},{}),'UniformOutput',false); % Collect beam velocity data and corresponding transformation matrix terms
@@ -478,15 +483,15 @@ for ct=1:size(tid,1)
     if progflag % if progressive processing is needed
        progdatacol=cell([size(msh(ct).Z), nanmax(tid(ct,:))]); % Initialize variable to collect velocity and tr. matrix data
         for ccr=1:nanmax(tid(ct,:)) % loop over all crossings
-           fnd=bsxfun(@and,tid(ct,:)<=ccr & tid(ct,:)>0,f_incs & sigIdx<=size(msh(ct).Z,1)); % find data in current section, in all crossing up to current, and belonging to any cell
+           fnd=bsxfun(@and,tid(ct,fcur)<=ccr, f_incs & sigIdx<=size(msh(ct).Z,1)); % find data in current section, in all crossing up to current, and belonging to any cell
             if proxim>0 % if a proximity is given
                 fnd=fnd & abs(ms)<=proxim; % only include data within proxim distance from the section
             end
-           progdatacol(:,:,:,ccr)=cellfun(@(x,y,z,w) [x y z w],... %  collect velocity data and 
-                accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},vel(fnd),size(msh(ct).Z),@(x) {x},{}),...
-                accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM1(fnd),size(msh(ct).Z),@(x) {x},{}),...
-                accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM2(fnd),size(msh(ct).Z),@(x) {x},{}),...
-                accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM3(fnd),size(msh(ct).Z),@(x) {x},{}),'UniformOutput',false); % Collect beam velocity data and corresponding transformation matrix terms
+           progdatacol(:,:,1:siz(3),ccr)=cellfun(@(x,y,z,w) [x y z w],... %  collect velocity data and 
+                accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cvel(fnd),siz,@(x) {x},{}),...
+                accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM1(fnd),siz,@(x) {x},{}),...
+                accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM2(fnd),siz,@(x) {x},{}),...
+                accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM3(fnd),siz,@(x) {x},{}),'UniformOutput',false); % Collect beam velocity data and corresponding transformation matrix terms
         end
         [msh(ct).progvel, msh(ct).progstd, msh(ct).progmse, msh(ct).progNvel]=cellfun(@(x) estvel(x,rmresid), progdatacol,'UniformOutput',false); % Estimate velocity with least squares estimates (see function estvel.m for procedure)
         msh(ct).progvel=squeeze(cell2mat(msh(ct).progvel)); % reshape velocity data
@@ -497,18 +502,41 @@ for ct=1:size(tid,1)
 %     
 
     % conventional velocity processing
-    fnde=bsxfun(@and,tid(ct,:)>0,repmat(f_incse & sigIdxe<=size(msh(ct).Z,1),[1 1 3])); % find data whithin section
+    cvele=vele(:,fcur,:);
+
+    fnde=repmat(f_incse & sigIdxe<=size(msh(ct).Z,1),[1 1 3]); % find data whithin section
     tsigIdxe=repmat(sigIdxe,[1 1 3]); % reshape sigma indices
     tnIdxe=repmat(nIdxe,[1 1 3]); % reshape n indices 
     ttIdxe=repmat(tIdx(:,:,1),[1 1 3]); % reshape time indices
     pIdxe=bsxfun(@plus,tnIdxe*0,cat(3,1,2,3)); % create dimension indices
-    msh(ct).vele=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},vele(fnde),[siz 3],@nanmean,nan); % Average velocity data
-    msh(ct).stde=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},vele(fnde),[siz 3],@nanstd,nan); % Determine std in velocity
-    msh(ct).Nvele=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},vele(fnde),[siz 3],@numel,0); % Determine number of velocity estimates in cells
+    msh(ct).vele=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},cvele(fnde),[siz 3],@nanmean,nan); % Average velocity data
+    msh(ct).stde=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},cvele(fnde),[siz 3],@nanstd,nan); % Determine std in velocity
+    msh(ct).Nvele=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},cvele(fnde),[siz 3],@numel,0); % Determine number of velocity estimates in cells
     msh(ct).vele=squeeze(msh(ct).vele);
     msh(ct).stde=squeeze(msh(ct).stde);
     msh(ct).Nvele=squeeze(msh(ct).Nvele);
+    
+    %% Velocity rotations
+    msh(ct).cs_dir=atan2(nanmean(reshape(msh(ct).vel(:,:,2),[],1)),nanmean(reshape(msh(ct).vel(:,:,1),[],1))); % Transect averaged flow direction
+    msh(ct).da_dir=atan2(nanmean(msh(ct).vel(:,:,2),1),nanmean(msh(ct).vel(:,:,1),1)); % depth averaged flow direction
+    msh(ct).sec_dir=atan2(N(2),N(1));
+    
+    % rotate velocities (only keeping horizontal components)
+    msh(ct).vel_cs(:,:,1)=msh(ct).vel(:,:,1).*cos(msh(ct).cs_dir)+msh(ct).vel(:,:,2)*sin(msh(ct).cs_dir); % velocity component along cross-section averaged velocity direction
+    msh(ct).vel_cs(:,:,2)=-msh(ct).vel(:,:,1).*sin(msh(ct).cs_dir)+msh(ct).vel(:,:,2)*cos(msh(ct).cs_dir); % velocity component across cross-section averaged velocity direction
+    msh(ct).vel_sec(:,:,1)=msh(ct).vel(:,:,1).*cos(msh(ct).sec_dir)+msh(ct).vel(:,:,2)*sin(msh(ct).sec_dir); % velocity component along cross-section averaged velocity direction
+    msh(ct).vel_sec(:,:,2)=-msh(ct).vel(:,:,1).*sin(msh(ct).sec_dir)+msh(ct).vel(:,:,2)*cos(msh(ct).sec_dir); % velocity component across cross-section averaged velocity direction
+    msh(ct).vel_da(:,:,1)=bsxfun(@times,msh(ct).vel(:,:,1),cos(msh(ct).da_dir))+bsxfun(@times,msh(ct).vel(:,:,2),sin(msh(ct).da_dir)); % velocity component along depth averaged velocity direction
+    msh(ct).vel_da(:,:,2)=-bsxfun(@times,msh(ct).vel(:,:,1),sin(msh(ct).da_dir))+bsxfun(@times,msh(ct).vel(:,:,2),cos(msh(ct).da_dir)); % velocity component across depth averaged velocity direction
+
+    msh(ct).vele_cs(:,:,1)=msh(ct).vele(:,:,1).*cos(msh(ct).cs_dir)+msh(ct).vele(:,:,2)*sin(msh(ct).cs_dir); % velocity component along cross-section averaged velocity direction (conventional processing)
+    msh(ct).vele_cs(:,:,2)=-msh(ct).vele(:,:,1).*sin(msh(ct).cs_dir)+msh(ct).vele(:,:,2)*cos(msh(ct).cs_dir); % velocity component across cross-section averaged velocity direction (conventional processing)
+    msh(ct).vele_sec(:,:,1)=msh(ct).vele(:,:,1).*cos(msh(ct).sec_dir)+msh(ct).vele(:,:,2)*sin(msh(ct).sec_dir); % velocity component along cross-section averaged velocity direction (conventional processing)
+    msh(ct).vele_sec(:,:,2)=-msh(ct).vele(:,:,1).*sin(msh(ct).sec_dir)+msh(ct).vele(:,:,2)*cos(msh(ct).sec_dir); % velocity component across cross-section averaged velocity direction (conventional processing)
+    msh(ct).vele_da(:,:,1)=bsxfun(@times,msh(ct).vele(:,:,1),cos(msh(ct).da_dir))+bsxfun(@times,msh(ct).vele(:,:,2),sin(msh(ct).da_dir)); % velocity component along depth averaged velocity direction (conventional processing)
+    msh(ct).vele_da(:,:,2)=-bsxfun(@times,msh(ct).vele(:,:,1),sin(msh(ct).da_dir))+bsxfun(@times,msh(ct).vele(:,:,2),cos(msh(ct).da_dir)); % velocity component across depth averaged velocity direction (conventional processing)
 end
+
 
 function [vel, std, mse, nin]=estvel(in,rmresid)
 % estimates cartesian velocities given beam velocities and correspoding
