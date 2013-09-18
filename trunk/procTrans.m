@@ -314,9 +314,9 @@ for ct=1:size(tid,1) % For all sections
         md(mfg) = griddata(ds(dfg),dn(dfg),cdz(dfg),ms(mfg),mn(mfg),'natural'); %#ok<GRIDD>
         mde(mfg) = griddata(dse(dfge),dne(dfge),cdze(dfge),mse(mfge),mn(mfge),'natural'); %#ok<GRIDD>
     elseif verLessThan('matlab','8.1')
-        Int=triScatteredInterp(ds(dfg),dn(dfg),cdz(dfg),'natural'); % Create interpolant (natural interpolation with linear extrapolation)
+        Int=TriScatteredInterp(ds(dfg),dn(dfg),cdz(dfg),'natural'); % Create interpolant (natural interpolation with linear extrapolation)
         md(mfg)=Int(ms(mfg),mn(mfg)); % interpolate bed elevation at velocity locations
-        Inte=triScatteredInterp(dse(dfge)',dne(dfge)',cdze(dfge)','natural'); % Create interpolant (natural interpolation with linear extrapolation) (conventional processing)
+        Inte=TriScatteredInterp(dse(dfge)',dne(dfge)',cdze(dfge)','natural'); % Create interpolant (natural interpolation with linear extrapolation) (conventional processing)
         mde(mfge)=Inte(mse(mfge),mne(mfge)); % interpolate bed elevation at velocity locations (conventional processing)
    else
         Int=scatteredInterpolant(ds(dfg),dn(dfg),cdz(dfg),'natural','linear'); % Create interpolant (natural interpolation with linear extrapolation)
@@ -491,7 +491,7 @@ for ct=1:size(tid,1) % For all sections
   
     % progressive velocity processing
     if progflag % if progressive processing is needed
-       progdatacol=cell([size(msh(ct).Z), nanmax(tid(ct,:))]); % Initialize variable to collect velocity and tr. matrix data
+       progdatacol=cell([siz nanmax(tid(ct,:))]); % Initialize variable to collect velocity and tr. matrix data
         for ccr=1:nanmax(tid(ct,:)) % loop over all crossings
            fnd=bsxfun(@and,tid(ct,fcur)<=ccr, f_incs & sigIdx<=size(msh(ct).Z,1)); % find data in current section, in all crossing up to current, and belonging to any cell
             if proxim>0 % if a proximity is given
