@@ -310,10 +310,20 @@ for ct=1:size(tid,1) % For all sections
     mde=nan(size(mne)); % Bed elevation at velocity locations (conventional processing)
 
     % Compute Bed elevations at velocity sample locations (use accumarray instead?)
-    Int=scatteredInterpolant(ds(dfg),dn(dfg),cdz(dfg),'natural','linear'); % Create interpolant (natural interpolation with linear extrapolation)
-    md(mfg)=Int(ms(mfg),mn(mfg)); % interpolate bed elevation at velocity locations
-    Inte=scatteredInterpolant(dse(dfge)',dne(dfge)',cdze(dfge)','natural','linear'); % Create interpolant (natural interpolation with linear extrapolation) (conventional processing)
-    mde(mfge)=Inte(mse(mfge),mne(mfge)); % interpolate bed elevation at velocity locations (conventional processing)
+    if verLessThan('matlab','7.10')
+        md(mfg) = griddata(ds(dfg),dn(dfg),cdz(dfg),ms(mfg),mn(mfg),'natural'); %#ok<GRIDD>
+        mde(mfg) = griddata(dse(dfge),dne(dfge),cdze(dfge),mse(mfge),mn(mfge),'natural'); %#ok<GRIDD>
+    elseif verLessThan('matlab','8.1')
+        Int=triScatteredInterp(ds(dfg),dn(dfg),cdz(dfg),'natural'); % Create interpolant (natural interpolation with linear extrapolation)
+        md(mfg)=Int(ms(mfg),mn(mfg)); % interpolate bed elevation at velocity locations
+        Inte=triScatteredInterp(dse(dfge)',dne(dfge)',cdze(dfge)','natural'); % Create interpolant (natural interpolation with linear extrapolation) (conventional processing)
+        mde(mfge)=Inte(mse(mfge),mne(mfge)); % interpolate bed elevation at velocity locations (conventional processing)
+   else
+        Int=scatteredInterpolant(ds(dfg),dn(dfg),cdz(dfg),'natural','linear'); % Create interpolant (natural interpolation with linear extrapolation)
+        md(mfg)=Int(ms(mfg),mn(mfg)); % interpolate bed elevation at velocity locations
+        Inte=scatteredInterpolant(dse(dfge)',dne(dfge)',cdze(dfge)','natural','linear'); % Create interpolant (natural interpolation with linear extrapolation) (conventional processing)
+        mde(mfge)=Inte(mse(mfge),mne(mfge)); % interpolate bed elevation at velocity locations (conventional processing)
+    end  
 
     % Compute sigma
     cmz=mz(:,fcur,:);
