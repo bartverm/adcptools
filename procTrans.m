@@ -314,9 +314,9 @@ for ct=1:size(tid,1) % For all sections
         md(mfg) = griddata(ds(dfg),dn(dfg),cdz(dfg),ms(mfg),mn(mfg),'natural'); %#ok<GRIDD>
         mde(mfg) = griddata(dse(dfge),dne(dfge),cdze(dfge),mse(mfge),mn(mfge),'natural'); %#ok<GRIDD>
     elseif verLessThan('matlab','8.1')
-        Int=TriScatteredInterp(ds(dfg),dn(dfg),cdz(dfg),'natural'); % Create interpolant (natural interpolation with linear extrapolation)
+        Int=TriScatteredInterp(ds(dfg),dn(dfg),cdz(dfg),'natural'); %#ok<REMFF1> % Create interpolant (natural interpolation with linear extrapolation)
         md(mfg)=Int(ms(mfg),mn(mfg)); % interpolate bed elevation at velocity locations
-        Inte=TriScatteredInterp(dse(dfge)',dne(dfge)',cdze(dfge)','natural'); % Create interpolant (natural interpolation with linear extrapolation) (conventional processing)
+        Inte=TriScatteredInterp(dse(dfge)',dne(dfge)',cdze(dfge)','natural'); %#ok<REMFF1> % Create interpolant (natural interpolation with linear extrapolation) (conventional processing)
         mde(mfge)=Inte(mse(mfge),mne(mfge)); % interpolate bed elevation at velocity locations (conventional processing)
    else
         Int=scatteredInterpolant(ds(dfg),dn(dfg),cdz(dfg),'natural','linear'); % Create interpolant (natural interpolation with linear extrapolation)
