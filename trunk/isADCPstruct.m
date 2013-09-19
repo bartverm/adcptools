@@ -41,8 +41,14 @@ function isADCP=isADCPstruct(inp,varargin)
 %    along with ADCPTools.  If not, see <http://www.gnu.org/licenses/>.
 
 %% Input checking
-narginchk(1,2)
-nargoutchk(0,1)
+if verLessThan('matlab','7.13')
+    error(nargchk(1,2,nargin)) %#ok<NCHKN>
+    error(nargoutchk(0,1,nargout)) %#ok<NCHKE>
+else
+    narginchk(1,2)
+    nargoutchk(0,1)
+end
+
 
 if isstruct(inp) 
     isADCP=false(size(inp));

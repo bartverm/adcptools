@@ -18,8 +18,13 @@ function misal=getExtMisalign(inadcp)
 %    You should have received a copy of the GNU General Public License
 %    along with ADCPTools.  If not, see <http://www.gnu.org/licenses/>.
 
-error(nargchk(1,1,nargin));
-error(nargoutchk(0,1,nargout));
+if verLessThan('matlab','7.13')
+    error(nargchk(1,1,nargin)) %#ok<NCHKN>
+    error(nargoutchk(0,1,nargout)) %#ok<NCHKE>
+else
+    narginchk(1,1)
+    nargoutchk(0,1)
+end
 
 misal=nan(size(inadcp));
 

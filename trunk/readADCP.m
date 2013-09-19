@@ -57,8 +57,13 @@ WRII_DBT_ID=102;
 
 
 %% Check input
-error(nargchk(1,2,nargin))
-error(nargoutchk(0,1,nargout))
+if verLessThan('matlab','7.13')
+    error(nargchk(1,2,nargin)) %#ok<NCHKN>
+    error(nargoutchk(0,1,nargout)) %#ok<NCHKE>
+else
+    narginchk(1,2)
+    nargoutchk(0,1)
+end
 inp=inputParser;                                                           % Create an object of the InputParser class
 inp.addRequired('files',@(x) (iscellstr(x) | ischar(x)));                  % Add the required variable 'files' and check for right format
 inp.addOptional('flags','vhcpbex',@ischar);                                % Add the optional argument 'flags' and check for right format
