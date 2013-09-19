@@ -192,7 +192,7 @@ mze=nanmean(mz,3); % determine beam average for conventional velocity processing
 
 
 % velocity data
-[adcp.VEL,adcp.btvel] = filterADCP(adcp,'edcf','echotres',20,'difecho',50,'cortres',70,'filterBT',true); % Filter velocity
+[adcp.VEL,adcp.btvel] = filterADCP(adcp,'','filterBT',true); % Filter velocity
 [vele,btvele]=corADCP(adcp,'e','UseExtHeading',true,'Beam3Misalign',misal); % transform to beam velocity
 [adcp.VEL, adcp.btvel]=corADCP(adcp,'b','UseExtHeading',true,'Beam3Misalign',misal); % transform to beam velocity
 vel=adcp.VEL-repmat(shiftdim(adcp.btvel,-1),[size(adcp.VEL,1),1,1]); % remove bt from normal vel
@@ -211,8 +211,8 @@ cp=cos(pitch); % cos pitch
 sp=sin(pitch); % sin pitch
 cr=cos(roll); % cos roll
 sr=sin(roll); % sin roll
-ch=cos(heading'); % cos heading
-sh=sin(heading'); % sin heading
+ch=cos(heading); % cos heading
+sh=sin(heading); % sin heading
 
 % Determine transformation matrix (from beam coords to earth coords)
 TM=cat(3,cat(4,cb.*(ch.*sr - cr.*sh.*sp) + sb.*(ch.*cr + sh.*sp.*sr), - cb.*(sh.*sr + ch.*cr.*sp) - sb.*(cr.*sh - ch.*sp.*sr), cb.*cp.*cr - sb.*cp.*sr),...
@@ -558,7 +558,7 @@ in(any(isnan(in),2),:)=[]; % Throw out bad data
 rmvel=true; % initialize variable holding indices to outliers
 
 while any(rmvel) % iterate until no outliers are found
-    if isempty(in) || rank(in(:,2:4),1)<3 % if no velocity is available or matrix is rank deficient
+    if isempty(in) || rank(in(:,2:4))<3 % if no velocity is available or matrix is rank deficient
         vel=[nan;nan;nan];std=vel; mse=nan; % return nans
         break; % Exit loop
     else

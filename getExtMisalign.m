@@ -34,7 +34,7 @@ for cc=1:numel(inadcp)
     if ~isADCPstruct(inadcp(cc)), continue, end
     extH=getADCPHeading(inadcp{cc});
     if isempty(extH), misal(cc)=nan; continue, end
-    extV=[cosd(extH),sind(extH),extH*0];
+    extV=[cosd(extH); sind(extH); extH*0]';
     intH=double(inadcp{cc}.heading(:))/100;
     if nanmax(intH)-nanmin(intH)<1e-6, misal(cc)=nan; continue, end
     intV=[cosd(intH),sind(intH),intH*0];
