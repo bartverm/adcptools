@@ -59,10 +59,10 @@ else
         end
     end
     if ~isempty(gf1)
-        heading=inadcp.(gf1).heading(:);
+        heading=inadcp.(gf1).heading;
     else
-        warning('getADCPHeading:NoExtHeading','Could not find heading, returning empty')
-        heading=[];
+        heading=double(inadcp.heading)/100;
     end
 end
+heading=heading(:)';
 

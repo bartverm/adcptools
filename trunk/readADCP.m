@@ -132,7 +132,6 @@ dataout.FileNumber=fileid;
 %interrupting the pinging. If the Fixed leaders of the files differ a
 %warning is generated. Take care concatenating files with different
 %settings!!! All setting will be recorded once for each file
-dataout.FileNumber=fileid;
 for cntfiles=1:nValidFiles
     dataout.FileNumber(fileid==ValidFilesId(cntfiles))=cntfiles;           %Record in output which ensembles belong to which FL setting field
     firstens=find(fileid==ValidFilesId(cntfiles),1);                       %Determine which ensemble is the first for the current file
@@ -145,8 +144,6 @@ if ~CheckFL(nValidFiles)                                                   % If 
         'The configuration seems to change between files. \n Using readadcp2 on files with different configuration is not recommended, but will still work') 
 end
 %% Preallocate and read data
-%Preallocating variables improves performance. Only requested data is
-%preallocated
 
 disp('Reading data...')
 nbins=max(dataout.nbins);                                                  %Find largest amount of bins in order to make matrices in which all data fits
