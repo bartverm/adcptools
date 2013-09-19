@@ -570,9 +570,9 @@ while any(rmvel) % iterate until no outliers are found
     in(rmvel,:)=[]; % Remove outliers
 end
 nin=shiftdim(size(in,1),-3); % compute amount of points used for final velocity computation
-vel=shiftdim(vel,-3); % shift dimension to output 1x1x1x3 vector
-std=shiftdim(std,-3); % shift dimension to output 1x1x1x3 vector
-mse=shiftdim(mse,-3); % shift dimension to output 1x1x1x1 scalar
+vel=shiftdim(vel,-4); % shift dimension to output 1x1x1x1x3 vector
+std=shiftdim(std,-4); % shift dimension to output 1x1x1x1x3 vector
+mse=shiftdim(mse,-4); % shift dimension to output 1x1x1x1x1 scalar
 
 
 
