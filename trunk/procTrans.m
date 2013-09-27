@@ -84,6 +84,10 @@ function msh=procTrans(adcp,tid,varargin)
 %         Numerical scalar with values ranging from 0 to 1 (although
 %         usually close to 0). Default is 0.04.
 %
+%         EstimateGradients
+%         true|{false}
+%         Adds spatial and temporal gradients to the fitted model
+%
 %         Progressive
 %         true|{false}
 %         Indicates whether the velocity should be solved progressively
@@ -94,6 +98,11 @@ function msh=procTrans(adcp,tid,varargin)
 %         Numerical scalar Nr, indicating to remove beam velocities which 
 %         have a residual exceeding Nr times the median residual of a 
 %         velocity estimate. If Nr=0 no outliers are removed. Default is 0.
+%
+%         StdFiltering
+%         Indicates the how many times the standard deviation of a velocity
+%         should exceed the median standard deviation to be regarded as
+%         bad. Default is 6.
 %
 %         Proximity
 %         Numerical scalar indicating a maximum distance from the section
@@ -149,6 +158,7 @@ P.addParamValue('MinimumSigma',0.04,@(x) isscalar(x) && isnumeric(x) && x>=0 && 
 P.addParamValue('Progressive',false,@(x) isscalar(x) && islogical(x));
 P.addParamValue('RemoveOutliers',0,@(x) isscalar(x) && isnumeric(x) && x>=0);
 P.addParamValue('Proximity',0,@(x) isscalar(x) && isnumeric(x) && x>=0);
+P.addParamValue('StdFiltering',6,@(x) isscalar(x) && isnumeric(x) && x>=0);
 P.parse(varargin{:});
 
 assert(isADCPstruct(adcp));
@@ -163,6 +173,7 @@ sigmin=P.Results.MinimumSigma;
 progflag=P.Results.Progressive;
 rmresid=P.Results.RemoveOutliers;
 proxim=P.Results.Proximity;
+nstd=P.Results.StdFiltering;
 time=datenum(adcp.timeV)'; % Get time
 eta=eta(:)';    % Vectorize eta
 eta=eta.*ones(1,size(numel(time),1)); % Ensure eta has same number of elements as the number of ensembles
@@ -234,16 +245,7 @@ clear heading pitch roll bet cb sb cp sp cr sr ch sh TM
 % Initialize
 nsec=size(tid,1);
 msh=repmat(struct(),[nsec,1]); % Initialize final structure for output
-% n=cell(nsec,1); % n coordinate of boat location
-% dn=cell(nsec,1); % n coordinate of depth detection
-% mn=cell(nsec,1); % n coordinate of velocity sample
-% ds=cell(nsec,1); % s coordinate of depth detection
-% ms=cell(nsec,1); % s coordinate of velocity sample
-% dne=cell(nsec,1); % n coordinate for depth detection (conventional processing)
-% mne=cell(nsec,1); % n coordinate for velocity sample (conventional processing)
-% dse=cell(nsec,1); % s coordinate for depth detection (conventional processing)
-% mse=cell(nsec,1); % s coordinate for velocity sample (conventional processing)
-T=nan(2,size(tid,1)); % Unit vector tangential to section
+ T=nan(2,size(tid,1)); % Unit vector tangential to section
 N=nan(2,size(tid,1)); % Unit vector orthogonal to section 
 Pm=nan(2,size(tid,1)); % Average section location vector
 Pn=nan(2,size(tid,1)); % Average section location vector
@@ -358,7 +360,7 @@ for ct=1:size(tid,1) % For all sections
 
     % Preliminary computations
     nIdxd=floor((dn+veldn/4)/(veldn/2))+1; % Index to determine depth at cell boundaries and centres
-    fgood=isfinite(nIdxd) & nIdxd>0 & abs(ds)<10; % MAGIC NUMBER!!!! % Select data to include in depth calculation at cell edges and center
+    fgood=isfinite(nIdxd) & nIdxd>0 & abs(ds)<2*veldn; % MAGIC NUMBER!!!! % Select data to include in depth calculation at cell edges and center
     fleft=mod(floor(mn/veldn*2),2)==0; % Selects data on the left half of a cell
     flefte=mod(floor(mne/veldn*2),2)==0; % Selects data on the left half of a cell (conventional processing)
     fright=~fleft; % Selects data on the left half of a cell
@@ -483,11 +485,11 @@ for ct=1:size(tid,1) % For all sections
         accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM3(fnd),siz,@(x) {x},{}),'UniformOutput',false); % Collect beam velocity data and corresponding transformation matrix terms
     
     % Estimate velocity (+ std, mse, Nvel)
-   [msh(ct).vel, msh(ct).std, msh(ct).mse, msh(ct).Nvel] =cellfun(@(x) estvel(x,rmresid),datacol,'UniformOutput',false); % Estimate velocity with least squares estimates (see function estvel.m for procedure)
+   [msh(ct).vel, msh(ct).rsq, msh(ct).S, msh(ct).Nvel] =cellfun(@(x) estvel(x,rmresid),datacol,'UniformOutput',false); % Estimate velocity with least squares estimates (see function estvel.m for procedure)
     msh(ct).vel=squeeze(cell2mat(msh(ct).vel)); % reshape velocity data
-    msh(ct).mse=squeeze(cell2mat(msh(ct).mse)); % reshape mean squared error data
-    msh(ct).std=squeeze(cell2mat(msh(ct).std)); % reshape standard deviation data
+    msh(ct).rsq=squeeze(cell2mat(msh(ct).rsq)); % reshape mean squared error data
     msh(ct).Nvel=squeeze(cell2mat(msh(ct).Nvel)); % reshape Number of valid samples data
+    msh(ct).S=squeeze(cell2mat(msh(ct).S));
   
     % progressive velocity processing
     if progflag % if progressive processing is needed
@@ -503,52 +505,131 @@ for ct=1:size(tid,1) % For all sections
                 accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM2(fnd),siz,@(x) {x},{}),...
                 accumarray({sigIdx(fnd) nIdx(fnd) tIdx(fnd)},cTM3(fnd),siz,@(x) {x},{}),'UniformOutput',false); % Collect beam velocity data and corresponding transformation matrix terms
         end
-        [msh(ct).progvel, msh(ct).progstd, msh(ct).progmse, msh(ct).progNvel]=cellfun(@(x) estvel(x,rmresid), progdatacol,'UniformOutput',false); % Estimate velocity with least squares estimates (see function estvel.m for procedure)
+        [msh(ct).progvel, msh(ct).progrsq, msh(ct).progS, msh(ct).progNvel]=cellfun(@(x) estvel(x,rmresid), progdatacol,'UniformOutput',false); % Estimate velocity with least squares estimates (see function estvel.m for procedure)
         msh(ct).progvel=squeeze(cell2mat(msh(ct).progvel)); % reshape velocity data
-        msh(ct).progmse=squeeze(cell2mat(msh(ct).progmse)); % reshape mean squared error data
-        msh(ct).progstd=squeeze(cell2mat(msh(ct).progstd)); % reshape standard deviation data
+        msh(ct).progrsq=squeeze(cell2mat(msh(ct).progrsq)); % reshape mean squared error data
         msh(ct).progNvel=squeeze(cell2mat(msh(ct).progNvel)); % reshape Number of valid samples data
+        msh(ct).progS=squeeze(cell2mat(msh(ct).progS));
     end
 %     
 
     % conventional velocity processing
-    cvele=vele(:,fcur,:);
-
-    fnde=repmat(f_incse & sigIdxe<=size(msh(ct).Z,1),[1 1 3]); % find data whithin section
-    tsigIdxe=repmat(sigIdxe,[1 1 3]); % reshape sigma indices
-    tnIdxe=repmat(nIdxe,[1 1 3]); % reshape n indices 
-    ttIdxe=repmat(tIdx(:,:,1),[1 1 3]); % reshape time indices
-    pIdxe=bsxfun(@plus,tnIdxe*0,cat(3,1,2,3)); % create dimension indices
-    msh(ct).vele=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},cvele(fnde),[siz 3],@nanmean,nan); % Average velocity data
-    msh(ct).stde=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},cvele(fnde),[siz 3],@nanstd,nan); % Determine std in velocity
-    msh(ct).Nvele=accumarray({tsigIdxe(fnde), tnIdxe(fnde), ttIdxe(fnde), pIdxe(fnde)},cvele(fnde),[siz 3],@numel,0); % Determine number of velocity estimates in cells
-    msh(ct).vele=squeeze(msh(ct).vele);
-    msh(ct).stde=squeeze(msh(ct).stde);
+    cvele1=vele(:,fcur,1);
+    cvele2=vele(:,fcur,2);
+    cvele3=vele(:,fcur,3);  
+    
+    fnde=f_incse & sigIdxe<=size(msh(ct).Z,1); % find data whithin section
+ 
+    siz=[size(msh(ct).Z,1) size(msh(ct).Z,2), numel(time_cnt)];
+    datacol=cellfun(@(x,y,z) [x y z],... % Collect velocity data and transformation matrix terms for each cell in mesh
+        accumarray({sigIdxe(fnde) nIdxe(fnde) tIdx(fnde)},cvele1(fnde),siz,@(x) {x},{nan}),...
+        accumarray({sigIdxe(fnde) nIdxe(fnde) tIdx(fnde)},cvele2(fnde),siz,@(x) {x},{nan}),...
+        accumarray({sigIdxe(fnde) nIdxe(fnde) tIdx(fnde)},cvele3(fnde),siz,@(x) {x},{nan}),'UniformOutput',false);
+    msh(ct).vele=cellfun(@(x) shiftdim(nanmean(x,1),-3),datacol,'UniformOutput',false);
+    msh(ct).Se=cellfun(@(x) shiftdim(cov(x(all(isfinite(x),2),:)).*ones(3),-3),datacol,'UniformOutput',false);
+    msh(ct).vele=squeeze(cell2mat(msh(ct).vele));
+    msh(ct).Se=squeeze(cell2mat(msh(ct).Se));
+    msh(ct).Nvele=cellfun(@(x) shiftdim(sum(all(isfinite(x),2)),-3),datacol,'UniformOutput',false);
     msh(ct).Nvele=squeeze(msh(ct).Nvele);
     
-    %% Velocity rotations
-    msh(ct).cs_dir=atan2(nanmean(reshape(msh(ct).vel(:,:,2),[],1)),nanmean(reshape(msh(ct).vel(:,:,1),[],1))); % Transect averaged flow direction
-    msh(ct).da_dir=atan2(nanmean(msh(ct).vel(:,:,2),1),nanmean(msh(ct).vel(:,:,1),1)); % depth averaged flow direction
-    msh(ct).sec_dir=atan2(N(2),N(1));
     
-    % rotate velocities (only keeping horizontal components)
-    msh(ct).vel_cs(:,:,1)=msh(ct).vel(:,:,1).*cos(msh(ct).cs_dir)+msh(ct).vel(:,:,2)*sin(msh(ct).cs_dir); % velocity component along cross-section averaged velocity direction
-    msh(ct).vel_cs(:,:,2)=-msh(ct).vel(:,:,1).*sin(msh(ct).cs_dir)+msh(ct).vel(:,:,2)*cos(msh(ct).cs_dir); % velocity component across cross-section averaged velocity direction
-    msh(ct).vel_sec(:,:,1)=msh(ct).vel(:,:,1).*cos(msh(ct).sec_dir)+msh(ct).vel(:,:,2)*sin(msh(ct).sec_dir); % velocity component along cross-section averaged velocity direction
-    msh(ct).vel_sec(:,:,2)=-msh(ct).vel(:,:,1).*sin(msh(ct).sec_dir)+msh(ct).vel(:,:,2)*cos(msh(ct).sec_dir); % velocity component across cross-section averaged velocity direction
-    msh(ct).vel_da(:,:,1)=bsxfun(@times,msh(ct).vel(:,:,1),cos(msh(ct).da_dir))+bsxfun(@times,msh(ct).vel(:,:,2),sin(msh(ct).da_dir)); % velocity component along depth averaged velocity direction
-    msh(ct).vel_da(:,:,2)=-bsxfun(@times,msh(ct).vel(:,:,1),sin(msh(ct).da_dir))+bsxfun(@times,msh(ct).vel(:,:,2),cos(msh(ct).da_dir)); % velocity component across depth averaged velocity direction
+    %% Remove data outside of mesh
+    fgood=find(msh(ct).p.fgood);
+    nels=numel(msh(ct).Z);
+    fgood_3=bsxfun(@plus,(0:2)*nels,fgood);
+    fgood_9=bsxfun(@plus,(0:8)*nels,fgood);
+    fbad_3=setdiff(1:3*nels,fgood_3);
+    fbad_9=setdiff(1:9*nels,fgood_9);
+    msh(ct).vel(fbad_3)=nan;
+    msh(ct).vele(fbad_3)=nan;
+    msh(ct).S(fbad_9)=nan;
+    msh(ct).Se(fbad_9)=nan;    
+    %% Remove data with high std
+    if nstd>0
+        fgood_diag=bsxfun(@plus,[0 4 8]*nels,fgood);       
+        fbad=fgood(any(bsxfun(@gt,msh(ct).S(fgood_diag),nstd^2*nanmedian(msh(ct).S(fgood_diag),1)),2));
+        fbade=fgood(any(bsxfun(@gt,msh(ct).Se(fgood_diag),nstd^2*nanmedian(msh(ct).Se(fgood_diag),1)),2));
+        fbad_3=bsxfun(@plus,(0:2)*nels,fbad);
+        fbade_3=bsxfun(@plus,(0:2)*nels,fbade);
+        fbad_9=bsxfun(@plus,(0:8)*nels,fbad);
+        fbade_9=bsxfun(@plus,(0:8)*nels,fbade);
+        msh(ct).vel(fbad_3)=nan;
+        msh(ct).S(fbad_9)=nan;
+        msh(ct).vele(fbade_3)=nan;
+        msh(ct).Se(fbade_9)=nan;
+    end
+    
+    %% Perform rotations
+    % Section averaged flow direction
+    msh(ct).cs.dir=atan2(nanmean(nanmean(msh(ct).vel(:,:,2,:),1),2),nanmean(nanmean(msh(ct).vel(:,:,1,:),1),2)); % Transect averaged flow direction
+    msh(ct).cs.dire=atan2(nanmean(nanmean(msh(ct).vele(:,:,2,:),1),2),nanmean(nanmean(msh(ct).vele(:,:,1,:),1),2)); % Transect averaged flow direction
+    csrot=[cos(msh(ct).cs.dir) sin(msh(ct).cs.dir) 0;...
+         -sin(msh(ct).cs.dir) cos(msh(ct).cs.dir) 0;...
+         0 0 1];
+    csrote=[cos(msh(ct).cs.dire) sin(msh(ct).cs.dire) 0;...
+         -sin(msh(ct).cs.dire) cos(msh(ct).cs.dire) 0;...
+         0 0 1];
 
-    msh(ct).vele_cs(:,:,1)=msh(ct).vele(:,:,1).*cos(msh(ct).cs_dir)+msh(ct).vele(:,:,2)*sin(msh(ct).cs_dir); % velocity component along cross-section averaged velocity direction (conventional processing)
-    msh(ct).vele_cs(:,:,2)=-msh(ct).vele(:,:,1).*sin(msh(ct).cs_dir)+msh(ct).vele(:,:,2)*cos(msh(ct).cs_dir); % velocity component across cross-section averaged velocity direction (conventional processing)
-    msh(ct).vele_sec(:,:,1)=msh(ct).vele(:,:,1).*cos(msh(ct).sec_dir)+msh(ct).vele(:,:,2)*sin(msh(ct).sec_dir); % velocity component along cross-section averaged velocity direction (conventional processing)
-    msh(ct).vele_sec(:,:,2)=-msh(ct).vele(:,:,1).*sin(msh(ct).sec_dir)+msh(ct).vele(:,:,2)*cos(msh(ct).sec_dir); % velocity component across cross-section averaged velocity direction (conventional processing)
-    msh(ct).vele_da(:,:,1)=bsxfun(@times,msh(ct).vele(:,:,1),cos(msh(ct).da_dir))+bsxfun(@times,msh(ct).vele(:,:,2),sin(msh(ct).da_dir)); % velocity component along depth averaged velocity direction (conventional processing)
-    msh(ct).vele_da(:,:,2)=-bsxfun(@times,msh(ct).vele(:,:,1),sin(msh(ct).da_dir))+bsxfun(@times,msh(ct).vele(:,:,2),cos(msh(ct).da_dir)); % velocity component across depth averaged velocity direction (conventional processing)
+    st1=matmult(msh(ct).S,shiftdim(csrot',-2),[3 4]);
+    msh(ct).cs.S=matmult(shiftdim(csrot,-2),st1,[3 4]);
+    msh(ct).cs.vel=matmult(shiftdim(csrot,-2),msh(ct).vel,[3 4]);
+    
+    st1e=matmult(msh(ct).Se,shiftdim(csrote',-2),[3 4]);
+    msh(ct).cs.Se=matmult(shiftdim(csrote,-2),st1e,[3 4]);
+    msh(ct).cs.vele=matmult(shiftdim(csrote,-2),msh(ct).vele,[3 4]);
+
+    
+    if progflag     
+        st1=matmult(msh(ct).progS,shiftdim(csrot',-3),[4 5]);   
+        msh(ct).cs.progS=matmult(shiftdim(csrot,-3),st1,[4 5]);
+        msh(ct).cs.progvel=matmult(shiftdim(csrot,-3),msh(ct).progvel,[4 5]);
+    end
+    
+    % Vertically averaged flow direction
+    msh(ct).da.dir=atan2(nanmean(msh(ct).vel(:,:,2,:),1),nanmean(msh(ct).vel(:,:,1,:),1)); % depth averaged flow direction
+    msh(ct).da.dire=atan2(nanmean(msh(ct).vele(:,:,2,:),1),nanmean(msh(ct).vele(:,:,1,:),1)); % depth averaged flow direction
+    darot=cat(3,cat(4,cos(msh(ct).da.dir),sin(msh(ct).da.dir),zeros(size(msh(ct).da.dir))),...
+                cat(4,-sin(msh(ct).da.dir),cos(msh(ct).da.dir),zeros(size(msh(ct).da.dir))),...
+                cat(4,zeros(size(msh(ct).da.dir)), zeros(size(msh(ct).da.dir)),ones(size(msh(ct).da.dir))));
+    darote=cat(3,cat(4,cos(msh(ct).da.dire),sin(msh(ct).da.dire),zeros(size(msh(ct).da.dir))),...
+                cat(4,-sin(msh(ct).da.dire),cos(msh(ct).da.dire),zeros(size(msh(ct).da.dir))),...
+                cat(4,zeros(size(msh(ct).da.dir)), zeros(size(msh(ct).da.dir)),ones(size(msh(ct).da.dir))));
+    st1=matmult(msh(ct).S,permute(darot,[1 2 4 3]),[3 4]);
+    msh(ct).da.S=matmult(darot,st1,[3 4]);
+    msh(ct).da.vel=matmult(darot,msh(ct).vel,[3 4]);
+    st1e=matmult(msh(ct).Se,permute(darote,[1 2 4 3]),[3 4]);
+    msh(ct).da.Se=matmult(darote,st1e,[3 4]);
+    msh(ct).da.vele=matmult(darote,msh(ct).vele,[3 4]);
+    if progflag
+        darot=permute(darot,[1 2 5 3 4]);
+        st1=matmult(msh(ct).progS,permute(darot,[1 2 3 5 4]),[4 5]);
+        msh(ct).da.progS=matmult(darot,st1,[4 5]);
+        msh(ct).da.progvel=matmult(darot,permute(msh(ct).progvel,[1 2 4 3]),[4 5]);
+    end
+    
+    % Cross-section direction
+    msh(ct).sec.dir=atan2(N(2),N(1));
+    secrot=[cos(msh(ct).sec.dir) sin(msh(ct).sec.dir) 0;...
+         -sin(msh(ct).sec.dir) cos(msh(ct).sec.dir) 0;...
+         0 0 1];
+    st1=matmult(msh(ct).S,shiftdim(secrot',-2),[3 4]);
+    msh(ct).sec.S=matmult(shiftdim(secrot,-2),st1,[3 4]);
+    msh(ct).sec.vel=matmult(shiftdim(secrot,-2),msh(ct).vel,[3 4]);
+    st1e=matmult(msh(ct).Se,shiftdim(secrot',-2),[3 4]);
+    msh(ct).sec.Se=matmult(shiftdim(secrot,-2),st1e,[3 4]);
+    msh(ct).sec.vele=matmult(shiftdim(secrot,-2),msh(ct).vele,[3 4]);   
+    if progflag     
+        st1=matmult(msh(ct).progS,shiftdim(secrot',-3),[4 5]);   
+        msh(ct).sec.progS=matmult(shiftdim(secrot,-3),st1,[4 5]);
+        msh(ct).sec.progvel=matmult(shiftdim(secrot,-3),msh(ct).progvel,[4 5]);
+    end
+
+    
 end
 
 
-function [vel, std, mse, nin]=estvel(in,rmresid)
+
+function [vel, rsq, S, nin]=estvel(in,rmresid)
 % estimates cartesian velocities given beam velocities and correspoding
 % transformation matrix terms. IN is Nx4, N being the amount of beam
 % velocity samples. Each row is composed of a beam velocity and the three
@@ -559,20 +640,21 @@ rmvel=true; % initialize variable holding indices to outliers
 
 while any(rmvel) % iterate until no outliers are found
     if isempty(in) || rank(in(:,2:4))<3 % if no velocity is available or matrix is rank deficient
-        vel=[nan;nan;nan];std=vel; mse=nan; % return nans
+        vel=nan(3,1); rsq=nan; S=nan(3,3); % return nans
         break; % Exit loop
     else
-        [vel, std, mse]=lscov(in(:,2:4),in(:,1)); % Perform least squares estimate of velocities
+        [vel, ~, ~, S]=lscov(in(:,2:4),in(:,1)); % Perform least squares estimate of velocities
+        res=abs(in(:,1)-in(:,2:4)*vel); % Determine residuals in beam velocity
+        rsq=1-sum(res.^2)./sum((in(:,1)-mean(in(:,1))).^2);
     end
     if rmresid==0, break, end % if rmvel == 0, no outlier removal needed, exit loop
-    res=abs(in(:,1)-in(:,2:4)*vel); % Determine residuals in beam velocity
     rmvel=res>rmresid*median(res); % Detect outliers from residuals
     in(rmvel,:)=[]; % Remove outliers
 end
 nin=shiftdim(size(in,1),-3); % compute amount of points used for final velocity computation
 vel=shiftdim(vel,-4); % shift dimension to output 1x1x1x1x3 vector
-std=shiftdim(std,-4); % shift dimension to output 1x1x1x1x3 vector
-mse=shiftdim(mse,-4); % shift dimension to output 1x1x1x1x1 scalar
+rsq=shiftdim(rsq,-4); % shift dimension to output 1x1x1x1x3 vector
+S=shiftdim(S,-4); % shift dimension to output 1x1x1x1x3x3 vector
 
 
 
