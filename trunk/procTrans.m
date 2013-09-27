@@ -530,25 +530,59 @@ for ct=1:size(tid,1) % For all sections
     msh(ct).vele=squeeze(cell2mat(msh(ct).vele));
     msh(ct).Se=squeeze(cell2mat(msh(ct).Se));
     msh(ct).Nvele=cellfun(@(x) shiftdim(sum(all(isfinite(x),2)),-3),datacol,'UniformOutput',false);
-    msh(ct).Nvele=squeeze(msh(ct).Nvele);
+    msh(ct).Nvele=squeeze(cell2mat(msh(ct).Nvele));
     
-    
-    %% Remove data outside of mesh
+    %% Change matrix order definition
     fgood=find(msh(ct).p.fgood);
     nels=numel(msh(ct).Z);
     fgood_3=bsxfun(@plus,(0:2)*nels,fgood);
     fgood_9=bsxfun(@plus,(0:8)*nels,fgood);
-    fbad_3=setdiff(1:3*nels,fgood_3);
-    fbad_9=setdiff(1:9*nels,fgood_9);
-    msh(ct).vel(fbad_3)=nan;
-    msh(ct).vele(fbad_3)=nan;
-    msh(ct).S(fbad_9)=nan;
-    msh(ct).Se(fbad_9)=nan;    
+
+    % compute new ordering
+    [colm, rwm]=meshgrid(1:size(msh(ct).Z,2),1:size(msh(ct).Z,1));
+    maxrow=accumarray(colm(fgood),rwm(fgood),[size(msh(ct).Z,2) 1],@max,nan)';
+    rwm=bsxfun(@minus,maxrow,rwm)+1;
+    fgoodr=sub2ind(size(msh(ct).Z),rwm(fgood),colm(fgood));
+    fgoodr_3=bsxfun(@plus,(0:2)*nels,fgoodr);
+    fgoodr_9=bsxfun(@plus,(0:8)*nels,fgoodr);
+    
+    % reorder data
+    % init
+    [tZ, tNvel, tNvele]=deal(nan(size(msh(ct).Z)));
+    [tvel, tvele]=deal(nan(size(msh(ct).vel)));
+    [tS, tSe]=deal(nan(size(msh(ct).S)));
+    %scalar
+    tZ(fgoodr)=msh(ct).Z(fgood); msh(ct).Z=tZ;
+    tNvel(fgoodr)=msh(ct).Nvel(fgood); msh(ct).Nvel=tNvel;
+    tNvele(fgoodr)=msh(ct).Nvele(fgood); msh(ct).Nvele=tNvele;
+    %vector
+    tvel(fgoodr_3)=msh(ct).vel(fgood_3); msh(ct).vel=tvel;
+    tvele(fgoodr_3)=msh(ct).vele(fgood_3); msh(ct).vele=tvele;
+    %tensor
+    tS(fgoodr_9)=msh(ct).S(fgood_9); msh(ct).S=tS;
+    tSe(fgoodr_9)=msh(ct).Se(fgood_9); msh(ct).Se=tSe;
+    
+    msh(ct).p.fgood=fgoodr;
+    msh(ct).p.fgood_3=fgoodr_3;
+    msh(ct).p.fgood_9=fgoodr_9;
+    
+    
+    %% Remove data outside of mesh
+%     fgood=find(msh(ct).p.fgood);
+%     nels=numel(msh(ct).Z);
+%     fgood_3=bsxfun(@plus,(0:2)*nels,fgood);
+%     fgood_9=bsxfun(@plus,(0:8)*nels,fgood);
+%     fbad_3=setdiff(1:3*nels,fgood_3);
+%     fbad_9=setdiff(1:9*nels,fgood_9);
+%     msh(ct).vel(fbad_3)=nan;
+%     msh(ct).vele(fbad_3)=nan;
+%     msh(ct).S(fbad_9)=nan;
+%     msh(ct).Se(fbad_9)=nan;    
     %% Remove data with high std
+    fgood_diag=bsxfun(@plus,[0 4 8]*nels,msh(ct).p.fgood);       
     if nstd>0
-        fgood_diag=bsxfun(@plus,[0 4 8]*nels,fgood);       
-        fbad=fgood(any(bsxfun(@gt,msh(ct).S(fgood_diag),nstd^2*nanmedian(msh(ct).S(fgood_diag),1)),2));
-        fbade=fgood(any(bsxfun(@gt,msh(ct).Se(fgood_diag),nstd^2*nanmedian(msh(ct).Se(fgood_diag),1)),2));
+        fbad=msh(ct).p.fgood(any(bsxfun(@gt,msh(ct).S(fgood_diag),nstd^2*nanmedian(msh(ct).S(fgood_diag),1)),2));
+        fbade=msh(ct).p.fgood(any(bsxfun(@gt,msh(ct).Se(fgood_diag),nstd^2*nanmedian(msh(ct).Se(fgood_diag),1)),2));
         fbad_3=bsxfun(@plus,(0:2)*nels,fbad);
         fbade_3=bsxfun(@plus,(0:2)*nels,fbade);
         fbad_9=bsxfun(@plus,(0:8)*nels,fbad);
@@ -558,6 +592,7 @@ for ct=1:size(tid,1) % For all sections
         msh(ct).vele(fbade_3)=nan;
         msh(ct).Se(fbade_9)=nan;
     end
+    msh(ct).p.fgood_diag=fgood_diag;
     
     %% Perform rotations
     % Section averaged flow direction
