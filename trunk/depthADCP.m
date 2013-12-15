@@ -50,7 +50,7 @@ P=inputParser;
 P.addRequired('inadcp',@isstruct)
 P.addParamValue('TransdDepth',double(inadcp.depthtransd)/10,@(x) isnumeric(x) && x>=0)              % Offset to correct for the depth of the transducer
 % P.addParamValue('IsUpward',false,@(x) islogical(x) && numel(x)==1)
-P.addParamValue('Beam3misalign',double(inadcp.headalign(inadcp.FileNumber))/100,@isnumeric)         % Misalignment in degrees (wind directions, only necessary with ext. heading)
+P.addParamValue('Beam3misalign',getExtMisalign(inadcp),@isnumeric)         % Misalignment in degrees (wind directions, only necessary with ext. heading)
 P.addParamValue('UseExtHeading',false,@islogical)                                                   % flag whether to use external heading or not
 P.addParamValue('UseExtDepth',false,@islogical)                                                     % flag whether to use external depth or not
 P.addParamValue('ExtDepthPitch',0,@isnumeric)
@@ -160,6 +160,7 @@ vecmagn=sqrt(xx(1)^2+yy(1)^2+zz(1)^2);                                     % Mag
 % 
 %% Change vectors from instrument coordinates to Earth coordinates
 % Find rotation matrices (see adcp coordinate transformation manual)
+heading=heading(:)';
 ch=cos(heading);                                                           % Cosine of the heading
 sh=sin(heading);                                                           % Sine of the heading
 cp=cos(pitch);                                                             % Cosine of the pitch
