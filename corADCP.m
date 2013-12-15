@@ -1,4 +1,4 @@
-function [VEL,btvel]=coradcp(inadcp, DestCor, varargin)
+function [VEL,btvel]=corADCP(inadcp, DestCor, varargin)
 %CORADCP  
 %         [VEL,btvel]=coradcp(INADCP, DESTCOR) transforms the input
 %         velocities into a new coordinate system and outputs this data in
