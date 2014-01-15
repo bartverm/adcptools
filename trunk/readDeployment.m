@@ -59,7 +59,7 @@ clear nfiles nfiles2
 
 %% Read Depth Sounder Files
 dfiles=dir([path,DepName,'*d.*']);                                         % Look for WinRiver depth sounder files
-dfiles2 = dir([path,DepName,'*SND.TXT']);                                   % Look for WinRiverII depth sounder files
+dfiles2 = dir([path,DepName,'*DS.TXT']);                                   % Look for WinRiverII depth sounder files
 if isempty(dfiles)&&isempty(dfiles2)                                       % Continue running
     warning('ReadDeployment:NoDFiles','Could not find external depth files')
 else

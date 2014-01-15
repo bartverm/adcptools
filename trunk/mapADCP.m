@@ -79,7 +79,7 @@ P.addParamValue('bAngle',NaN,@(x) isnumeric(x) && isscalar(x))
 P.addParamValue('avgHead',false,@(x) islogical(x) && isscalar(x))
 P.addParamValue('IsUpward',true,@(x) islogical(x) && isscalar(x))
 P.addParamValue('UseExtHeading',false,@(x) islogical(x) && isscalar(x))
-P.addParamValue('Beam3misalign',getExtMisalign(inadcp),@isnumeric)         % Misalignment in degrees (wind directions, only necessary with ext. heading)
+P.addParamValue('Beam3misalign',double(inadcp.headalign(inadcp.FileNumber))/100,@isnumeric)         % Misalignment in degrees (wind directions, only necessary with ext. heading)
 
 P.parse(inadcp,varargin{:})
 
