@@ -622,11 +622,12 @@ for ct=1:size(tid,1) % For all sections
     
     % reorder data
     % init
-    [tZ, tNvel, tNvele]=deal(nan(size(msh(ct).Z)));
+    [tZ, tNvel, tNvele, tSig]=deal(nan(size(msh(ct).Z)));
     [tvel, tvele]=deal(nan(size(msh(ct).vel)));
     [tS, tSe]=deal(nan(size(msh(ct).S)));
     %scalar
     tZ(fgoodr)=msh(ct).Z(fgood); msh(ct).Z=tZ;
+    tSig(fgoodr)=msh(ct).Sig(fgood); msh(ct).Sig=tSig;
     tNvel(fgoodr)=msh(ct).Nvel(fgood); msh(ct).Nvel=tNvel;
     tNvele(fgoodr)=msh(ct).Nvele(fgood); msh(ct).Nvele=tNvele;
     %vector
