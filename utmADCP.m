@@ -1,4 +1,4 @@
-function [UTMx,UTMy,zone]=utmADCP(inadcp,varargin)
+function [UTMx,UTMy,zone]=utmADCP(inadcp)
 % Calculates UTM coordinates and zone for lat long coordinates in adcp
 % files
 %   
@@ -6,9 +6,6 @@ function [UTMx,UTMy,zone]=utmADCP(inadcp,varargin)
 %       to be measured on WGS84 into UTMx and UTMy coordinates, in the
 %       projected UTM coordinate system. Also the zone is returned based on
 %       the average location in the data. 
-%       
-%   [UTMx,UTMy,zone]=utmADCP(inadcp,zone)
-%       Use ZONE to force the UTM zone.
 %
 %       If GeographicLib is available, computation is performed with it.
 %       Otherwise the computation is done with the mapping toolbox. If
@@ -137,9 +134,7 @@ end
 
 zone = [num2str(lnindx) latzones(ltindx)];
 
-if nargin==2
-    zone=varargin{1};
-end
+
 
 % transform with suitable package
 if exist('utm_fwd','file')==2 % GeographicLib is available
