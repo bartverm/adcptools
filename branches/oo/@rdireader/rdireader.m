@@ -1,8 +1,21 @@
 classdef rdireader < reader & handle
+    % rdireader Properties:
+    %   filename - Stores the filename of the file to be read
+    %
+    % rdireader Methods:
+    %   read - Reads the data from the given file
+    
     properties
-        filename;
-        fid;
+        filename; % String refering to the filename from which the data is to be read
     end
+    properties(Access=protected)
+        ens_pos; % Stores position of ensemble
+        fid; % Stores file_id to be read
+        data_offset; % Stores information on where the data is located in the ensemble
+        data_header; % Stores the data headers in the ensemble
+    end
+    
+    
     methods
         function read(obj)
             obj.fid=fopen(obj.filename,'r','l'); % reading, in little-endian
@@ -20,7 +33,7 @@ classdef rdireader < reader & handle
                 EnsBytes=fread(obj.fid,1,'uint16=>double');                            %read number of bytes in ensemble
                 fpos=headpos+EnsBytes+2;                                           %Point to byte behind last read ensemble
                 enscnt=enscnt+1;                                                   %Increase ensemble counter with one
-                EnsStart(enscnt)=headpos;%#ok<AGROW>                               %Store starting position of ensemble %#ok<AGROW> 
+                ens_pos(enscnt)=headpos;%#ok<AGROW>                               %Store starting position of ensemble %#ok<AGROW> 
                 [NDataTypes{enscnt},DataOffset{enscnt},DataHeader{enscnt}]=...
                     obj.read_head(headpos);%#ok<AGROW>                              %Read info about where to find which data %#ok<AGROW> 
             end
@@ -45,6 +58,8 @@ classdef rdireader < reader & handle
             fclose(obj.fid);
             obj.status=reader_status.Valid;
         end
+        
+        
     end
     
     methods(Access=protected)
