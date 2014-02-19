@@ -1,4 +1,4 @@
-classdef PD0 < handle
+classdef PD0 < matlab.mixin.Copyable
 % RDI PD0 binary format parser
 % 
 % PD0 Properties:
@@ -151,8 +151,30 @@ classdef PD0 < handle
         n_data
     end
 
-    %% SETTERS AND GETTERS
+    
+    
     methods
+        %% CONSTRUCTOR
+        function obj=PD0(varargin)
+            if nargin>0
+                if isa(varargin{1},'uint8') && iscolumn(varargin{1}) % Construct with a buffer
+                    obj.buf=varargin{1};
+                elseif isa(varargin{1},'char') && isrow(varargin{1}) && exist(varargin{1},'file') % Construct with a filename
+                    [fid, message]=fopen(varargin{1},'r','l');
+                    if fid==-1
+                        error(message);
+                    end
+                    obj.buf=fread(fid,'*uint8');
+                    fclose(fid);
+                elseif isa(varargin{1},'rdi.PD0') % Copy constructor (shallow copying, i.e. different object)
+                    obj=copy(varargin{1});
+                else
+                    warning('rdi:PD0:WrongConstruction','Did not understand construction argument, constructing empty')
+                end
+            end
+        end
+        
+        %% SETTERS AND GETTERS
         function set.buf(obj,val)
             assert(isa(val,'uint8'));
             assert(iscolumn(val));
