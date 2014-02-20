@@ -55,6 +55,11 @@ function init(obj)
     obj.data_offset=double(obj.parse_blocks(obj.ens_pos(obj.data_ensid)+6+(pos_data_offset-1)*2,'uint16'))+obj.ens_pos(obj.data_ensid);
     obj.data_headers=obj.parse_blocks(obj.data_offset,'uint16');
     
+    %% Change general NMEA header to specific NMEA headers
+    f_nmea=obj.data_headers==rdi.headers.NMEA_General;
+    obj.data_headers(f_nmea)=obj.parse_blocks(obj.data_offset(f_nmea)+2,'uint16');
+    
+    
     %% Array sizes
     obj.max_nbins=double(max(obj.nbins));
     obj.max_nbeams=double(max(obj.usedbeams));

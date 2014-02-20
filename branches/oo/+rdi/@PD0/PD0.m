@@ -71,8 +71,8 @@ classdef PD0 < handle
 %
 %     BOTTOM-TRACKING DATA
 %
-%     btpingperens                             %Bottom tracking pings per ensemble (0-999)
-%     reacqdelay                               %Delay in number of ensembles before reacquiring (0-999)
+%     btpingperens - Bottom tracking pings per ensemble (0-999)
+%     reacqdelay - Delay in number of ensembles before reacquiring (0-999)
 %     mincormag                                %Minimum for correlation magnitude in counts (0-255)
 %     minevampl                                %Minimum evaluation amplitude in counts (1-255)
 %     btminpergood                             %Minimum percentage of good bt pings 
@@ -93,6 +93,26 @@ classdef PD0 < handle
 %     maxdepth                                 %bt maximum depth in dm (80-9999)
 %     rssiamp                                  %Received signal strength indicator in beam 1,2,3,4 in counts (0-255), 1 count ca. 0.45 dB
 %     gain                                     %Gain level for shallow water
+%
+%     WINRIVER
+%    
+%     gga_siz
+%     gga_dt
+%     gga_header
+%     gga_lat
+%     gga_long
+%     gga_qual
+%     gga_nsats
+%     gga_hdop
+%     gga_altitude
+%     gga_altunit
+%     gga_geoid
+%     gga_geoidunit
+%     gga_agedgps
+%     gga_refid
+%
+%
+    
 %
 % PD0 Methods:
 %
@@ -196,7 +216,23 @@ classdef PD0 < handle
         gain                                     %Gain level for shallow water
 
         
-        %% external data
+        %% winriver data
+
+        gga_siz
+        gga_dt
+        gga_header
+        gga_lat
+        gga_long
+        gga_qual
+        gga_nsats
+        gga_hdop
+        gga_altitude
+        gga_altunit
+        gga_geoid
+        gga_geoidunit
+        gga_agedgps
+        gga_refid
+        
     end
     properties(Access=private)
         ens_pos
@@ -412,6 +448,28 @@ classdef PD0 < handle
         end
         function val=get.gain(obj),             val=obj.get_scalar_data(rdi.headers.bottom_tracking,76,'uint8'); end
 
+        %% winriver data
+        
+        function val=get.gga_siz(obj)
+            val=obj.get_scalar_data(rdi.headers.NMEA_Specific_GGA_v2,5,'uint16');
+        end
+        function val=get.gga_dt(obj)
+            val=obj.get_scalar_data(rdi.headers.NMEA_Specific_GGA_v2,6,'double');
+        end
+        function val=get.gga_header(obj)
+            val=char(obj.get_scalar_data(rdi.headers.NMEA_Specific_GGA_v2,14,'uint8'));
+        end
+%         function val=get.gga_lat
+%         function val=get.gga_long
+%         function val=get.gga_qual
+%         function val=get.gga_nsats
+%         function val=get.gga_hdop
+%         function val=get.gga_altitude
+%         function val=get.gga_altunit
+%         function val=get.gga_geoid
+%         function val=get.gga_geoidunit
+%         function val=get.gga_agedgps
+%         function val=get.gga_refid
     end
     
     %% PRIVATE METHODS
@@ -463,7 +521,11 @@ classdef PD0 < handle
             nb=nb.bytes;
         end
         function val=nullval(type)
-            if type(1)=='i', val=intmin(type); else val = intmax(type); end
+            if strcmp(type(1:3),'int'), val=intmin(type); 
+            elseif strcmp(type(1:4),'uint'), val = intmax(type);
+            elseif strcmp(type,{'single','double'}), val=nan;
+            else val=0;
+            end
         end
     end
 end

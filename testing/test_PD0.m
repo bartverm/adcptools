@@ -4,7 +4,7 @@ clear classes
 addpath ../branches/oo/
 addpath ../trunk/
 
-filename='trans000r.000';
+filename='testdata_000.PD0';
 
 %% Construct empty
 a=rdi.PD0
@@ -28,6 +28,6 @@ assert(isa(a,'rdi.PD0'));
 
 
 %% Compare parsing speed
-tic, dat=readADCP(filename); t1=toc;
+% tic, dat=readADCP(filename); t1=toc;
 tic, a=rdi.PD0(filename), t2=toc;
 
