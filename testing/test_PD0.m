@@ -5,11 +5,11 @@ addpath ../branches/oo/
 addpath ../trunk/
 
 %% Construct empty
-a=rdi.PD0;
+a=rdi.PD0
 assert(isa(a,'rdi.PD0'));
 
 %% Copy construct
-b=rdi.PD0(a);
+b=rdi.PD0(a)
 assert(a==b);
 clear a b
 

@@ -184,25 +184,25 @@ classdef PD0 < handle
         
         %% Fixed leader
         function val=get.firmver(obj)
-            val=obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+2);        
+            val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+2,'uint8');        
         end
         function val=get.firmrev(obj)
-            val=obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+3);        
+            val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+3,'uint8');        
         end
         function val=get.sysconf(obj)
             val=dec2bin(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+4,'uint16'),16);        
         end
         function val=get.SymData(obj)
-            val=obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+6);        
+            val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+6,'uint8');        
         end
         function val=get.LagLength(obj)
-            val=obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+7);        
+            val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+7,'uint8');        
         end
         function val=get.usedbeams(obj)
-            val=obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+8);        
+            val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+8,'uint8');        
         end
         function val=get.nbins(obj)
-            val=obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+9);        
+            val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+9,'uint8');        
         end
         function val=get.pingperens(obj)
             val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+10,'uint16');        
@@ -214,27 +214,27 @@ classdef PD0 < handle
             val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+14,'uint16');        
         end
         function val=get.watermode(obj)
-            val=obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+16);        
+            val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+16,'uint8');        
         end        
         function val=get.minthrsh(obj)
-            val=obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+17);        
+            val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+17,'uint8');        
         end
         function val=get.ncodrep(obj)
-            val=obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+18);        
+            val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+18,'uint8');        
         end
         function val=get.minpercgood(obj)
-            val=obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+19);        
+            val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+19,'uint8');        
         end
         function val=get.maxerrvel(obj)
             val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+20,'uint16');        
         end
         function val=get.Tbetweenpng(obj)
-            val=uint16(obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+22))*6000+...        
-                uint16(obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+23))*100+...        
-                uint16(obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+24));        
+            val=uint16(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+22,'uint8'))*6000+...        
+                uint16(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+23,'uint8'))*100+...        
+                uint16(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+24,'uint8'));        
         end
         function val=get.corinfo(obj)
-            val=dec2bin(obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+25),8);        
+            val=dec2bin(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+25,'uint8'),8);        
         end
         function val=get.headalign(obj)
             val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+26,'int16');        
@@ -243,10 +243,10 @@ classdef PD0 < handle
             val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+28,'int16');        
         end
         function val=get.sensource(obj)
-            val=dec2bin(obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+30),8);        
+            val=dec2bin(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+30,'uint8'),8);        
         end
         function val=get.senavail(obj)
-            val=obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+31);        
+            val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+31,'uint8');        
         end
         function val=get.distmidbin1(obj)
             val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+32,'uint16');        
@@ -258,47 +258,47 @@ classdef PD0 < handle
             val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+36,'uint16');        
         end
         function val=get.mintarget(obj)
-            val=obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+38);        
+            val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+38,'uint8');        
         end
         function val=get.lowlattrig(obj)
-            val=obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+39);        
+            val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+39,'uint8');        
         end
         function val=get.distpulse(obj)
             val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+40,'uint16');        
         end
         function val=get.cpuserial(obj)
-            val=[obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+42),...       
-                 obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+43),...       
-            	 obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+44),...        
-            	 obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+45),...        
-           	     obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+46),...        
-            	 obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+47),...        
-            	 obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+48),...        
-            	 obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+49)];      
+            val=[obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+42,'uint8'),...       
+                 obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+43,'uint8'),...       
+            	 obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+44,'uint8'),...        
+            	 obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+45,'uint8'),...        
+           	     obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+46,'uint8'),...        
+            	 obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+47,'uint8'),...        
+            	 obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+48,'uint8'),...        
+            	 obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+49,'uint8')];      
         end
         function val=get.bandwidth(obj)
             val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+50,'uint16');        
         end
         function val=get.syspower(obj)
-            val=obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+52);        
+            val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+52,'uint8');        
         end
         function val=get.basefreqid(obj)
-            val=obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+53);        
+            val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+53,'uint8');        
         end
         function val=get.serial(obj)
-            val=[obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+54),...
-            	 obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+55),...
-            	 obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+56),...
-            	 obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+57)];
+            val=[obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+54,'uint8'),...
+            	 obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+55,'uint8'),...
+            	 obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+56,'uint8'),...
+            	 obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+57,'uint8')];
         end
         function val=get.beamangle(obj)
-            val=obj.buf(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+58);        
+            val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.fixed_leader))+58,'uint8');        
         end
         
         %% Variable leader
         function val=get.ensnum(obj)
             val=uint32(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+2,'uint16'))+...        
-                uint32(obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+11))*65535;        
+                uint32(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+11,'uint8'))*65535;        
         end
         function val=get.BITcheck(obj)
             val=dec2bin(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+12,'uint16'),16);        
@@ -325,34 +325,34 @@ classdef PD0 < handle
             val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+26,'int16');        
         end
         function val=get.prepingT(obj)
-            val=uint16(obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+28))*600+...
-                uint16(obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+29))*100+...
-                uint16(obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+30));        
+            val=uint16(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+28,'uint8'))*600+...
+                uint16(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+29,'uint8'))*100+...
+                uint16(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+30,'uint8'));        
         end
         function val=get.headstd(obj)
-            val=obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+31);        
+            val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+31,'uint8');        
         end
         function val=get.pitchstd(obj)
-            val=obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+32);        
+            val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+32,'uint8');        
         end
         function val=get.rollstd(obj)
-            val=obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+33);        
+            val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+33,'uint8');        
         end
         function val=get.ADC(obj)
-            val=[obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+34),...
-            	 obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+35),...
-            	 obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+36),...
-            	 obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+37),...
-            	 obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+38),...
-            	 obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+39),...
-            	 obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+40),...
-            	 obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+41)];
+            val=[obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+34,'uint8'),...
+            	 obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+35,'uint8'),...
+            	 obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+36,'uint8'),...
+            	 obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+37,'uint8'),...
+            	 obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+38,'uint8'),...
+            	 obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+39,'uint8'),...
+            	 obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+40,'uint8'),...
+            	 obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+41,'uint8')];
         end
         function val=get.errorstat(obj)
-            val=[dec2bin(obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+42),8),...
-            	 dec2bin(obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+43),8),...
-            	 dec2bin(obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+44),8),...
-            	 dec2bin(obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+45),8)];
+            val=[dec2bin(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+42,'uint8'),8),...
+            	 dec2bin(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+43,'uint8'),8),...
+            	 dec2bin(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+44,'uint8'),8),...
+            	 dec2bin(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+45,'uint8'),8)];
         end
         function val=get.pressure(obj)
             val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+48,'uint32');        
@@ -361,14 +361,14 @@ classdef PD0 < handle
             val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+52,'uint32');        
         end
         function val=get.timeV(obj)
-            val=[double(obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+57))*100+...        
-                 double(obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+58)),...
-                 double(obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+59)),...
-                 double(obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+60)),...
-                 double(obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+61)),...
-                 double(obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+62)),...
-                 double(obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+63))+...
-                 double(obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+64))/100];        
+            val=[double(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+57,'uint8'))*100+...        
+                 double(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+58,'uint8')),...
+                 double(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+59,'uint8')),...
+                 double(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+60,'uint8')),...
+                 double(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+61,'uint8')),...
+                 double(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+62,'uint8')),...
+                 double(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+63,'uint8'))+...
+                 double(obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+64,'uint8'))/100];        
         end
 
         %% array data
@@ -402,7 +402,8 @@ classdef PD0 < handle
             if type(1)=='i', nullval=intmin(type); else nullval = intmax(type); end
             
             val=nullval(ones(obj.max_nbins,obj.n_ensembles,obj.max_nbeams)); % Initialize
-
+            if isempty(val), return, end;
+            
             ndat=double(obj.nbins).*double(obj.usedbeams);
             ensidx=obj.array_subs(:,2);
             idces=obj.array_idx;
