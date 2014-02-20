@@ -1,4 +1,4 @@
-classdef PD0 < matlab.mixin.Copyable
+classdef PD0 < handle
 % RDI PD0 binary format parser
 % 
 % PD0 Properties:
@@ -159,15 +159,15 @@ classdef PD0 < matlab.mixin.Copyable
             if nargin>0
                 if isa(varargin{1},'uint8') && iscolumn(varargin{1}) % Construct with a buffer
                     obj.buf=varargin{1};
-                elseif isa(varargin{1},'char') && isrow(varargin{1}) && exist(varargin{1},'file') % Construct with a filename
+                elseif ischar(varargin{1}) && isrow(varargin{1}) && exist(varargin{1},'file') % Construct with a filename
                     [fid, message]=fopen(varargin{1},'r','l');
                     if fid==-1
                         error(message);
                     end
                     obj.buf=fread(fid,'*uint8');
                     fclose(fid);
-                elseif isa(varargin{1},'rdi.PD0') % Copy constructor (shallow copying, i.e. different object)
-                    obj=copy(varargin{1});
+                elseif isa(varargin{1},'rdi.PD0') % Copy constructor (copies handle)
+                    obj=varargin{1};
                 else
                     warning('rdi:PD0:WrongConstruction','Did not understand construction argument, constructing empty')
                 end
@@ -361,7 +361,7 @@ classdef PD0 < matlab.mixin.Copyable
             val=obj.parse_blocks(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+52,'uint32');        
         end
         function val=get.timeV(obj)
-            val=[double(obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+57))*1000+...        
+            val=[double(obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+57))*100+...        
                  double(obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+58)),...
                  double(obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+59)),...
                  double(obj.buf(obj.data_offset(obj.find_data(rdi.headers.variable_leader))+60)),...
@@ -373,44 +373,59 @@ classdef PD0 < matlab.mixin.Copyable
 
         %% array data
         function val=get.velocity(obj)
-            val=int16(-32768*ones(obj.max_nbins,obj.n_ensembles,obj.max_nbeams)); % Initialize
-            
-            nvels=double(obj.nbins).*double(obj.usedbeams);
-            ensidx=obj.array_subs(:,2);
-            idces=obj.array_idx;
-            
-            % Velocity position
-            pos=obj.find_data(rdi.headers.velocity); % Locate all velocity data
-                % account for possible ensembles without velocity data (does this ever happen?)
-                f_bad_ens=find(~isfinite(pos));
-                [~,f_bad_idx,~]=intersect(ensidx,f_bad_ens); % Get index of all velocities which are missing
-                ensidx(f_bad_idx)=[];
-                nvels(f_bad_ens)=[];
-            pos=obj.data_offset(pos(ensidx))+cumsum(2*ones(sum(nvels),1));
-            cnvels=cumsum([0;nvels]);
-            pos=pos-cnvels(ensidx)*2;
-            idces(f_bad_idx)=[];
-            val(idces)=obj.parse_blocks(pos,'int16');
+            val=obj.get_array_data('int16',rdi.headers.velocity);
         end
+        function val=get.echo(obj)
+            val=obj.get_array_data('uint8',rdi.headers.echo);
+        end
+        function val=get.percentage_good(obj)
+            val=obj.get_array_data('uint8',rdi.headers.percentage_good);
+        end
+        function val=get.correlation(obj)
+            val=obj.get_array_data('uint8',rdi.headers.correlation);
+        end
+        
+        
     end
     
     %% PRIVATE METHODS
     methods(Access=private)
         init(obj);  
         out=parse_blocks(obj,pos,type)
-        function nb=sizeof(type)
-            nb=cast(1,type); %#ok<NASGU>
-            nb=whos('nb');
-            nb=nb.bytes;
-        end
         function data_idx=find_data(obj,type)
             data_idx=nan(obj.n_ensembles,1);
             ftype=find(obj.data_headers==type);
             data_idx(obj.data_ensid(ftype))=ftype; % Keeps last, if multiple data blocks of same type. nan means data not found in ensemble
         end
 
-        function out=get_array_data(obj,type,header)
+        function val=get_array_data(obj,type,header) 
+            if type(1)=='i', nullval=intmin(type); else nullval = intmax(type); end
             
+            val=nullval(ones(obj.max_nbins,obj.n_ensembles,obj.max_nbeams)); % Initialize
+
+            ndat=double(obj.nbins).*double(obj.usedbeams);
+            ensidx=obj.array_subs(:,2);
+            idces=obj.array_idx;
+            
+            % Velocity position
+            pos=obj.find_data(header); % Locate all velocity data
+                % account for possible ensembles without data (does this ever happen?)
+                f_bad_ens=find(~isfinite(pos));
+                [~,f_bad_idx,~]=intersect(ensidx,f_bad_ens); % Get index of all velocities which are missing
+                ensidx(f_bad_idx)=[];
+                ndat(f_bad_ens)=[];
+            pos=obj.data_offset(pos(ensidx))+cumsum(rdi.PD0.sizeof(type)*ones(sum(ndat),1));
+            cnvels=cumsum([0;ndat]);
+            pos=pos-cnvels(ensidx)*rdi.PD0.sizeof(type);
+            idces(f_bad_idx)=[];
+            val(idces)=obj.parse_blocks(pos,type);
+        end
+    end
+    methods(Access=private, Static)
+        function nb=sizeof(type)
+            nb=cast(1,type); %#ok<NASGU>
+            nb=whos('nb');
+            nb=nb.bytes;
         end
     end
 end

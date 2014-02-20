@@ -26,6 +26,19 @@ function init(obj)
     obj.ens_bytes(fbad)=[]; 
     if isempty(obj.ens_pos), reset_all(obj),return, end
     
+    % Remove if ens_pos + ens_bytes +2 is higher than start of next
+    % ensemble (Ensembles shouldn't overlap, but don't need to be
+    % contiguous), and yes, this happens even after checksum checks.
+    while numel(obj.ens_pos)>1 % loop while there's still more than 2 ensembles
+        fbad=find((obj.ens_pos(1:end-1)+double(obj.ens_bytes(1:end-1))+2)>obj.ens_pos(2:end))+1; % Search for overlapping ensembles
+        if isempty(fbad), break, end % if no bad ensemble is found, exit loop
+        fbad=fbad([true; diff(fbad)~=1]); % remove only first of series of consecutive overlapping ensembles
+        obj.ens_pos(fbad)=[]; % remove
+        obj.ens_bytes(fbad)=[]; % remove
+    end
+    if isempty(obj.ens_pos), reset_all(obj),return, end
+
+    
     obj.n_ensembles=numel(obj.ens_pos);
     
     %% Find position of data in buffer
