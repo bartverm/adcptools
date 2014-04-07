@@ -137,23 +137,23 @@ zone = [num2str(lnindx) latzones(ltindx)];
 
 
 % transform with suitable package
-if exist('utm_fwd','file')==2 % GeographicLib is available
-    disp('Using GeographicLib for UTM forward transformation')
-    if mean(lat(goodff))>0, northp=true; else northp=false; end
-    [UTMx,UTMy]=utm_fwd(lnindx,northp,lat,long);
-elseif license('checkout','map_toolbox')
-    disp('Using Mapping Toolbox for UTM forward transformation')
-%     zone=utmzone(lat(goodff),long(goodff));
-    ellipsoid = utmgeoid(zone);
-    adcpmap = defaultm('utm'); 
-    adcpmap.zone = zone; 
-    adcpmap.geoid = ellipsoid; 
-    adcpmap.flatlimit = []; 
-    adcpmap.maplatlimit = []; 
-    adcpmap = defaultm(adcpmap);
-    [UTMx,UTMy]=mfwdtran(adcpmap,lat,long);
-else
-    disp('Using custom UTM forward transformation')
+% if exist('utm_fwd','file')==2 % GeographicLib is available
+%     disp('Using GeographicLib for UTM forward transformation')
+%     if mean(lat(goodff))>0, northp=true; else northp=false; end
+%     [UTMx,UTMy]=utm_fwd(lnindx,northp,lat,long);
+% elseif license('checkout','map_toolbox')
+%     disp('Using Mapping Toolbox for UTM forward transformation')
+% %     zone=utmzone(lat(goodff),long(goodff));
+%     ellipsoid = utmgeoid(zone);
+%     adcpmap = defaultm('utm'); 
+%     adcpmap.zone = zone; 
+%     adcpmap.geoid = ellipsoid; 
+%     adcpmap.flatlimit = []; 
+%     adcpmap.maplatlimit = []; 
+%     adcpmap = defaultm(adcpmap);
+%     [UTMx,UTMy]=mfwdtran(adcpmap,lat,long);
+% else
+%     disp('Using custom UTM forward transformation')
     lns = (-180:6:180)';
     indx = find(lns <= mean(long(goodff)));
     zone = indx(max(indx));
@@ -183,7 +183,7 @@ else
     UTMy=N0+k0*A*(zeta+sum(bsxfun(@times,alph,sin(2*bsxfun(@times,jvec,zeta)).*cosh(2*bsxfun(@times,jvec,eta))),2));  
     UTMx=UTMx*1000;
     UTMy=UTMy*1000;
-end
+% end
 
 UTMx=UTMx(:);
 UTMy=UTMy(:);
