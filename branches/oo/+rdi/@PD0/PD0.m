@@ -448,7 +448,7 @@ classdef PD0 < handle
         end
         function val=get.gain(obj),             val=obj.get_scalar_data(rdi.headers.bottom_tracking,76,'uint8'); end
 
-        %% winriver data
+        %% winriver data (we assume either wr1 or wr2_v1 or wr2_v2 data. Nothing simultaneous in one ensemble
         
         function val=get.gga_siz(obj)
             val=obj.get_scalar_data(rdi.headers.NMEA_Specific_GGA_v2,5,'uint16');
