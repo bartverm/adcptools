@@ -1,0 +1,21 @@
+#summary How to start with the adcptools functions
+#labels Featured
+
+= Introduction =
+
+ADCPtools is a set of functions to process ADCP data. The current functions are developed for RDI data formats.
+
+Some of the concepts used in these functions are explained in more detail in the following publication:
+
+Vermeulen1, B and Sassi, M.G. and Hoitink, A.J.F
+Improved flow velocity estimates from moving-boat ADCP measurements
+Water Resources Research
+[http://dx.doi.org/10.1002/2013WR015152] Click here!
+
+
+= Details =
+
+Add your content here.  Format your content with:
+  * Text in *bold* or _italic_
+  * Headings, paragraphs, and lists
+  * Automatic links to other wiki pages
