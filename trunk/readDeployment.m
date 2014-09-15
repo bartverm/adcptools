@@ -82,6 +82,13 @@ if ~isempty(tfiles)
     outADCP.tFiles=readTfiles(outADCP,tfiles);
 end
 
+%% Read VISEA Extern file
+vfiles=match_and_cat('\w*[0-9]{3,3}extern\.dat'); % search for transect files
+if ~isempty(vfiles)
+    disp('Reading VISEA extern files...')
+    outADCP.VISEA_Extern=readViseaExtern(outADCP,vfiles);
+end
+
 %% Function to match regular expression in file names and concatenate the path to the result
 function files=match_and_cat(rex)
     if ~iscellstr(rex) && ischar(rex) % Make a char input into 1x1 cell of char
