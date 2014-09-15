@@ -1,4 +1,4 @@
-function [outADCP]=readDeployment(DepName,path,varargin)
+function [outADCP]=readDeployment(DepName,varargin)
 % READDEPLOYMENT Read a Winriver deployment
 %                ADCP = readDeployment(DEPNAME,PATH) read deployment files
 %                DEPNAME contained in PATH folder. Search and read
@@ -24,85 +24,75 @@ function [outADCP]=readDeployment(DepName,path,varargin)
 %    You should have received a copy of the GNU General Public License
 %    along with ADCPTools.  If not, see <http://www.gnu.org/licenses/>.
 
+
+%% parse input 
+
+%path
+if nargin>1 % if path is given
+    path=varargin{1}; % get it
+    assert(ischar(path) && isrow(path),'readDeployment:BadFormatPath','Path must be a row vector of characters') % make sure it is a row vector of characters
+    assert(exist(path,'dir')==7,'readDeployment:InexistentPath',['Cannot find folder: ',path]) % check the path exists
+
+    % append slash to path if it's missing
+    if ~any(strcmp(path(end),{'/','\'})) % is a trailing slash or backslash missing?
+        if ispc(), path=[path,'\']; else path=[path,'/'];end % if we are on windows add a backslash, otherwise add a slash
+    end % if
+else % if path is not given 
+    path=''; % make path empty char
+end % if
+
+% Depname
+allFiles=dir([path,DepName,'*']); % read all filenames
+assert(~isempty(allFiles),'readDeployment:NoFileFound',['Could not find any file for deployment: ', DepName]); % check there is at least one file with the given deployment name
+allFiles=({allFiles(~[allFiles(:).isdir]).name})';
+
+
 %% Read Transect Files
-rfiles=dir([path,DepName,'*r.*']);                                         % Look for WinRiver transect files
-rfiles2 = dir([path,DepName,'*.PD0']);                                     % Look for WinRiverII transect files
-if isempty(rfiles)&&isempty(rfiles2)                                       % Stop running
-    error('ReadDeployment:NoRFiles','Could not find raw data files')
-end
-disp('Reading ADCP raw data files...')
-if isempty(rfiles)&&~isempty(rfiles2)                                      % Choose the ~empty structure
-    rfiles=vertcat(rfiles2(:).name);
-elseif isempty(rfiles2)&&~isempty(rfiles)
-    rfiles=vertcat(rfiles(:).name);
-end
-rfiles= [repmat(path,[size(rfiles,1),1]),rfiles];
-outADCP=readADCP(rfiles,varargin{:});
-clear rfiles rfiles2
+rfiles=match_and_cat({'\w*[0-9]{3,3}r\.[0-9]{3,3}'; '\w*.PD0'});% search for raw data files
+assert(~isempty(rfiles),'ReadDeployment:NoRFiles','Could not find raw data files') % Make sure we found at least one adcp file
+disp('Reading ADCP raw data files...') % Tell something nice to the user
+outADCP=readADCP(rfiles,varargin{2:end}); % Read files
 
 %% Read Navigation Files
-nfiles=dir([path,DepName,'*n.*']);                                         % Look for WinRiver navigation files
-nfiles2 = dir([path,DepName,'*GPS.TXT']);                                  % Look for WinRiverII navigation files
-if isempty(nfiles)&&isempty(nfiles2)                                       % Continue running
-    warning('ReadDeployment:NoNFiles','Could not find external navigation files')
-else
-    disp('Reading WinRiver navigation files...')
-    if isempty(nfiles)&&~isempty(nfiles2)                                  % Choose the ~empty structure
-        nfiles=vertcat(nfiles2(:).name);
-    elseif isempty(nfiles2)&&~isempty(nfiles)
-        nfiles=vertcat(nfiles(:).name);
-    end    
-    nfiles= [repmat(path,[size(nfiles,1),1]),nfiles];
-    outADCP.nFiles=readNMEAADCP(outADCP,nfiles);
+nfiles=match_and_cat({'\w*[0-9]{3,3}n\.[0-9]{3,3}'; '\w*GPS.TXT'}); % search for navigation files
+if ~isempty(nfiles) % Found something?
+    disp('Reading navigation files...') % Tell something nice to the user
+    outADCP.nFiles=readNMEAADCP(outADCP,nfiles); % try to read it
 end
-clear nfiles nfiles2
 
 %% Read Depth Sounder Files
-dfiles=dir([path,DepName,'*d.*']);                                         % Look for WinRiver depth sounder files
-dfiles2 = dir([path,DepName,'*DS.TXT']);                                   % Look for WinRiverII depth sounder files
-if isempty(dfiles)&&isempty(dfiles2)                                       % Continue running
-    warning('ReadDeployment:NoDFiles','Could not find external depth files')
-else
-    disp('Reading WinRiver depth files...')
-    if isempty(dfiles)&&~isempty(dfiles2)                                  % Choose the ~empty structure
-        dfiles=vertcat(dfiles2(:).name);
-    elseif isempty(dfiles2)&&~isempty(dfiles)
-        dfiles=vertcat(dfiles(:).name);
-    end    
-    dfiles= [repmat(path,[size(dfiles,1),1]),dfiles];
-    outADCP.dFiles=readNMEAADCP(outADCP,dfiles);
+dfiles=match_and_cat({'\w*[0-9]{3,3}d\.[0-9]{3,3}'; '\w*DS.TXT'}); % search for depth sounder files
+if ~isempty(dfiles) % found something
+    disp('Reading depth sounder files...')
+    outADCP.dFiles=readNMEAADCP(outADCP,dfiles); % read it
 end
-clear dfiles dfiles2
 
 %% Read External Heading Files
-hfiles=dir([path,DepName,'*h.*']);                                         % Look for WinRiver external heading files
-hfiles2 = dir([path,DepName,'*EH.TXT']);                                   % Look for WinRiverII external heading files
-if isempty(hfiles)&&isempty(hfiles2)                                       % Continue running
-    warning('ReadDeployment:NoHFiles','Could not find external heading files')
-else
-    disp('Reading WinRiver heading files...')
-    if isempty(hfiles)&&~isempty(hfiles2)                                  % Choose the ~empty structure
-        hfiles=vertcat(hfiles2(:).name);
-    elseif isempty(hfiles2)&&~isempty(hfiles)
-        hfiles=vertcat(hfiles(:).name);
-    end
-    hfiles= [repmat(path,[size(hfiles,1),1]),hfiles];
+hfiles=match_and_cat({'\w*[0-9]{3,3}h\.[0-9]{3,3}'; '\w*EH.TXT'}); % search for depth sounder files
+if ~isempty(hfiles)
+    disp('Reading external heading files...')
     outADCP.hFiles=readNMEAADCP(outADCP,hfiles);
 end
 
 %% Read Transect files
-tfiles=dir([path,DepName,'*t.*']);                                         % Look for WinRiver external heading files
-% hfiles2 = dir([path,DepName,'*EH.TXT']);                                   % Look for WinRiverII external heading files
-if isempty(tfiles) %&&isempty(hfiles2)                                       % Continue running
-    warning('ReadDeployment:NoTFiles','Could not find transect files')
-else
-    disp('Reading WinRiver transect files...')
-%     if isempty(tfiles)&&~isempty(hfiles2)                                  % Choose the ~empty structure
-%         hfiles=vertcat(hfiles2(:).name);
-%     elseif isempty(hfiles2)&&~isempty(hfiles)
-     tfiles=vertcat(tfiles(:).name);
-%     end
-    tfiles= [repmat(path,[size(tfiles,1),1]),tfiles];
+tfiles=match_and_cat('\w*[0-9]{3,3}t\.[0-9]{3,3}'); % search for transect files
+if ~isempty(tfiles) 
+    disp('Reading transect files...')
     outADCP.tFiles=readTfiles(outADCP,tfiles);
 end
-clear tfiles
+
+%% Function to match regular expression in file names and concatenate the path to the result
+function files=match_and_cat(rex)
+    if ~iscellstr(rex) && ischar(rex) % Make a char input into 1x1 cell of char
+        rex={rex};
+    end
+    assert(iscellstr(rex)); % Make sure input is cell of char
+    files={}; % Initialize empty list of files
+    for crex=1:numel(rex) % Match each regular expression given
+        tmpfiles=regexp(allFiles,rex{crex},'match'); % search for cells matching regular expression
+        files=[files;tmpfiles{~cellfun(@isempty,tmpfiles)}]; %#ok<AGROW> % Get result as cell of strings and add to output(growth should be insignificant)
+    end
+    files=cellfun(@(x,y) [x y],repmat({path},size(files)),files,'UniformOutput',false); % Concatenate path and filenames
+end
+
+end

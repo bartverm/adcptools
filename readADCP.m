@@ -83,7 +83,7 @@ fileid=[];
 for cntfile=1:nfiles                                                       % Loop for files
     [fid,openmessage]=fopen(files{cntfile},'r');                           % Open file in read-only binary mode
     if fid==-1                                                             % If opening file fails
-        warning('readadcp2:WrongFile',[openmessage,': ',files{cntfile}])   % Show warning
+        warning('readADCP:WrongFile',[openmessage,': ',files{cntfile}])   % Show warning
         continue                                                           % Continue to next file
     end
 
@@ -93,7 +93,7 @@ for cntfile=1:nfiles                                                       % Loo
         headpos=searchHead(fid,fpos);                                      %Search for header
         if headpos==-1, break, end                                         %If no header was found, exit the loop
         if ~isvalens(fid,headpos)                                          %If ensemble is not valid
-           warning('readadcp2:CorruptEnsemble',['Invalid ensemble: ',num2str(enscnt+1)]) %Generate warning
+           warning('readADCP:CorruptEnsemble',['Invalid ensemble: ',num2str(enscnt+1)]) %Generate warning
            fpos=headpos+1;                                                 %Point fpos to position after last header
            continue                                                        %Restart loop
         end
@@ -107,7 +107,7 @@ for cntfile=1:nfiles                                                       % Loo
             readhead(fid,headpos);%#ok<AGROW>                              %Read info about where to find which data %#ok<AGROW> 
     end
     if ~any(fileid==fid)                                                   %If no valid ensembles are found in current file
-        warning('readadcp2:NoEnsembleInFile',...
+        warning('readADCP:NoEnsembleInFile',...
             ['No valid ensembles in file: ',files{cntfile}])               %Generate a warning
         fclose(fid);                                                       %Close file
     else
@@ -119,7 +119,7 @@ for cntfile=1:nfiles                                                       % Loo
 end
 nens=enscnt;                                                             % Calculate total number of ensembles
 if nens<1                                                                  % If no ensmble is found
-    error('readadcp2:NoEnsemble','Could not find any valid ensemble')      % Generate error
+    error('readADCP:NoEnsemble','Could not find any valid ensemble')      % Generate error
 end
 disp(['Found ',num2str(nens),' valid ensebles'])                           % Display total number of valid ensembles
 clear enscnt
@@ -140,7 +140,7 @@ for cntfiles=1:nValidFiles
     readFL(ValidFilesId(cntfiles),posFL,cntfiles);                         %Call function to read the fixed leader
 end
 if ~CheckFL(nValidFiles)                                                   % If configuration in fixed leader changes
-    warning('readadcp2:ConfigChange',...                                   % Generate warning
+    warning('readADCP:ConfigChange',...                                   % Generate warning
         'The configuration seems to change between files. \n Using readadcp2 on files with different configuration is not recommended, but will still work') 
 end
 %% Preallocate and read data
@@ -152,7 +152,7 @@ AllHeaders(AllHeaders(:,1)~=8226,2)=65535;
 %Read velocity data
 if any(regexpi(flags,'v'))                                                 % Check if velocity data must be read (that is when only 1 argument or v in second argument)
     if ~any(AllHeaders(:,1)==256)                                          % Check if any velocity data is present
-        warning('readadcp2:NoVelData','No velocity data found.')           % Warn if no velocity data is present
+        warning('readADCP:NoVelData','No velocity data found.')           % Warn if no velocity data is present
     else                                                                   % Otherwise
         dataout.VEL=ones(nbins,nens,4,'int16')*-32768;                     % Preallocate velocity data (null value by default)
         for cntens=1:nens                                                  % Loop for all ensembles
@@ -173,7 +173,7 @@ end
 %Read Echo intensity
 if any(regexpi(flags,'h'))                                                 %Same as above but now for echo intensity data
     if ~any(AllHeaders(:,1)==768)
-        warning('readadcp2:NoEchoData','No echo intensity data found.')
+        warning('readADCP:NoEchoData','No echo intensity data found.')
     else
         dataout.ECHO=zeros(nbins,nens,4,'uint8');
         for cntens=1:nens
@@ -194,7 +194,7 @@ end
 % Read correlation magnitude data
 if any(regexpi(flags,'c'))                                                 %Same as above but now for correlation magnitude data
     if ~any(AllHeaders(:,1)==512)
-        warning('readadcp2:NoCorrData','No correlation magnitude data found.')
+        warning('readADCP:NoCorrData','No correlation magnitude data found.')
     else
         dataout.CORR=zeros(nbins,nens,4,'uint8');
         for cntens=1:nens
@@ -215,7 +215,7 @@ end
 %Read percentage good data
 if any(regexpi(flags,'p'))                              %Same as above but now for percentage good data
     if ~any(AllHeaders(:,1)==1024)
-        warning('readadcp2:NoPercData','No percentage good data found.')
+        warning('readADCP:NoPercData','No percentage good data found.')
     else
         dataout.PERC=zeros(nbins,nens,4,'uint8');
         for cntens=1:nens
@@ -234,7 +234,7 @@ end
 %Read bottom track data
 if any(regexpi(flags,'b'))                              %Same as above but now for bottom track data
     if ~any(AllHeaders(:,1)==1536)
-        warning('readadcp2:NoBtData','No bottom track data found.')
+        warning('readADCP:NoBtData','No bottom track data found.')
     else
         initBT(nens);
         for cntens=1:nens
@@ -252,7 +252,7 @@ end
 %Read variable leader data
 if any(regexpi(flags,'e'))                              %Same as above but now for variable leader data
     if ~any(AllHeaders(:,1)==128)
-        warning('readadcp2:NoVLData','No ensemble (Variable Leader) data found.')
+        warning('readADCP:NoVLData','No ensemble (Variable Leader) data found.')
     else
         initVL(nens);
         for cntens=1:nens
@@ -484,7 +484,7 @@ global dataout
 fseek(fid,fpos,-1);
 LeadID=fread(fid,2,'*uint8');
 if any(LeadID~=[0;0])
-    error('readadcp2:readFL:wrongID','Fixed Leader ID seems to be wrong')
+    error('readADCP:readFL:wrongID','Fixed Leader ID seems to be wrong')
 end
 dataout.firmver(filenum)=fread(fid,1,'*uint8');                                 %Firmware version
 dataout.firmrev(filenum)=fread(fid,1,'*uint8');                                 %Firmware revision
@@ -528,7 +528,7 @@ function V=readVEL(fid,fpos,nbins)
 fseek(fid,fpos,-1);
 dataID=fread(fid,2,'*uint8');
 if any(dataID~=[0;1])
-    error('readadcp2:readVEL:wrongID','Velocity data ID seems to be wrong')
+    error('readADCP:readVEL:wrongID','Velocity data ID seems to be wrong')
 end
 V=reshape(fread(fid,4*double(nbins),'*int16'),4,[])';
 
@@ -537,7 +537,7 @@ function H=readECHO(fid,fpos,nbins)
 fseek(fid,fpos,-1);
 dataID=fread(fid,2,'*uint8');
 if any(dataID~=[0;3])
-    error('readadcp2:readECHO:wrongID','Echo intesity data ID seems to be wrong')
+    error('readADCP:readECHO:wrongID','Echo intesity data ID seems to be wrong')
 end
 H=reshape(fread(fid,4*double(nbins),'*uint8'),4,[])';    
 
@@ -546,7 +546,7 @@ function C=readCORR(fid,fpos,nbins)
 fseek(fid,fpos,-1);
 dataID=fread(fid,2,'*uint8');
 if any(dataID~=[0;2])
-    error('readadcp2:readCORR:wrongID','Correlation data ID seems to be wrong')
+    error('readADCP:readCORR:wrongID','Correlation data ID seems to be wrong')
 end
 C=reshape(fread(fid,4*double(nbins),'*uint8'),4,[])';    
 
@@ -555,7 +555,7 @@ function P=readPERC(fid,fpos,nbins)
 fseek(fid,fpos,-1);
 dataID=fread(fid,2,'*uint8');
 if any(dataID~=[0;4])
-    error('readadcp2:readPERC:wrongID','Percentage good data ID seems to be wrong')
+    error('readADCP:readPERC:wrongID','Percentage good data ID seems to be wrong')
 end
 P=reshape(fread(fid,4*double(nbins),'*uint8'),4,[])';    
 
@@ -565,7 +565,7 @@ global dataout
 fseek(fid,fpos,-1);
 dataID=fread(fid,2,'*uint8');
 if any(dataID~=[0;6])
-    error('readadcp2:readBT:wrongID','Bottom-Track data ID seems to be wrong')
+    error('readADCP:readBT:wrongID','Bottom-Track data ID seems to be wrong')
 end
 bt1=fread(fid,2,'*uint16');
 dataout.btpingperens(cntens)=bt1(1);                  %Bottom tracking pings per ensemble (0-999)
@@ -608,7 +608,7 @@ global dataout
 fseek(fid,fpos,-1);
 dataID=fread(fid,2,'*uint8');
 if any(dataID~=[128;0])
-    error('readadcp2:readVL:wrongID','Variable Leader ID seems to be wrong')
+    error('readADCP:readVL:wrongID','Variable Leader ID seems to be wrong')
 end
 dataout.ensnum(cntens)=fread(fid,1,'uint16=>uint32');                                  %Ensemble number without rollover correction
 fseek(fid,7,0);                                                            %Skipping RTC data, will be read later in Y2K compilant format
@@ -650,7 +650,7 @@ global dataout WRII_GGA_ID
 fseek(fid,fpos,-1);
 dataID=fread(fid,2,'*uint16');
 if any(dataID~=[8226;WRII_GGA_ID])
-    error('readadcp2:readNMEAGGA:wrongID','WinRiver II general NMEA GGA data ID seems to be wrong')
+    error('readADCP:readNMEAGGA:wrongID','WinRiver II general NMEA GGA data ID seems to be wrong')
 end
 fseek(fid,2,0);
 dataout.NMEAGGA.deltaT(cntens,cntblock)=fread(fid,1,'*float64');
@@ -676,7 +676,7 @@ global dataout WRII_HDT_ID
 fseek(fid,fpos,-1);
 dataID=fread(fid,2,'*uint16');
 if any(dataID~=[8226;WRII_HDT_ID])
-    error('readadcp2:readNMEAHDT:wrongID','WinRiver II general NMEA HDT data ID seems to be wrong')
+    error('readADCP:readNMEAHDT:wrongID','WinRiver II general NMEA HDT data ID seems to be wrong')
 end
 fseek(fid,2,0);
 dataout.NMEAHDT.deltaT(cntens,cntblock)=fread(fid,1,'*float64');
@@ -690,7 +690,7 @@ global dataout WRII_VTG_ID
 fseek(fid,fpos,-1);
 dataID=fread(fid,2,'*uint16');
 if any(dataID~=[8226;WRII_VTG_ID])
-    error('readadcp2:readNMEAVTG:wrongID','WinRiver II general NMEA VTG data ID seems to be wrong')
+    error('readADCP:readNMEAVTG:wrongID','WinRiver II general NMEA VTG data ID seems to be wrong')
 end
 fseek(fid,2,0);
 dataout.NMEAVTG.deltaT(cntens,cntblock)=fread(fid,1,'*float64');
@@ -711,7 +711,7 @@ global dataout WRII_DBT_ID
 fseek(fid,fpos,-1);
 dataID=fread(fid,2,'*uint16');
 if any(dataID~=[8226;WRII_DBT_ID])
-    error('readadcp2:readNMEADBT:wrongID','WinRiver II general NMEA DBT data ID seems to be wrong')
+    error('readADCP:readNMEADBT:wrongID','WinRiver II general NMEA DBT data ID seems to be wrong')
 end
 fseek(fid,2,0);
 dataout.NMEADBT.deltaT(cntens,cntblock)=fread(fid,1,'*float64');
@@ -728,7 +728,7 @@ function ggastr=getGGA(fid,fpos)
 fseek(fid,fpos,-1);
 dataID=fread(fid,2,'*uint8');
 if any(dataID~=[1;33])
-    error('readadcp2:getGGA:wrongID','WinRiver GGA data ID seems to be wrong')
+    error('readADCP:getGGA:wrongID','WinRiver GGA data ID seems to be wrong')
 end
 ggastr=fgetl(fid);
 
@@ -758,7 +758,7 @@ function hdtstr=getHDT(fid,fpos)
 fseek(fid,fpos,-1);
 dataID=fread(fid,2,'*uint8');
 if any(dataID~=[4;33])
-    error('readadcp2:getHDT:wrongID','WinRiver HDT data ID seems to be wrong')
+    error('readADCP:getHDT:wrongID','WinRiver HDT data ID seems to be wrong')
 end
 hdtstr=fgetl(fid);
 
@@ -780,7 +780,7 @@ function dbtstr=getDBT(fid,fpos)
 fseek(fid,fpos,-1);
 dataID=fread(fid,2,'*uint8');
 if any(dataID~=[0;33])
-    error('readadcp2:getDBT:wrongID','WinRiver DBT data ID seems to be wrong')
+    error('readADCP:getDBT:wrongID','WinRiver DBT data ID seems to be wrong')
 end
 dbtstr=fgetl(fid);
 
@@ -804,7 +804,7 @@ function vtgstr=getVTG(fid,fpos)
 fseek(fid,fpos,-1);
 dataID=fread(fid,2,'*uint8');
 if any(dataID~=[2;33])
-    error('readadcp2:getVTG:wrongID','WinRiver VTG data ID seems to be wrong')
+    error('readADCP:getVTG:wrongID','WinRiver VTG data ID seems to be wrong')
 end
 vtgstr=fgetl(fid);
 
