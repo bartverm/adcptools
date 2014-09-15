@@ -7,11 +7,6 @@ function [UTMx,UTMy,zone]=utmADCP(inadcp)
 %       projected UTM coordinate system. Also the zone is returned based on
 %       the average location in the data. 
 %
-%       If GeographicLib is available, computation is performed with it.
-%       Otherwise the computation is done with the mapping toolbox. If
-%       mapping toolbox is unavailable computation is done within this
-%       script (according to Wikipedia description). Latter method seems to
-%       return same result as mapping toolbox algorithm.
 
 %    Copyright 2009,2010 Bart Vermeulen, Maximiliano Sassi
 %
@@ -30,7 +25,6 @@ function [UTMx,UTMy,zone]=utmADCP(inadcp)
 %    You should have received a copy of the GNU General Public License
 %    along with ADCPTools.  If not, see <http://www.gnu.org/licenses/>.
 
-% Last edit 15-09-2009
 
 % search for coordinates in adcp structure
 
@@ -93,7 +87,10 @@ else
             warning('utmADCP:QualInd','No Quality indicator found')
         end
     else
-        if isfield(inadcp,'tFiles') && all(isfield(inadcp.tFiles,{'lat','long'}))
+        if isfield(inadcp,'VISEA_Extern') && all(isfield(inadcp.VISEA_Extern,{'Latitudeseconds','Longitudeseconds'}))
+            lat=inadcp.VISEA_Extern.Latitudeseconds'/3600;
+            long=inadcp.VISEA_Extern.Longitudeseconds'/3600;
+        elseif isfield(inadcp,'tFiles') && all(isfield(inadcp.tFiles,{'lat','long'}))
             lat=inadcp.tFiles.lat';
             long=inadcp.tFiles.long';
         else
