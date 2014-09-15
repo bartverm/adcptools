@@ -4,7 +4,7 @@ clear classes
 addpath ../branches/oo/
 addpath ../trunk/
 
-filename='testdata_000.PD0';
+filename='2014_02_11_bend_3_0_000.PD0';
 
 %% Construct empty
 a=rdi.PD0
