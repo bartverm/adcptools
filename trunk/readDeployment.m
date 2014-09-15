@@ -1,13 +1,14 @@
 function [outADCP]=readDeployment(DepName,varargin)
 % READDEPLOYMENT Read a Winriver deployment
-%                ADCP = readDeployment(DEPNAME,PATH) read deployment files
-%                DEPNAME contained in PATH folder. Search and read
-%                navigation, depth sounder and external heading files.
-%                Works for WinRiver and WinRiver II files.
+%   ADCP = readDeployment(DEPNAME) read deployment files starting with
+%       DEPNAME in the current folder. It currently supports navigation,
+%       depth-sounder, external heading and transect files.
+%   
+%   ADCP = readDeployment(DEPNAME,PATH) reads files in PATH
 %
 % See also readADCP
 
-%    Copyright 2009 Bart Vermeulen
+%    Copyright 2009,2014 Bart Vermeulen
 %
 %    This file is part of ADCPTools.
 %
@@ -51,7 +52,7 @@ allFiles=({allFiles(~[allFiles(:).isdir]).name})';
 rfiles=match_and_cat({'\w*[0-9]{3,3}r\.[0-9]{3,3}'; '\w*.PD0'});% search for raw data files
 assert(~isempty(rfiles),'ReadDeployment:NoRFiles','Could not find raw data files') % Make sure we found at least one adcp file
 disp('Reading ADCP raw data files...') % Tell something nice to the user
-outADCP=readADCP(rfiles,varargin{2:end}); % Read files
+outADCP=readADCP(rfiles); % Read files
 
 %% Read Navigation Files
 nfiles=match_and_cat({'\w*[0-9]{3,3}n\.[0-9]{3,3}'; '\w*GPS.TXT'}); % search for navigation files

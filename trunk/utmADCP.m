@@ -94,8 +94,8 @@ else
         end
     else
         if isfield(inadcp,'tFiles') && all(isfield(inadcp.tFiles,{'lat','long'}))
-            lat=inadcp.tFiles.lat;
-            long=inadcp.tFiles.long;
+            lat=inadcp.tFiles.lat';
+            long=inadcp.tFiles.long';
         else
             error('utmADCP:NoData','Could not find coordinates information in ADCP file')
         end
