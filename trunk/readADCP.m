@@ -488,7 +488,7 @@ if any(LeadID~=[0;0])
 end
 dataout.firmver(filenum)=fread(fid,1,'*uint8');                                 %Firmware version
 dataout.firmrev(filenum)=fread(fid,1,'*uint8');                                 %Firmware revision
-dataout.sysconf(filenum,:)=num2str(fread(fid,16,'*ubit1'))';                      %System configuration (see manual for explanation)
+dataout.sysconf(filenum,:)=reshape(dec2bin(fread(fid,2,'ubit8')',8),1,[]);                      %System configuration (see manual for explanation)
 dataout.sysconfstr{filenum}=sysinterp(dataout.sysconf(filenum,:));                     %Interprete system configuration
 dataout.SymData(filenum)=fread(fid,1,'*uint8');                                 %Flag for Real or Symulated data (0 for real data)
 dataout.LagLength(filenum)=fread(fid,1,'*uint8');                               %Time period between sound pulses
@@ -504,12 +504,12 @@ dataout.minpercgood(filenum)=fread(fid,1,'*uint8');                             
 dataout.maxerrvel(filenum)=fread(fid,1,'*uint16');                              %Maximum value of error velocity in mm/s (1-5000 mm/s)
 dataout.Tbetweenpng(filenum)=fread(fid,1,'uint8=>uint16')*6000+...
     fread(fid,1,'uint8=>uint16')*100+fread(fid,1,'uint8=>uint16');         %Time between two pings in cs (reading min, secs and cs)
-dataout.corinfo(filenum,:)=num2str(fread(fid,8,'*ubit1'))';                       %Coordinate information (see manual for explanation)
+dataout.corinfo(filenum,:)=dec2bin(fread(fid,1,'ubit8'),8);                       %Coordinate information (see manual for explanation)
 dataout.corstr{filenum}=corinterpr(dataout.corinfo(filenum,:));                        %Interprete coordinate information
 dataout.headalign(filenum)=fread(fid,1,'*int16');                               %Head physical alignment correction in 0.01 degrees (-179.99 to 180.00)
 dataout.headbias(filenum)=fread(fid,1,'*int16');                                %Head magnetic bias correction in 0.01 degrees (-179.99 to 180.00)
-dataout.sensource(filenum,:)=num2str(fread(fid,8,'*ubit1'))';                     %Sensor source information (see manual for explanation)
-dataout.senavail(filenum,:)=num2str(fread(fid,8,'*ubit1'))';                      %Sensor availability info  (see manual for explanation)
+dataout.sensource(filenum,:)=dec2bin(fread(fid,1,'ubit8'),8);                     %Sensor source information (see manual for explanation)
+dataout.senavail(filenum,:)=dec2bin(fread(fid,1,'ubit8'),8);                      %Sensor availability info  (see manual for explanation)
 dataout.distmidbin1(filenum)=fread(fid,1,'*uint16');                            %Distance to middle of first bin in cm (0-65535)
 dataout.lngthtranspulse(filenum)=fread(fid,1,'*uint16');                        %Length of the transmitted pulse in cm (0-65535)
 dataout.watrefbins(filenum,:)=fread(fid,2,'*uint8')';                              %Vector with begin and end bin for averaging to determine Water layer reference (1-128)
@@ -633,11 +633,11 @@ dataout.headstd(cntens)=vl3(4);                                                 
 dataout.pitchstd(cntens)=vl3(5);                                                %Standard deviation in pitch in 0.1 degrees (0.0-20.0)
 dataout.rollstd(cntens)=vl3(6);                                                 %Standard deviation in roll in 0.1 degrees (0.0-20.0)
 dataout.ADC(cntens,1:8)=vl3(7:14);                                              %ADC channels, each columns is one channel
-vl4=fread(fid,32,'*ubit1');
-dataout.errorstat1(cntens,1:8)=vl4(1:8);                                        %Error status check (for explanation see manual)
-dataout.errorstat2(cntens,1:8)=vl4(9:16);                                       %Error status check (for explanation see manual)
-dataout.errorstat3(cntens,1:8)=vl4(17:24);                                      %Error status check (for explanation see manual)
-dataout.errorstat4(cntens,1:8)=vl4(25:32);                                      %Error status check (for explanation see manual)
+vl4=dec2bin(fread(fid,4,'ubit8'),8);
+dataout.errorstat1(cntens,1:8)=vl4(1,:);                                        %Error status check (for explanation see manual)
+dataout.errorstat2(cntens,1:8)=vl4(2,:);                                       %Error status check (for explanation see manual)
+dataout.errorstat3(cntens,1:8)=vl4(3,:);                                      %Error status check (for explanation see manual)
+dataout.errorstat4(cntens,1:8)=vl4(4,:);                                      %Error status check (for explanation see manual)
 fseek(fid,2,0);                                                                 %Reserved for RDI
 vl5=fread(fid,2,'*uint32');
 dataout.pressure(cntens)=vl5(1);                                                %Pressure in decapascal (0-4'294'967'295)
