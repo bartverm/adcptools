@@ -167,6 +167,7 @@ P.addParamValue('RemoveOutliers',0,@(x) isscalar(x) && isnumeric(x) && x>=0);
 P.addParamValue('Proximity',0,@(x) isscalar(x) && isnumeric(x) && x>=0);
 P.addParamValue('StdFiltering',6,@(x) isscalar(x) && isnumeric(x) && x>=0);
 P.addParamValue('ShipReference','bt',@(x) ischar(x) && any(strcmpi(x,{'bt','gps','gpsbt','btgps'})));
+P.addParamValue('Pusr',[], @(x) isnumeric(x));
 P.parse(varargin{:});
 
 assert(isADCPstruct(adcp));
@@ -186,6 +187,7 @@ time=datenum(adcp.timeV)'; % Get time
 eta=eta(:)';    % Vectorize eta
 eta=eta.*ones(1,size(numel(time),1)); % Ensure eta has same number of elements as the number of ensembles
 shref=P.Results.ShipReference;
+Pusr=P.Results.Pusr;
 
 %% Get ADCP positioning data
 [x,y]=utmADCP(adcp); % Get adcp position
@@ -310,8 +312,15 @@ for ct=1:size(tid,1) % For all sections
     
     % Compute relevant vectors
     P=[x(fcur)';y(fcur)']; % ADCP position vectors
+    if (~isempty(Pusr))
+	% todo, multiple transects
+	Pm = mean(Pusr(:,:,ct),2);
+	T(:,ct) = diff(Pusr(:,:,ct),[],2);
+	T(:,ct) = T(:,ct)/norm(T(:,ct));
+    else
     Pm(:,ct)=nanmean(P,2); % Average ADCP position vector
     T(:,ct)=princdir(P); % Section tangential vector, determined as largest eigenvector of P
+    end
     N(:,ct)=[T(2,ct); -T(1,ct)]; % Section orthogonal vector (orthogonal to T)
     
     % Project positions (inner product with unit vectors)
@@ -370,18 +379,34 @@ for ct=1:size(tid,1) % For all sections
     f_incse=mSige<1 & mSige>sigmin; % Create mask for velocity locations in the cross-section (conventional processing)
     
     %% create n index (maps velocity to correct n vertical)
+    if (~isempty(Pusr))
+        nmin = min(T(:,ct)'*(Pusr(:,:,ct) - Pm(:,ct)*[1 1]));
+    else
     nmin=nanmin(mn(f_incs)); % determine minimum n
+    end
     Pn(:,ct)=Pm(:,ct)+T(:,ct)*nmin; % compute vector pointing to minimum n location (projected on section)
     mn=mn-nmin; % remove minimum n from velocity n coordinates (now they range between 0 and maximum n)
     dn=dn-nmin; % remove minimum n from depth n coordinates (now they range between 0 and maximum n)
     mne=mne-nmin; % remove minimum n from velocity n coordinates (now they range between 0 and maximum n) (conventional processing)
 %     dne=dne-nmin; % remove minimum n from depth n coordinates (now they range between 0 and maximum n) (conventional processing)
+    if (~isempty(Pusr))
+        nmax = max(T(:,ct)'*(Pusr(:,:,ct) - Pn(:,ct)*[1 1]));
+    else
     nmax=nanmax(mn(f_incs)); % compute maximum n
+    end
     ncells=ceil(nmax./veldn); % determine number of vertical in section
 
     % Compute n indices
     nIdx=floor(mn./veldn)+1; % Compute N index, mapping velocity data to correct vertical
     nIdxe=floor(mne./veldn)+1; % Compute N index, mapping velocity data to correct vertical (conventional processing)
+
+    % select points within transect range
+    inrange = nIdx >0 & nIdx <= ncells;
+    inrange_e = nIdxe >0 & nIdxe <= ncells;
+    fdx = find(nIdx < 1 & nIdx > ncells);
+    nIdx(fdx) = NaN;
+    fdx = find(nIdxe < 1 & nIdxe > ncells);
+    nIdxe(fdx) = NaN;
 
     %% Meshing
     % Initialize variables
@@ -501,20 +526,20 @@ for ct=1:size(tid,1) % For all sections
      msh(ct).p.Z=bsxfun(@plus,bsxfun(@times,1-msh(ct).p.Sig,bsxfun(@minus,ZBED,eta_cnt)),eta_cnt); % Compute time varying Z coordinate of patch vertices
 
     %% Match vertical cells for velocity data
-    fnd=f_incs & fleft; % Select all data in current section, whithin the section and on the left side of cells
+    fnd=f_incs & fleft & inrange; % Select all data in current section, whithin the section and on the left side of cells
     dSig(fnd)=dsig_left(nIdx(fnd))+(dsig_cnt(nIdx(fnd))-dsig_left(nIdx(fnd)))/veldn*2.*(mn(fnd)-nbnds(nIdx(fnd))'); % Determine local vertical cell size (in sigma coordinates) for velocity estimates
-    fnd=f_incs & fright; % Select all data in current section, whithin the section and on the right side 
+    fnd=f_incs & fright & inrange; % Select all data in current section, whithin the section and on the right side 
     dSig(fnd)=dsig_cnt(nIdx(fnd))+(dsig_right(nIdx(fnd))-dsig_cnt(nIdx(fnd)))/veldn*2.*(mn(fnd)-ncntr(nIdx(fnd))');% Determine local vertical cell size (in sigma coordinates) for velocity estimates 
 
-    fnde=f_incse & flefte;  % Select all data in current section, whithin the section and on the left side of cells (conventional processing)
+    fnde=f_incse & flefte & inrange_e;  % Select all data in current section, whithin the section and on the left side of cells (conventional processing)
     dSige(fnde)=dsig_left(nIdxe(fnde))+(dsig_cnt(nIdxe(fnde))-dsig_left(nIdxe(fnde)))/veldn*2.*(mne(fnde)-nbnds(nIdxe(fnde))');  % Determine local vertical cell size (in sigma coordinates) for velocity estimates (conventional processing)
-    fnde=f_incse & frighte; % Select all data in current section, whithin the section and on the right side of cells (conventional processing)
+    fnde=f_incse & frighte & inrange_e; % Select all data in current section, whithin the section and on the right side of cells (conventional processing)
     dSige(fnde)=dsig_cnt(nIdxe(fnde))+(dsig_right(nIdxe(fnde))-dsig_cnt(nIdxe(fnde)))/veldn*2.*(mne(fnde)-ncntr(nIdxe(fnde))'); % Determine local vertical cell size (in sigma coordinates) for velocity estimates (conventional processing)
 
-    fnd=f_incs; % find velocity data belonging to current section, within the section
+    fnd=f_incs & inrange; % find velocity data belonging to current section, within the section
     sigIdx(fnd)=floor((mSig(fnd)-sigmin)./dSig(fnd))+1; % Calculate Index mapping to the right vertical cell
     
-    fnde=f_incse; % find velocity data belonging to current section, within the section
+    fnde=f_incse & inrange_e; % find velocity data belonging to current section, within the section
     sigIdxe(fnde)=floor((mSige(fnde)-sigmin)./dSige(fnde))+1; % Calculate Index mapping to the right vertical cell
 
     %% Velocity processing

@@ -611,9 +611,12 @@ if any(dataID~=[128;0])
     error('readADCP:readVL:wrongID','Variable Leader ID seems to be wrong')
 end
 dataout.ensnum(cntens)=fread(fid,1,'uint16=>uint32');                                  %Ensemble number without rollover correction
-fseek(fid,7,0);                                                            %Skipping RTC data, will be read later in Y2K compilant format
+% read first real time clock field without century information
+vl7 = fread(fid,7,'uint8');
+dataout.timeV1C(cntens,:)=[vl7(1) vl7(2) vl7(3) vl7(4) vl7(5) ...      
+							    vl7(6)+vl7(7)/100];
 dataout.ensnum(cntens)=fread(fid,1,'uint8=>uint32')*65535+dataout.ensnum(cntens);    %Ensemble number incuding rollover information
-dataout.BITcheck(cntens,1:8)=num2str(fread(fid,8,'ubit1'))';                    %Result of Built in test (see manual for explanation)
+dataout.BITcheck(cntens,1:8)=dec2bin(fread(fid,1,'ubit8'),8);                    %Result of Built in test (see manual for explanation)
 fseek(fid,1,0);                                                            %Byte for BIT check which is reserved for future use
 vl1=fread(fid,3,'*uint16');
 dataout.speedsound(cntens)=vl1(1);                                              %Speed of sound in m/s (1400-1600)

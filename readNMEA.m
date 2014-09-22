@@ -55,6 +55,7 @@ if ischar(infiles)
     infiles=cellstr(infiles);
 end
 
+% check if input files exist
 for cf=length(infiles)
     assert(exist(infiles{cf},'file')==2,['Couldn''t find file: ', infiles{cf}]);
 end
@@ -67,8 +68,11 @@ NMEA(1:nfiles)=struct();  %initialize an arrray of structures
 defineNMEA;
 
 for cntfile=1:nfiles
-    disp('Reading data...')
+    disp(['Reading data from file ' infiles{cntfile}]);
     fid=fopen(infiles{cntfile},'r');   %Open file
+    if (fid < 0)
+	error('readNMEA','unable to open file for reading');
+    else
     fseek(fid,0,1);                    %Go to the end
     filesize=ftell(fid);               %Get filesize
     fseek(fid,0,-1);                   %Go to the beginning
@@ -81,6 +85,9 @@ for cntfile=1:nfiles
     [rawdat tok]=regexp(rawdat,patterns.nmea,'match','tokens');
     tok=vertcat(tok{:});
 
+    if (size(tok,2) < 2)
+        disp('Empty file or invalid NMEA data, skipping it');
+    else
 %     %Search for non RDENS data
 %     csumidx=find(~ (strcmpi('RD',tok(:,1)) & strcmpi('ENS',tok(:,2))));
 %     
@@ -95,7 +102,7 @@ for cntfile=1:nfiles
 %         tok(csumidx(~isvalnmea),:)=[];
 %     end
     
-    %Serach for RDENS data
+    %Search for RDENS data
     rdensidx=strcmpi('RD',tok(:,1)) & strcmpi('ENS',tok(:,2));
     if any(rdensidx), disp('RDENS proprietary data found, reading...' )
         [NMEA(cntfile).RDENS,discard]=readRDENS(rawdat(rdensidx));
@@ -237,6 +244,7 @@ for cntfile=1:nfiles
     end
     clear hdtidx
     
+        % search for VTG data 
     vtgidx=strcmpi('VTG',tok(:,2));
     if any(vtgidx), disp('VTG data found, reading...' )
         [NMEA(cntfile).VTG,discard]=readVTG(rawdat(vtgidx));
@@ -255,4 +263,7 @@ for cntfile=1:nfiles
 % %     hdgpos=regexpi(rawdat,'\$..HDG');
 % %     hdmpos=regexpi(rawdat,'\$..HDM');
 % %     rotpos=regexpi(rawdat,'\$..ROT');
-end
+    end % else of if size(tok,2) < 2
+    end % else of if (fid < 0) 
+end % for cntfile
+
