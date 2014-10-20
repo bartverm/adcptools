@@ -4,7 +4,7 @@
 \usepackage{hyperref}
 \author{Bart Vermeulen}
 \title{ADCPtools}
-
+\newcommand{\funcdef}[1]{\vspace{1pc}\noindent\framebox[\linewidth]{#1}\vspace{1pc}}
 
 \begin{document}
 	\maketitle
@@ -16,7 +16,13 @@
 	\chapter{Low level processing}
 
 	\chapter{Transect data processing}
-	Repeat transect can be processed with the function \verb#procTrans.m#. This functions accepts two inputs:
+
+
+	Repeat transect can be processed with the function \verb#procTrans.m#. 
+
+	\funcdef{msh=procTrans(adcp.tid)}
+	
+	This functions accepts two inputs:
 	\begin{itemize}
 		\item An ADCP structure \verb#adcp# read with \verb#readDeployment.m#.
 		\item A transect ID matrix \verb#tid#. 
