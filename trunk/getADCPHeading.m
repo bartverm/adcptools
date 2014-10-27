@@ -47,6 +47,8 @@ while isempty(gf2)
 end
 if ~isempty(gf1)
     heading=inadcp.(gf1).(gf2).heading;
+elseif isfield(inadcp,'VISEA_Extern') && isfield(inadcp.VISEA_Extern,'Heading')
+    heading=inadcp.VISEA_Extern.Heading;
 else
     cntsf=0;
     while isempty (gf1)
