@@ -173,6 +173,7 @@ P.addParamValue('ModelU_t',1,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) ||
 P.addParamValue('ModelV_t',1,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (ismatrix(x) && size(x,2)==nens))); % Velocity model for v
 P.addParamValue('ModelW_t',1,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (ismatrix(x) && size(x,2)==nens))); % Velocity model for w
 P.addParamValue('RotatePars',true,@(x) isscalar(x) && islogical(x));
+P.addParamValue('EnableDebugging',false,@(x) isscalar(x) && islogical(x));
 
 P.parse(varargin{:}); % parse the input
 
@@ -206,6 +207,7 @@ npars=npars_u+npars_v+npars_w;
 IsCumulative=P.Results.CumulateCrossings;
 IsConventional=P.Results.ConventionalProcessing;
 rotate=P.Results.RotatePars;
+fdebug=P.Results.EnableDebugging;
 
 %% Get ADCP positioning data
 [xadcp,yadcp]=utmADCP(adcp); % Get adcp position
@@ -243,6 +245,13 @@ if IsConventional
 else
     gpsvel=getGPSvel(adcp,'b'); 
     [vel, btvel]=corADCP(adcp,'b','UseExtHeading',true,'Beam3Misalign',misal); % transform to beam velocity
+    if fdebug
+        adcp2=adcp;
+        [adcp2.VEL,adcp2.btvel]=corADCP(adcp2,'e','UseExtHeading',true,'Beam3Misalign',misal); % transform to earth velocity;
+        [bvel,bbtvel]=corADCP(adcp2,'b','UseExtHeading',true,'Beam3Misalign',misal,'ForceOrigin','e'); % transform to earth velocity;
+        imagesc(adcp.VEL(:,:,1)-bvel(:,:,1))
+        colorbar
+    end
 end
 
 fbad_bt=any(isnan(btvel),2);
@@ -648,10 +657,10 @@ for ct=1:size(tid,1) % For all sections
         vel_minz=nan(size(czvel));
         fnd=fleft & inrange;
         frw=sum(msh(ct).p.fgood,1);
-        idx_cell=sub2ind(size(msh(ct).Z),frw(colIdx(fnd)),colIdx(fnd)');
+        idx_cell=sub2ind(size(msh(ct).Z),max(1,frw(colIdx(fnd))),colIdx(fnd)'); % max is quick and dirty solution?
         vel_minz(fnd)=ZLmin(idx_cell)+(ZMmin(idx_cell)-ZLmin(idx_cell))./(n_cntr(colIdx(fnd))-n_left(colIdx(fnd))).*(nvel(fnd)-n_left(colIdx(fnd))')';
         fnd=fright & inrange;
-        idx_cell=sub2ind(size(msh(ct).Z),frw(colIdx(fnd)),colIdx(fnd)');
+        idx_cell=sub2ind(size(msh(ct).Z),max(1,frw(colIdx(fnd))),colIdx(fnd)');
         vel_minz(fnd)=ZMmin(idx_cell)+(ZRmin(idx_cell)-ZMmin(idx_cell))./(n_right(colIdx(fnd))-n_cntr(colIdx(fnd))).*(nvel(fnd)-n_cntr(colIdx(fnd))')';
         f_incs=czvel<=maxz & czvel >= vel_minz & sigVel > sigmin;
         dZ=nan(size(nvel)); % Step in sigma
@@ -671,9 +680,9 @@ for ct=1:size(tid,1) % For all sections
     
     %% Velocity processing
     cMod=cat(4,vel(:,fcur,:),...                       % beam velocity (in conventional processing this is velocity in earth coordinates)
-               bsxfun(@times,TM1(:,fcur,:),mod_ut(fcur)),... % model for u
-               bsxfun(@times,TM2(:,fcur,:),mod_vt(fcur)),...;% model for v
-               bsxfun(@times,TM3(:,fcur,:),mod_wt(fcur)) );   % model for w
+               bsxfun(@times,TM1(:,fcur,:),mod_ut(:,fcur,:,:)),... % model for u
+               bsxfun(@times,TM2(:,fcur,:),mod_vt(:,fcur,:,:)),...;% model for v
+               bsxfun(@times,TM3(:,fcur,:),mod_wt(:,fcur,:,:)) );   % model for w
     siz=[size(msh(ct).Z,1) size(msh(ct).Z,2)];
     datacol=cell([siz nanmax(tid(ct,:))]); % Initialize variable to collect velocity and tr. matrix data
 
@@ -708,7 +717,7 @@ for ct=1:size(tid,1) % For all sections
         medS=nanmedian(S,2);
         fbad=any(bsxfun(@gt, S, medS*nstd^2),4);
         msh(ct).S(msh(ct).p.progfgood_tens((repmat(fbad(:),npars^2,1))))=nan;
-        msh(ct).vel(msh(ct).p.progfgood_vec((repmat(fbad(:),npars,1))))=nan;
+        msh(ct).pars(msh(ct).p.progfgood_vec((repmat(fbad(:),npars,1))))=nan;
         msh(ct).Nvel(msh(ct).p.progfgood(fbad(:)))=nan;
     end
     
@@ -716,66 +725,64 @@ for ct=1:size(tid,1) % For all sections
     if rotate
         if ~isequal(mod_ut,mod_vt)
             warning('procTrans:NotEqualUVMods','To perform a rotation the model for u and v should be identical, skipping rotations!')
-            
         else
-        
-        % search for average velocity (i.e. model ==1) instead of assuming
-        % it is in front!
-        u_par=find(all(mod_ut(:,fcur)==1,2));
-        v_par=find(all(mod_vt(:,fcur)==1,2));
-        
-        if numel(u_par)~=1 || isempty(v_par)~=1
-            warning('procTrans2:NoMeanInModel','Could not find mean velocity in u and v models, skipping rotations based on horizontal velocity')
-        else
-            % Rotation to cross-section averaged flow direction
-            msh(ct).cs.dir=atan2(nanmean(nanmean(msh(ct).pars(:,:,:,npars_u+v_par),1),2),nanmean(nanmean(msh(ct).pars(:,:,:,u_par),1),2)); % Transect averaged flow direction
-            cs=cos(msh(ct).cs.dir);
-            ss=sin(msh(ct).cs.dir);
-            csrot=zeros(1,1,nrepeat,npars,npars);
-            npars_uv=npars_u;
-            idxrw=repmat([1:npars, 1:npars_uv, npars_uv+1:2*npars_uv],1,nrepeat);
-            idxcol=repmat([1:npars, npars_uv+1:2*npars_uv, 1:npars_uv],1,nrepeat);
-            idxrep=reshape(bsxfun(@times,ones(npars+2*npars_uv,1),1:nrepeat),1,[]);
+            npars_uv=npars_u;        
+            % search for average velocity (i.e. model ==1) instead of assuming
+            % it is in front!
+            u_par=find(all(mod_ut(:,fcur,:,:)==1,2));
+            v_par=find(all(mod_vt(:,fcur,:,:)==1,2));
+
+            if numel(u_par)~=1 || numel(v_par)~=1
+                warning('procTrans2:NoMeanInModel','Could not find mean velocity in u and v models, skipping rotations based on horizontal velocity')
+            else
+                % Rotation to cross-section averaged flow direction
+                msh(ct).cs.dir=atan2(nanmean(nanmean(msh(ct).pars(:,:,:,npars_u+v_par),1),2),nanmean(nanmean(msh(ct).pars(:,:,:,u_par),1),2)); % Transect averaged flow direction
+                cs=cos(msh(ct).cs.dir);
+                ss=sin(msh(ct).cs.dir);
+                csrot=zeros(1,1,nrepeat,npars,npars);
+                idxrw=repmat([1:npars, 1:npars_uv, npars_uv+1:2*npars_uv],1,nrepeat);
+                idxcol=repmat([1:npars, npars_uv+1:2*npars_uv, 1:npars_uv],1,nrepeat);
+                idxrep=reshape(bsxfun(@times,ones(npars+2*npars_uv,1),1:nrepeat),1,[]);
+                idxz=ones(size(idxrep));
+                idxn=ones(size(idxrep));
+                val=reshape(squeeze([repmat(cs,1,npars_uv*2) ones(1,npars_w,nrepeat) repmat(ss,1,npars_uv) repmat(-ss,1,npars_uv)]),1,[]);
+                csrot(sub2ind(size(csrot),idxz,idxn,idxrep,idxrw,idxcol))=val;        
+                st1=matmult(msh(ct).S,permute(csrot,[1 2 3 5 4]),[4 5]);   % Tensor rotation SR' (step 1)
+                msh(ct).cs.S=matmult(csrot,st1,[4 5]); % Tensor rotation R(SR') (step 2)
+                msh(ct).cs.pars=matmult(csrot,msh(ct).pars,[4 5]); % Vector rotation Rv
+
+            %     % Vertically averaged flow direction
+                msh(ct).da.dir=atan2(nanmean(msh(ct).pars(:,:,:,npars_u+v_par),1),nanmean(msh(ct).pars(:,:,:,u_par),1)); % depth averaged flow direction
+                darot=zeros(1,siz(2),nrepeat,npars,npars);
+                cs=cos(msh(ct).da.dir);
+                ss=sin(msh(ct).da.dir);
+                idxrw=repmat([1:npars, 1:npars_uv, npars_uv+1:2*npars_uv],1,nrepeat*siz(2));
+                idxcol=repmat([1:npars, npars_uv+1:2*npars_uv, 1:npars_uv],1,nrepeat*siz(2));
+                idxn=repmat(reshape(bsxfun(@times,ones((npars+2*npars_uv),1),1:siz(2)),1,[]),1,nrepeat);
+                idxrep=reshape(bsxfun(@times,ones((npars+2*npars_uv)*siz(2),1),1:nrepeat),1,[]);
+                idxz=ones(size(idxrep));     
+                val=reshape(squeeze([repmat(cs,npars_uv*2,1,1); ones(npars_w,siz(2),nrepeat); repmat(ss,npars_uv,1,1); repmat(-ss,npars_uv,1,1)]),1,[]);
+                darot(sub2ind(size(darot),idxz,idxn,idxrep,idxrw,idxcol))=val;
+                st1=matmult(msh(ct).S,permute(darot,[1 2 3 5 4]),[4 5]);% Tensor rotation SR' (step 1)
+                msh(ct).da.S=matmult(darot,st1,[4 5]);% Tensor rotation R(SR') (step 2)
+                msh(ct).da.pars=matmult(darot,msh(ct).pars,[4 5]);% Vector rotation Rv
+            end % if numel(u_par)~=1 || numel(v_par)~=1
+        %     % Cross-section direction
+            msh(ct).sec.dir=atan2(N(2),N(1));
+            secrot=zeros(1,1,1,npars,npars);
+            cs=cos(msh(ct).sec.dir);
+            ss=sin(msh(ct).sec.dir);
+            idxrw=[1:npars, 1:npars_uv, npars_uv+1:2*npars_uv];
+            idxcol=[1:npars, npars_uv+1:2*npars_uv, 1:npars_uv];
+            idxrep=ones(size(idxrw));
             idxz=ones(size(idxrep));
             idxn=ones(size(idxrep));
-            val=reshape(squeeze([repmat(cs,1,npars_uv*2) ones(1,npars_w,nrepeat) repmat(ss,1,npars_uv) repmat(-ss,1,npars_uv)]),1,[]);
-            csrot(sub2ind(size(csrot),idxz,idxn,idxrep,idxrw,idxcol))=val;        
-            st1=matmult(msh(ct).S,permute(csrot,[1 2 3 5 4]),[4 5]);   % Tensor rotation SR' (step 1)
-            msh(ct).cs.S=matmult(csrot,st1,[4 5]); % Tensor rotation R(SR') (step 2)
-            msh(ct).cs.pars=matmult(csrot,msh(ct).pars,[4 5]); % Vector rotation Rv
-
-        %     % Vertically averaged flow direction
-            msh(ct).da.dir=atan2(nanmean(msh(ct).pars(:,:,:,npars_u+v_par),1),nanmean(msh(ct).pars(:,:,:,u_par),1)); % depth averaged flow direction
-            darot=zeros(1,siz(2),nrepeat,npars,npars);
-            cs=cos(msh(ct).da.dir);
-            ss=sin(msh(ct).da.dir);
-            idxrw=repmat([1:npars, 1:npars_uv, npars_uv+1:2*npars_uv],1,nrepeat*siz(2));
-            idxcol=repmat([1:npars, npars_uv+1:2*npars_uv, 1:npars_uv],1,nrepeat*siz(2));
-            idxn=repmat(reshape(bsxfun(@times,ones((npars+2*npars_uv),1),1:siz(2)),1,[]),1,nrepeat);
-            idxrep=reshape(bsxfun(@times,ones((npars+2*npars_uv)*siz(2),1),1:nrepeat),1,[]);
-            idxz=ones(size(idxrep));     
-            val=reshape(squeeze([repmat(cs,npars_uv*2,1,1); ones(npars_w,siz(2),nrepeat); repmat(ss,npars_uv,1,1); repmat(-ss,npars_uv,1,1)]),1,[]);
-            darot(sub2ind(size(darot),idxz,idxn,idxrep,idxrw,idxcol))=val;
-            st1=matmult(msh(ct).S,permute(darot,[1 2 3 5 4]),[4 5]);% Tensor rotation SR' (step 1)
-            msh(ct).da.S=matmult(darot,st1,[4 5]);% Tensor rotation R(SR') (step 2)
-            msh(ct).da.pars=matmult(darot,msh(ct).pars,[4 5]);% Vector rotation Rv
-        end
-    %     % Cross-section direction
-        msh(ct).sec.dir=atan2(N(2),N(1));
-        secrot=zeros(1,1,1,npars,npars);
-        cs=cos(msh(ct).sec.dir);
-        ss=sin(msh(ct).sec.dir);
-        idxrw=[1:npars, 1:npars_uv, npars_uv+1:2*npars_uv];
-        idxcol=[1:npars, npars_uv+1:2*npars_uv, 1:npars_uv];
-        idxrep=ones(size(idxrw));
-        idxz=ones(size(idxrep));
-        idxn=ones(size(idxrep));
-        val=[repmat(cs,1,npars_uv*2) ones(1,npars_w) repmat(ss,1,npars_uv) repmat(-ss,1,npars_uv)];
-        secrot(sub2ind(size(secrot),idxz,idxn,idxrep,idxrw,idxcol))=val;
-        st1=matmult(msh(ct).S,permute(secrot,[1 2 3 5 4]),[4 5]);   % Tensor rotation SR' (step 1)
-        msh(ct).sec.S=matmult(secrot,st1,[4 5]);% Tensor rotation R(SR') (step 2)
-        msh(ct).sec.pars=matmult(secrot,msh(ct).pars,[4 5]);% Vector rotation Rv
-        end % if isequal(npars_u,npars_v)
+            val=[repmat(cs,1,npars_uv*2) ones(1,npars_w) repmat(ss,1,npars_uv) repmat(-ss,1,npars_uv)];
+            secrot(sub2ind(size(secrot),idxz,idxn,idxrep,idxrw,idxcol))=val;
+            st1=matmult(msh(ct).S,permute(secrot,[1 2 3 5 4]),[4 5]);   % Tensor rotation SR' (step 1)
+            msh(ct).sec.S=matmult(secrot,st1,[4 5]);% Tensor rotation R(SR') (step 2)
+            msh(ct).sec.pars=matmult(secrot,msh(ct).pars,[4 5]);% Vector rotation Rv
+        end % if isequal(mod_ut,mod_vt)
     end % if rotate
 end
 
