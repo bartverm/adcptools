@@ -172,6 +172,10 @@ P.addParamValue('Pusr',[], @(x) isnumeric(x)); % User set the central position o
 P.addParamValue('ModelU_t',1,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (ismatrix(x) && size(x,2)==nens))); % Velocity model for u
 P.addParamValue('ModelV_t',1,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (ismatrix(x) && size(x,2)==nens))); % Velocity model for v
 P.addParamValue('ModelW_t',1,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (ismatrix(x) && size(x,2)==nens))); % Velocity model for w
+P.addParamValue('KnownU_t',0,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (isrow(x) && size(x,2)==nens))); % Known parameters for u
+P.addParamValue('KnownV_t',0,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (isrow(x) && size(x,2)==nens))); % Known parameters for v
+P.addParamValue('KnownW_t',0,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (isrow(x) && size(x,2)==nens))); % Known parameters for w
+
 P.addParamValue('RotatePars',true,@(x) isscalar(x) && islogical(x));
 P.addParamValue('EnableDebugging',false,@(x) isscalar(x) && islogical(x));
 
@@ -200,6 +204,13 @@ mod_vt=P.Results.ModelV_t;
 mod_vt=permute(shiftdim(bsxfun(@times,mod_vt,ones(1,nens)),-2),[1 4 2 3]); % ensure size(mod_ut) is [1 nens 1 npars]
 mod_wt=P.Results.ModelW_t;
 mod_wt=permute(shiftdim(bsxfun(@times,mod_wt,ones(1,nens)),-2),[1 4 2 3]); % ensure size(mod_ut) is [1 nens 1 npars]
+knw_ut=P.Results.KnownU_t;
+knw_ut=permute(shiftdim(bsxfun(@times,knw_ut,ones(1,nens)),-2),[1 4 2 3]); % ensure size(knw_ut) is [1 nens 1 npars]
+knw_vt=P.Results.KnownV_t;
+knw_vt=permute(shiftdim(bsxfun(@times,knw_vt,ones(1,nens)),-2),[1 4 2 3]); % ensure size(knw_ut) is [1 nens 1 npars]
+knw_wt=P.Results.KnownW_t;
+knw_wt=permute(shiftdim(bsxfun(@times,knw_wt,ones(1,nens)),-2),[1 4 2 3]); % ensure size(knw_ut) is [1 nens 1 npars]
+
 npars_u=size(mod_ut,4);
 npars_v=size(mod_vt,4);
 npars_w=size(mod_wt,4);
@@ -428,9 +439,10 @@ for ct=1:size(tid,1) % For all sections
     % Compute maximum z verticals
     maxEta=max(msh(ct).maxeta); % Get maximum crossing avareged eta   
     if constant_sigma_mesh
-        maxsig=nanmax(sigVel(f_incs)); % maximum Sigma measured in all data belonging to current section
-        max_zb=nanmax(zb_tmp);
-        maxz=max_zb+maxsig*(maxEta-max_zb); % Transform maximum sigma to maximum mesh elevation at section location
+%         maxsig=nanmax(sigVel(f_incs)); % maximum Sigma measured in all data belonging to current section
+%         max_zb=nanmax(zb_tmp);
+%         maxz=max_zb+maxsig*(maxEta-max_zb); % Transform maximum sigma to maximum mesh elevation at section location
+        maxz=nanmax(czvel(:));
     else
         maxz=nanmax(czvel(:));
         if ~constant_sigma_mesh && maxz_mineta
@@ -516,9 +528,9 @@ for ct=1:size(tid,1) % For all sections
     dzed_right=(maxz-minz_right)./nz_cnt; % compute dz at right cell boundary
     
     % generate N coordinates of the mesh
-    NL=repmat(n_left,nanmax(nz_cnt),1); % n of left vertices (same for upper and lower)
-    NM=repmat(n_cntr,nanmax(nz_cnt),1); % n of central vertices (same for upper and lower)
-    NR=repmat(n_right,nanmax(nz_cnt),1); % n of right vertices (same for upper and lower)
+    NL=repmat(n_left,[nanmax(nz_cnt),1]); % n of left vertices (same for upper and lower)
+    NM=repmat(n_cntr,[nanmax(nz_cnt),1]); % n of central vertices (same for upper and lower)
+    NR=repmat(n_right,[nanmax(nz_cnt),1]); % n of right vertices (same for upper and lower)
 
     % make fgood
     nz_cnt(isnan(nz_cnt))=0; % use number of cells in vertical to generate fgood
@@ -541,7 +553,7 @@ for ct=1:size(tid,1) % For all sections
     
 
     % generate N, X and Y coordinates for centres and patch vertices
-    msh(ct).N=repmat(n_cntr,nanmax(nz_cnt),1); % Create N position matrix for cell centres
+    msh(ct).N=repmat(n_cntr,[nanmax(nz_cnt),1]); % Create N position matrix for cell centres
     msh(ct).X=Pn(1,ct)+T(1,ct)*msh(ct).N; % Create X position matrix for cell centres
     msh(ct).Y=Pn(2,ct)+T(2,ct)*msh(ct).N; % Create Y position matrix for cell centres
     msh(ct).p.N=[NL(msh(ct).p.fgood)';... % Store patch edges N coordinate
@@ -574,13 +586,13 @@ for ct=1:size(tid,1) % For all sections
         dsig_right=dzed_right./d_nright; % comput dsigma at right cell boundary
 
          % Determine Sigma coordinates of mesh
-        Scnt=cumsum([sigmin+dsig_cnt'/2; repmat(dsig_cnt',nanmax(nz_cnt)-1,1)]); % generate sigma positions of cell centres
-        SLmin=cumsum([sigmin'+dsig_left'*0; repmat(dsig_left',nanmax(nz_cnt)-1,1)]); % lower left
-        SLmax=cumsum([sigmin'+dsig_left'; repmat(dsig_left',nanmax(nz_cnt)-1,1)]); % upper left
-        SMmin=cumsum([sigmin'+dsig_cnt'*0; repmat(dsig_cnt',nanmax(nz_cnt)-1,1)]); % lower central
-        SMmax=cumsum([sigmin'+dsig_cnt'; repmat(dsig_cnt',nanmax(nz_cnt)-1,1)]); % upper central
-        SRmin=cumsum([sigmin'+dsig_right'*0; repmat(dsig_right',nanmax(nz_cnt)-1,1)]); % lower right
-        SRmax=cumsum([sigmin'+dsig_right'; repmat(dsig_right',nanmax(nz_cnt)-1,1)]); % upper right
+        Scnt=cumsum([sigmin+dsig_cnt'/2; repmat(dsig_cnt',[nanmax(nz_cnt)-1,1])]); % generate sigma positions of cell centres
+        SLmin=cumsum([sigmin'+dsig_left'*0; repmat(dsig_left',[nanmax(nz_cnt)-1,1])]); % lower left
+        SLmax=cumsum([sigmin'+dsig_left'; repmat(dsig_left',[nanmax(nz_cnt)-1,1])]); % upper left
+        SMmin=cumsum([sigmin'+dsig_cnt'*0; repmat(dsig_cnt',[nanmax(nz_cnt)-1,1])]); % lower central
+        SMmax=cumsum([sigmin'+dsig_cnt'; repmat(dsig_cnt',[nanmax(nz_cnt)-1,1])]); % upper central
+        SRmin=cumsum([sigmin'+dsig_right'*0; repmat(dsig_right',[nanmax(nz_cnt)-1,1])]); % lower right
+        SRmax=cumsum([sigmin'+dsig_right'; repmat(dsig_right',[nanmax(nz_cnt)-1,1])]); % upper right
     
         % reorder matrix (small sigma at the bottom)
         fgood=find(msh(ct).p.fgood);
@@ -603,10 +615,10 @@ for ct=1:size(tid,1) % For all sections
                               SRmax(msh(ct).p.fgood)';...
                               SMmax(msh(ct).p.fgood)';...
                               SLmax(msh(ct).p.fgood)';...
-                              SLmin(msh(ct).p.fgood)'],1,1,nanmax(tid(ct,:))); % Generate matrix with z positions as is needed for patch (each column is one cell, each row a vertex)
+                              SLmin(msh(ct).p.fgood)'],[1,1,nanmax(tid(ct,:))]); % Generate matrix with z positions as is needed for patch (each column is one cell, each row a vertex)
         msh(ct).Sig=Scnt;
         msh(ct).Sig(~msh(ct).p.fgood)=nan;
-        msh(ct).Sig=repmat(msh(ct).Sig,1,1,nanmax(tid(ct,:)));
+        msh(ct).Sig=repmat(msh(ct).Sig,[1,1,nanmax(tid(ct,:))]);
         
         % compute mesh in Z
         msh(ct).Z=bsxfun(@plus,bsxfun(@times,msh(ct).Sig,bsxfun(@minus,reshape(msh(ct).eta,1,1,[]),zb_ncntr')),zb_ncntr'); % z= zb+sig(eta-zb)
@@ -629,13 +641,13 @@ for ct=1:size(tid,1) % For all sections
         rowIdx(fnd)=maxrow(colIdx(fnd))-rowIdx(fnd)'+1; % Reverse indices to have data measured on top in the top of the matrix
     else
         % Determine z-coordinates of mesh
-        Zcnt=cumsum([maxz-dzed_cnt'/2; repmat(-dzed_cnt',nanmax(nz_cnt)-1,1)],1);
-        ZLmax=cumsum([maxz-dzed_left'*0; repmat(-dzed_left',nanmax(nz_cnt)-1,1)],1);
-        ZLmin=cumsum([maxz-dzed_left'; repmat(-dzed_left',nanmax(nz_cnt)-1,1)],1);
-        ZMmax=cumsum([maxz-dzed_cnt'*0; repmat(-dzed_cnt',nanmax(nz_cnt)-1,1)],1);
-        ZMmin=cumsum([maxz-dzed_cnt'; repmat(-dzed_cnt',nanmax(nz_cnt)-1,1)],1);
-        ZRmax=cumsum([maxz-dzed_right'*0; repmat(-dzed_right',nanmax(nz_cnt)-1,1)],1);
-        ZRmin=cumsum([maxz-dzed_right'; repmat(-dzed_right',nanmax(nz_cnt)-1,1)],1);
+        Zcnt=cumsum([maxz-dzed_cnt'/2; repmat(-dzed_cnt',[nanmax(nz_cnt)-1,1])],1);
+        ZLmax=cumsum([maxz-dzed_left'*0; repmat(-dzed_left',[nanmax(nz_cnt)-1,1])],1);
+        ZLmin=cumsum([maxz-dzed_left'; repmat(-dzed_left',[nanmax(nz_cnt)-1,1])],1);
+        ZMmax=cumsum([maxz-dzed_cnt'*0; repmat(-dzed_cnt',[nanmax(nz_cnt)-1,1])],1);
+        ZMmin=cumsum([maxz-dzed_cnt'; repmat(-dzed_cnt',[nanmax(nz_cnt)-1,1])],1);
+        ZRmax=cumsum([maxz-dzed_right'*0; repmat(-dzed_right',[nanmax(nz_cnt)-1,1])],1);
+        ZRmin=cumsum([maxz-dzed_right'; repmat(-dzed_right',[nanmax(nz_cnt)-1,1])],1);
         
         % make mesh in Z
         msh(ct).p.Z=repmat([ZLmin(msh(ct).p.fgood)';... % Store patch edges Z coordinates
@@ -644,10 +656,10 @@ for ct=1:size(tid,1) % For all sections
                             ZRmax(msh(ct).p.fgood)';...
                             ZMmax(msh(ct).p.fgood)';...
                             ZLmax(msh(ct).p.fgood)';...
-                            ZLmin(msh(ct).p.fgood)'],1,1,nanmax(tid(ct,:))); % Generate matrix with z positions as is needed for patch (each column is one cell, each row a vertex)
+                            ZLmin(msh(ct).p.fgood)'],[1,1,nanmax(tid(ct,:))]); % Generate matrix with z positions as is needed for patch (each column is one cell, each row a vertex)
         msh(ct).Z=Zcnt;
         msh(ct).Z(~msh(ct).p.fgood)=nan;
-        msh(ct).Z=repmat(msh(ct).Z,1,1,nanmax(tid(ct,:)));
+        msh(ct).Z=repmat(msh(ct).Z,[1,1,nanmax(tid(ct,:))]);
         
         % Compute mesh in Sigma
         msh(ct).Sig=bsxfun(@rdivide,bsxfun(@minus,msh(ct).Z,zb_ncntr'),bsxfun(@minus,reshape(msh(ct).eta,1,1,[]),zb_ncntr')); % sig=(z-zb)/(eta-zb)
@@ -679,7 +691,10 @@ for ct=1:size(tid,1) % For all sections
     end
     
     %% Velocity processing
-    cMod=cat(4,vel(:,fcur,:),...                       % beam velocity (in conventional processing this is velocity in earth coordinates)
+    cMod=cat(4,vel(:,fcur,:)-(...
+              bsxfun(@times,TM1(:,fcur,:),knw_ut(:,fcur))+...
+              bsxfun(@times,TM2(:,fcur,:),knw_vt(:,fcur))+...
+              bsxfun(@times,TM3(:,fcur,:),knw_wt(:,fcur))),...                       % beam velocity (in conventional processing this is velocity in earth coordinates)
                bsxfun(@times,TM1(:,fcur,:),mod_ut(:,fcur,:,:)),... % model for u
                bsxfun(@times,TM2(:,fcur,:),mod_vt(:,fcur,:,:)),...;% model for v
                bsxfun(@times,TM3(:,fcur,:),mod_wt(:,fcur,:,:)) );   % model for w
@@ -716,8 +731,8 @@ for ct=1:size(tid,1) % For all sections
         S=reshape(msh(ct).S(msh(ct).p.progfgood_tensdiag),[1 size(msh(ct).p.Z,2) n_rep_trans npars]);
         medS=nanmedian(S,2);
         fbad=any(bsxfun(@gt, S, medS*nstd^2),4);
-        msh(ct).S(msh(ct).p.progfgood_tens((repmat(fbad(:),npars^2,1))))=nan;
-        msh(ct).pars(msh(ct).p.progfgood_vec((repmat(fbad(:),npars,1))))=nan;
+        msh(ct).S(msh(ct).p.progfgood_tens((repmat(fbad(:),[npars^2,1]))))=nan;
+        msh(ct).pars(msh(ct).p.progfgood_vec((repmat(fbad(:),[npars,1]))))=nan;
         msh(ct).Nvel(msh(ct).p.progfgood(fbad(:)))=nan;
     end
     
@@ -740,12 +755,12 @@ for ct=1:size(tid,1) % For all sections
                 cs=cos(msh(ct).cs.dir);
                 ss=sin(msh(ct).cs.dir);
                 csrot=zeros(1,1,nrepeat,npars,npars);
-                idxrw=repmat([1:npars, 1:npars_uv, npars_uv+1:2*npars_uv],1,nrepeat);
-                idxcol=repmat([1:npars, npars_uv+1:2*npars_uv, 1:npars_uv],1,nrepeat);
+                idxrw=repmat([1:npars, 1:npars_uv, npars_uv+1:2*npars_uv],[1,nrepeat]);
+                idxcol=repmat([1:npars, npars_uv+1:2*npars_uv, 1:npars_uv],[1,nrepeat]);
                 idxrep=reshape(bsxfun(@times,ones(npars+2*npars_uv,1),1:nrepeat),1,[]);
                 idxz=ones(size(idxrep));
                 idxn=ones(size(idxrep));
-                val=reshape(squeeze([repmat(cs,1,npars_uv*2) ones(1,npars_w,nrepeat) repmat(ss,1,npars_uv) repmat(-ss,1,npars_uv)]),1,[]);
+                val=reshape(squeeze([repmat(cs,[1,npars_uv*2]) ones(1,npars_w,nrepeat) repmat(ss,[1,npars_uv]) repmat(-ss,[1,npars_uv])]),1,[]);
                 csrot(sub2ind(size(csrot),idxz,idxn,idxrep,idxrw,idxcol))=val;        
                 st1=matmult(msh(ct).S,permute(csrot,[1 2 3 5 4]),[4 5]);   % Tensor rotation SR' (step 1)
                 msh(ct).cs.S=matmult(csrot,st1,[4 5]); % Tensor rotation R(SR') (step 2)
@@ -756,12 +771,12 @@ for ct=1:size(tid,1) % For all sections
                 darot=zeros(1,siz(2),nrepeat,npars,npars);
                 cs=cos(msh(ct).da.dir);
                 ss=sin(msh(ct).da.dir);
-                idxrw=repmat([1:npars, 1:npars_uv, npars_uv+1:2*npars_uv],1,nrepeat*siz(2));
-                idxcol=repmat([1:npars, npars_uv+1:2*npars_uv, 1:npars_uv],1,nrepeat*siz(2));
-                idxn=repmat(reshape(bsxfun(@times,ones((npars+2*npars_uv),1),1:siz(2)),1,[]),1,nrepeat);
+                idxrw=repmat([1:npars, 1:npars_uv, npars_uv+1:2*npars_uv],[1,nrepeat*siz(2)]);
+                idxcol=repmat([1:npars, npars_uv+1:2*npars_uv, 1:npars_uv],[1,nrepeat*siz(2)]);
+                idxn=repmat(reshape(bsxfun(@times,ones((npars+2*npars_uv),1),1:siz(2)),1,[]),[1,nrepeat]);
                 idxrep=reshape(bsxfun(@times,ones((npars+2*npars_uv)*siz(2),1),1:nrepeat),1,[]);
                 idxz=ones(size(idxrep));     
-                val=reshape(squeeze([repmat(cs,npars_uv*2,1,1); ones(npars_w,siz(2),nrepeat); repmat(ss,npars_uv,1,1); repmat(-ss,npars_uv,1,1)]),1,[]);
+                val=reshape(squeeze([repmat(cs,[npars_uv*2,1,1]); ones(npars_w,siz(2),nrepeat); repmat(ss,[npars_uv,1,1]); repmat(-ss,[npars_uv,1,1])]),1,[]);
                 darot(sub2ind(size(darot),idxz,idxn,idxrep,idxrw,idxcol))=val;
                 st1=matmult(msh(ct).S,permute(darot,[1 2 3 5 4]),[4 5]);% Tensor rotation SR' (step 1)
                 msh(ct).da.S=matmult(darot,st1,[4 5]);% Tensor rotation R(SR') (step 2)
@@ -777,7 +792,7 @@ for ct=1:size(tid,1) % For all sections
             idxrep=ones(size(idxrw));
             idxz=ones(size(idxrep));
             idxn=ones(size(idxrep));
-            val=[repmat(cs,1,npars_uv*2) ones(1,npars_w) repmat(ss,1,npars_uv) repmat(-ss,1,npars_uv)];
+            val=[repmat(cs,[1,npars_uv*2]) ones(1,npars_w) repmat(ss,[1,npars_uv]) repmat(-ss,[1,npars_uv])];
             secrot(sub2ind(size(secrot),idxz,idxn,idxrep,idxrw,idxcol))=val;
             st1=matmult(msh(ct).S,permute(secrot,[1 2 3 5 4]),[4 5]);   % Tensor rotation SR' (step 1)
             msh(ct).sec.S=matmult(secrot,st1,[4 5]);% Tensor rotation R(SR') (step 2)
