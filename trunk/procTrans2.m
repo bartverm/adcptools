@@ -61,21 +61,21 @@ function msh=procTrans2(adcp,tid,varargin)
 %           p.Y - Y coordinates of the cell vertices (7xQ)
 %           p.Z - Z coordinates of the cell vertices (7xQxT)
 %           p.Sig - Sigma coordinate of the cell vertices (7xQxT)
-%       cs - Structure containing the fitting results rotated to match with
+%       sec - Structure containing the fitting results rotated to match with
 %            the direction of the cross-section (Nvec):
-%            cs.dir - Rotation direction (mathematical angle, 1x1xT)
-%            cs.pars - Rotated parameters (RxCxTxP)
-%            cs.S - Rotated covariance matrix of parameters (RxCxTxP)
+%            sec.dir - Rotation direction (mathematical angle, 1x1xT)
+%            sec.pars - Rotated parameters (RxCxTxP)
+%            sec.S - Rotated covariance matrix of parameters (RxCxTxP)
 %       da - Structure containting fitting results rotated to the depth
 %            averaged flow direction:
 %            da.dir - Rotation direction (mathematical angle,  1xCxT)
 %            da.pars - Rotated parameters (RxCxTxP)
 %            da.S - Rotated covariance matrix of parameters (RxCxTxP)
-%       sec - Structure containing fitting results rotated to the
+%       cs - Structure containing fitting results rotated to the
 %             cross-sectionally averaged flow direction
-%             sec.dir - Rotation direction (mathematical angle, 1x1xT)
-%             sec.pars - Rotated parameters (RxCxTxP)
-%             sec.S - Rotated covariance matrix of parameters (RxCxTxP)
+%             cs.dir - Rotation direction (mathematical angle, 1x1xT)
+%             cs.pars - Rotated parameters (RxCxTxP)
+%             cs.S - Rotated covariance matrix of parameters (RxCxTxP)
 %       In the description above the following letters are used to
 %       represent a certain dimension
 %           CS - number of cross-section
@@ -140,6 +140,32 @@ function msh=procTrans2(adcp,tid,varargin)
 %           two element row vector - Sets a user defined center of the
 %           cross-section. Can be usefull when the measurements are not
 %           uniformly collected along the cross-section
+%         'RotatePars'
+%           {true} | false - Whether to perform rotations
+%         'Model'
+%           scalar function handle - provides a function to specify a
+%           velocity model. The function should accept as input nx5 matrix
+%           where each column represents the n, z, sigma, s and t 
+%           coordinates of a beam velocity. The function must return three
+%           matrices representing the models for u, v and w respectively.
+%           The matrices have n rows and as many columns as parameters in
+%           the model. Default function fits a constant mean velocity for
+%           u, v and w at each time step.
+%         'Known'
+%           scalar function handle - provides a function to specify the
+%           know terms in the velocity model. The function should accept as
+%           input nx5 matrix where each column represents the n, z, sigma, 
+%           s and t coordinates of a beam velocity. The function must 
+%           return three vectors representing the known terms for u, v and 
+%           w respectively. 
+%         'GetVelocity'
+%           scalar function handle - defines how to retrieve velocity from
+%           the estimated parameters. It accepts and nxP matrix as input.
+%           It returns three matrices with the estimated u,v and w
+%           velocity.
+%         Instead of defining the velocity models through function handles
+%         it is also possible to define them with the following parameters
+%         (included for backward compatibility):
 %         'ModelU_t'
 %         'ModelV_t'
 %         'ModelW_t'
@@ -152,8 +178,13 @@ function msh=procTrans2(adcp,tid,varargin)
 %         'KnownW_t'
 %           Px1 row-vector - Allows to set any known term of the velocity 
 %           model. Default is zeros(1,E) which corresponds to no known term 
-%         'RotatePars'
-%           {true} | false - Whether to perform rotations
+%         Note that if this last way of defining a velocity model is used
+%         the functions given in the 'Model', 'Known' and
+%         'GetVelocity' inputs will be ignored.
+
+%       TODO: make fitting function for:
+%       fourier fitting
+%       log-profile
 
 
 %    Copyright 2013,2014,2015 Bart Vermeulen
@@ -198,14 +229,19 @@ P.addParamValue('Proximity',0,@(x) isscalar(x) && isnumeric(x) && x>=0); % Set t
 P.addParamValue('StdFiltering',6,@(x) isscalar(x) && isnumeric(x) && x>=0); % Remove velocity with a standard deviation of the estimate exceeding this amount of times the median standard deviation
 P.addParamValue('ShipReference','bt',@(x) ischar(x) && any(strcmpi(x,{'bt','gps','gpsbt','btgps'}))); % Select which boat velocity calculation to use
 P.addParamValue('Pusr',[], @(x) isnumeric(x)); % User set the central position of a transect (can be usefull when data density is not uniform on transect
+% BACKWARD COMPATIBILITY BELOW(REMOVE IN THE FUTURE)
 P.addParamValue('ModelU_t',1,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (ismatrix(x) && size(x,2)==nens))); % Velocity model for u
 P.addParamValue('ModelV_t',1,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (ismatrix(x) && size(x,2)==nens))); % Velocity model for v
 P.addParamValue('ModelW_t',1,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (ismatrix(x) && size(x,2)==nens))); % Velocity model for w
 P.addParamValue('KnownU_t',0,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (isrow(x) && size(x,2)==nens))); % Known parameters for u
 P.addParamValue('KnownV_t',0,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (isrow(x) && size(x,2)==nens))); % Known parameters for v
 P.addParamValue('KnownW_t',0,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (isrow(x) && size(x,2)==nens))); % Known parameters for w
+% BACKWARD COMPATIBILITY ABOVE (REMOVE IN THE FUTURE)
 P.addParamValue('RotatePars',true,@(x) isscalar(x) && islogical(x));
 P.addParamValue('EnableDebugging',false,@(x) isscalar(x) && islogical(x));
+P.addParamValue('Model',@default_model,@(x) isscalar(x) && isa(x,'function_handle'));
+P.addParamValue('Known',@default_known,@(x) isscalar(x) && isa(x,'function_handle'));
+P.addParamValue('GetVelocity',@default_getvelocity,@(x) isscalar(x) && isa(x,'function_handle'));
 
 P.parse(varargin{:}); % parse the input
 
@@ -226,27 +262,33 @@ eta=eta(:)';    % Vectorize eta
 eta=eta.*ones(1,size(numel(time),1)); % Ensure eta has same number of elements as the number of ensembles
 shref=P.Results.ShipReference;
 Pusr=P.Results.Pusr;
-mod_ut=P.Results.ModelU_t;
-mod_ut=permute(shiftdim(bsxfun(@times,mod_ut,ones(1,nens)),-2),[1 4 2 3]); % ensure size(mod_ut) is [1 nens 1 npars]
-mod_vt=P.Results.ModelV_t;
-mod_vt=permute(shiftdim(bsxfun(@times,mod_vt,ones(1,nens)),-2),[1 4 2 3]); % ensure size(mod_ut) is [1 nens 1 npars]
-mod_wt=P.Results.ModelW_t;
-mod_wt=permute(shiftdim(bsxfun(@times,mod_wt,ones(1,nens)),-2),[1 4 2 3]); % ensure size(mod_ut) is [1 nens 1 npars]
-knw_ut=P.Results.KnownU_t;
-knw_ut=permute(shiftdim(bsxfun(@times,knw_ut,ones(1,nens)),-2),[1 4 2 3]); % ensure size(knw_ut) is [1 nens 1 npars]
-knw_vt=P.Results.KnownV_t;
-knw_vt=permute(shiftdim(bsxfun(@times,knw_vt,ones(1,nens)),-2),[1 4 2 3]); % ensure size(knw_ut) is [1 nens 1 npars]
-knw_wt=P.Results.KnownW_t;
-knw_wt=permute(shiftdim(bsxfun(@times,knw_wt,ones(1,nens)),-2),[1 4 2 3]); % ensure size(knw_ut) is [1 nens 1 npars]
 
-npars_u=size(mod_ut,4);
-npars_v=size(mod_vt,4);
-npars_w=size(mod_wt,4);
-npars=npars_u+npars_v+npars_w;
+%BACKWARD COMPATIBILITY BELOW(REMOVE IN THE FUTURE)
+use_old=false;
+if ~any(strcmp(P.UsingDefaults,'ModelU_t')) || ~any(strcmp(P.UsingDefaults,'ModelV_t')) || ~any(strcmp(P.UsingDefaults,'ModelU_t')) || ~any(strcmp(P.UsingDefaults,'KnownU_t')) || ~any(strcmp(P.UsingDefaults,'KnownV_t')) || ~any(strcmp(P.UsingDefaults,'KnownW_t'))
+    use_old=true;
+    nens = size(adcp.timeV,1);
+    mod_ut=bsxfun(@times, ones(1,nens),P.Results.ModelU_t);
+    mod_vt=bsxfun(@times, ones(1,nens),P.Results.ModelV_t);
+    mod_wt=bsxfun(@times, ones(1,nens),P.Results.ModelW_t);
+    knw_ut=bsxfun(@times, ones(1,nens),P.Results.KnownU_t);
+    knw_vt=bsxfun(@times, ones(1,nens),P.Results.KnownV_t);
+    knw_wt=bsxfun(@times, ones(1,nens),P.Results.KnownW_t);
+end
+%BACKWARD COMPATIBILITY ABOVE(REMOVE IN THE FUTURE)
+
 IsCumulative=P.Results.CumulateCrossings;
 IsConventional=P.Results.ConventionalProcessing;
 rotate=P.Results.RotatePars;
+if rotate && ~(any(strcmp(P.UsingDefaults,'Model')) && any(strcmp(P.UsingDefaults,'Known'))) && any(strcmp(P.UsingDefaults,'GetVelocity'))
+    rotate=false;
+    warning('When defining a custom velocity model, rotations of velocity are only possible when also a velocity retrieval function is provided')
+end
 fdebug=P.Results.EnableDebugging;
+
+f_model=P.Results.Model;
+f_known=P.Results.Known;
+f_velocity=P.Results.GetVelocity;
 
 %% Get ADCP positioning data
 [xadcp,yadcp]=utmADCP(adcp); % Get adcp position
@@ -274,7 +316,7 @@ if IsConventional
     yvel=nanmean(yvel,3); % determine beam average for conventional velocity processing
     zvel=nanmean(zvel,3); % determine beam average for conventional velocity processing
 end
-
+tvel=repmat(time,[size(xvel,1),1,size(xvel,3)]);
 
 % velocity data
 [adcp.VEL,adcp.btvel] = filterADCP(adcp,'','filterBT',true); % Filter velocity
@@ -363,6 +405,7 @@ eta = eta .* ones(1,nens); % make sure eta is row vector with same number of ele
 % Start processing
 for ct=1:size(tid,1) % For all sections  
     fcur=tid(ct,:)>0; % mask, indicating data belonging to current section
+    ctvel=tvel(:,fcur,:);
     nrepeat=nanmax(tid(ct,:));
     % compute eta and time for each crossing (or cumulated crossings)
     msh(ct).eta=accumarray(tid(ct,fcur)',eta(fcur)',[],@nanmean,nan); % Compute average eta for each crossing
@@ -563,23 +606,7 @@ for ct=1:size(tid,1) % For all sections
     % make fgood
     nz_cnt(isnan(nz_cnt))=0; % use number of cells in vertical to generate fgood
     msh(ct).p.fgood=bsxfun(@le,cumsum(ones(size(NL)),1),nz_cnt'); % fgood masks the data that is in the section  
-    n_rep_trans=nanmax(tid(ct,:));
-    mult_vec=reshape(0:n_rep_trans*npars-1,[1 n_rep_trans npars]);
-    mult_tens=reshape(0:n_rep_trans*npars^2-1,[1 n_rep_trans npars npars]);  
-    nels=numel(NL);
-    fgood=find(msh(ct).p.fgood);
-    msh(ct).p.progfgood=bsxfun(@plus,(0:n_rep_trans-1)*nels,fgood);
-    msh(ct).p.progfgood_vec=bsxfun(@plus,mult_vec*nels,fgood);
-    msh(ct).p.progfgood_tens=bsxfun(@plus,mult_tens*nels,fgood);
-    col_fgood=cell(npars,1);
-    for cpars=1:npars
-        col_fgood{cpars}=msh(ct).p.progfgood_tens(:,:,cpars,cpars);
-    end
-    msh(ct).p.progfgood_tensdiag=cat(3,col_fgood{:});
-
-
-    
-
+ 
     % generate N, X and Y coordinates for centres and patch vertices
     msh(ct).N=repmat(n_cntr,[nanmax(nz_cnt),1]); % Create N position matrix for cell centres
     msh(ct).X=Pn(1,ct)+T(1,ct)*msh(ct).N; % Create X position matrix for cell centres
@@ -719,41 +746,102 @@ for ct=1:size(tid,1) % For all sections
     end
     
     %% Velocity processing
-    cMod=cat(4,vel(:,fcur,:)-(...
-              bsxfun(@times,TM1(:,fcur,:),knw_ut(:,fcur))+...
-              bsxfun(@times,TM2(:,fcur,:),knw_vt(:,fcur))+...
-              bsxfun(@times,TM3(:,fcur,:),knw_wt(:,fcur))),...                       % beam velocity (in conventional processing this is velocity in earth coordinates)
-               bsxfun(@times,TM1(:,fcur,:),mod_ut(:,fcur,:,:)),... % model for u
-               bsxfun(@times,TM2(:,fcur,:),mod_vt(:,fcur,:,:)),...;% model for v
-               bsxfun(@times,TM3(:,fcur,:),mod_wt(:,fcur,:,:)) );   % model for w
-    siz=[size(msh(ct).Z,1) size(msh(ct).Z,2)];
+    siz=[size(msh(ct).Z,1) size(msh(ct).Z,2)]; % size of output mesh
+    cvel=vel(:,fcur,:);
+    cTM1=TM1(:,fcur,:);
+    cTM2=TM2(:,fcur,:);
+    cTM3=TM3(:,fcur,:);
     datacol=cell([siz nanmax(tid(ct,:))]); % Initialize variable to collect velocity and tr. matrix data
 
     for ccr=nanmin(tid(ct,:)):nanmax(tid(ct,:)) % loop over all crossings
         if IsCumulative
             fnd=bsxfun(@and,tid(ct,fcur)<=ccr, f_incs & rowIdx<=size(msh(ct).Z,1) & rowIdx>0); % find data in current section, in all crossing up to current, and belonging to any cell
         else
-            fnd=bsxfun(@and,tid(ct,fcur)==ccr, f_incs & rowIdx<=size(msh(ct).Z,1) & rowIdx>0); % find data in current section, in all crossing up to current, and belonging to any cell
+            fnd=bsxfun(@and,tid(ct,fcur)==ccr, f_incs & rowIdx<=size(msh(ct).Z,1) & rowIdx>0); % find data in current section, in current crossing, and belonging to any cell
         end
         if proxim>0 % if a proximity is given
             fnd=fnd & abs(svel)<=proxim; % only include data within proxim distance from the section
         end
         if ~any(fnd(:)), continue, end;
-        col_dat=cell(npars+1,1);
-        for cPars=1:npars+1
-            select_par=false([size(fnd), npars+1]);
-            select_par(:,:,:,cPars)=true;
-            col_dat{cPars}=accumarray({rowIdx(fnd),colIdx(fnd)},cMod(bsxfun(@and,fnd,select_par)),siz,@(x) {x},{double.empty(0,1)});
+            
+
+        % compute model coefficients from dz, dn, ds and dt
+        %   BACKWARD COMPATIBILITY BELOW
+        if use_old
+            colt=accumarray({rowIdx(fnd), colIdx(fnd)},ctvel(fnd),siz,@(x) {x}, {double.empty(0,1)});
+            colmu=cellfun(@(x) interp1(time',mod_ut',x,'nearest','extrap'),colt,'UniformOutput',false);
+            colmv=cellfun(@(x) interp1(time',mod_vt',x,'nearest','extrap'),colt,'UniformOutput',false);
+            colmw=cellfun(@(x) interp1(time',mod_wt',x,'nearest','extrap'),colt,'UniformOutput',false);
+            colku=cellfun(@(x) interp1(time',knw_ut',x,'nearest','extrap'),colt,'UniformOutput',false);
+            colkv=cellfun(@(x) interp1(time',knw_vt',x,'nearest','extrap'),colt,'UniformOutput',false);
+            colkw=cellfun(@(x) interp1(time',knw_wt',x,'nearest','extrap'),colt,'UniformOutput',false);
+        else
+        %BACKWARD COMPATIBILITY ABOVE
+            % Compute dz, dn, ds and dt and collect them for each mesh cell
+            coldz=cellfun(@minus,...
+                accumarray({rowIdx(fnd), colIdx(fnd)},czvel(fnd),siz,@(x) {x}, {double.empty(0,1)}),...
+                num2cell(msh(ct).Z(:,:,ccr)),...
+                'UniformOutput',false);
+            colSig=cellfun(@minus,...
+                accumarray({rowIdx(fnd), colIdx(fnd)},sigVel(fnd),siz,@(x) {x}, {double.empty(0,1)}),...
+                num2cell(msh(ct).Z(:,:,ccr)),...
+                'UniformOutput',false);
+            coldn=cellfun(@minus,...
+                accumarray({rowIdx(fnd), colIdx(fnd)},nvel(fnd),siz,@(x) {x}, {double.empty(0,1)}),...
+                num2cell(msh(ct).N(:,:)),...
+                'UniformOutput',false);
+            colds=accumarray({rowIdx(fnd), colIdx(fnd)},svel(fnd),siz,@(x) {x}, {double.empty(0,1)});
+            coldt=cellfun(@(x,y) (x-y)*24*3600,...
+            accumarray({rowIdx(fnd), colIdx(fnd)},ctvel(fnd),siz,@(x) {x}, {double.empty(0,1)}),...
+            repmat({msh(ct).time(ccr)},siz),...
+            'UniformOutput',false);            
+            [colmu,colmv,colmw]=cellfun(@(n,z,Sig,s,t) f_model([n,z,Sig,s,t]),coldn, coldz, colSig, colds,coldt,'UniformOutput',false);
+            [colku,colkv,colkw]=cellfun(@(n,z,Sig,s,t) f_known([n,z,Sig,s,t]),coldn, coldz, colSig, colds,coldt,'UniformOutput',false);
         end
-        datacol(:,:,ccr)=cellfun(@horzcat,col_dat{:},'UniformOutput',false);
+        npars_u=size(colmu{1},2);
+        npars_v=size(colmv{1},2);
+        npars_w=size(colmv{1},2);
+        npars=npars_u+npars_v+npars_w;
+        if rotate && ~all(all(cellfun(@isequal,colmu,colmv)))
+            rotate = false;
+            warning('procTrans:NotEqualUVMods','To perform a rotation the model for u and v should be identical, skipping rotations!')        
+        end
+        % collect tilt transformation matrix terms
+        colTM1=accumarray({rowIdx(fnd),colIdx(fnd)},cTM1(fnd),siz,@(x) {x},{double.empty(0,1)});
+        colTM2=accumarray({rowIdx(fnd),colIdx(fnd)},cTM2(fnd),siz,@(x) {x},{double.empty(0,1)});
+        colTM3=accumarray({rowIdx(fnd),colIdx(fnd)},cTM3(fnd),siz,@(x) {x},{double.empty(0,1)});
+        % collect beam velocity
+        colbvel=accumarray({rowIdx(fnd),colIdx(fnd)},cvel(fnd),siz,@(x) {x},{double.empty(0,1)});
+        % compute all terms for velocity inversion
+        datacol(:,:,ccr)=cellfun(@(b,t1,t2,t3,mu,mv,mw,ku,kv,kw) ...
+                                [b-(bsxfun(@times,ku,t1)+bsxfun(@times,kv,t2)+bsxfun(@times,kw,t3)) ...
+                                 bsxfun(@times,mu,t1) ...
+                                 bsxfun(@times,mv,t2) ...
+                                 bsxfun(@times,mw,t3)],...
+                          colbvel, colTM1, colTM2, colTM3, colmu, colmv, colmw, colku, colkv, colkw,...
+                          'UniformOutput',false);
     end
     [msh(ct).pars, msh(ct).rsq, msh(ct).S, msh(ct).Nvel]=cellfun(@(x) estvel(x,rmresid), datacol,'UniformOutput',false); % Estimate velocity with least squares estimates (see function estvel.m for procedure)
     msh(ct).pars=cell2mat(msh(ct).pars); % reshape velocity data
     msh(ct).rsq=cell2mat(msh(ct).rsq); % reshape mean squared error data
     msh(ct).Nvel=cell2mat(msh(ct).Nvel); % reshape Number of valid samples data
-    msh(ct).S=cell2mat(msh(ct).S);
+    msh(ct).S=cell2mat(msh(ct).S); % reshape covariance matrices
 
-      
+    %% Generate fgood for vector and tensor data
+    n_rep_trans=nanmax(tid(ct,:));
+    mult_vec=reshape(0:n_rep_trans*npars-1,[1 n_rep_trans npars]);
+    mult_tens=reshape(0:n_rep_trans*npars^2-1,[1 n_rep_trans npars npars]);  
+    nels=numel(NL);
+    fgood=find(msh(ct).p.fgood);
+    msh(ct).p.progfgood=bsxfun(@plus,(0:n_rep_trans-1)*nels,fgood);
+    msh(ct).p.progfgood_vec=bsxfun(@plus,mult_vec*nels,fgood);
+    msh(ct).p.progfgood_tens=bsxfun(@plus,mult_tens*nels,fgood);
+    col_fgood=cell(npars,1);
+    for cpars=1:npars
+        col_fgood{cpars}=msh(ct).p.progfgood_tens(:,:,cpars,cpars);
+    end
+    msh(ct).p.progfgood_tensdiag=cat(3,col_fgood{:});
+   
     %% Remove data with high std
     if nstd>0
         S=reshape(msh(ct).S(msh(ct).p.progfgood_tensdiag),[1 size(msh(ct).p.Z,2) n_rep_trans npars]);
@@ -764,72 +852,101 @@ for ct=1:size(tid,1) % For all sections
         msh(ct).Nvel(msh(ct).p.progfgood(fbad(:)))=nan;
     end
     
+    
     %% Perform rotations
+    
+    if npars<1
+        warning('No parameters estimated, not performing rotations')
+        rotate=false;
+    end
+    
+    %   BACKWARD COMPATIBILITY BELOW
+    if rotate && use_old
+        u_par=find(all(mod_ut(:,fcur,:,:)==1,2));
+        v_par=find(all(mod_vt(:,fcur,:,:)==1,2));
+        if numel(u_par)~=1 || numel(v_par)~=1
+            warning('procTrans2:NoMeanInModel','Could not find mean velocity in u and v models, skipping rotations based on horizontal velocity')
+            rotate = false;
+        end
+    end
+    %BACKWARD COMPATIBILITY ABOVE
+    
     if rotate
-        if ~isequal(mod_ut,mod_vt)
-            warning('procTrans:NotEqualUVMods','To perform a rotation the model for u and v should be identical, skipping rotations!')
+        npars_uv=npars_u;
+        % BACKWARD COMPATIBILITY BELOW
+        if use_old
+            u=msh(ct).pars(:,:,:,npars_u+v_par);
+            v=msh(ct).pars(:,:,:,u_par); 
         else
-            npars_uv=npars_u;        
-            % search for average velocity (i.e. model ==1) instead of assuming
-            % it is in front!
-            u_par=find(all(mod_ut(:,fcur,:,:)==1,2));
-            v_par=find(all(mod_vt(:,fcur,:,:)==1,2));
+        % BACKWARD COMPATIBILITY ABOVE
+            [u, v]=f_velocity(reshape(msh(ct).pars,[],npars));
+        end
+        sizvel=size(msh(ct).pars); sizvel(end)=1;
+        u=reshape(u,sizvel);
+        v=reshape(v,sizvel);
+        msh(ct).cs.dir=atan2(nanmean(nanmean(v,1),2),nanmean(nanmean(u,1),2)); % Transect averaged flow direction
+        cs=cos(msh(ct).cs.dir);
+        ss=sin(msh(ct).cs.dir);
+        csrot=zeros(1,1,nrepeat,npars,npars);
+        idxrw=repmat([1:npars, 1:npars_uv, npars_uv+1:2*npars_uv],[1,nrepeat]);
+        idxcol=repmat([1:npars, npars_uv+1:2*npars_uv, 1:npars_uv],[1,nrepeat]);
+        idxrep=reshape(bsxfun(@times,ones(npars+2*npars_uv,1),1:nrepeat),1,[]);
+        idxz=ones(size(idxrep));
+        idxn=ones(size(idxrep));
+        val=reshape(squeeze([repmat(cs,[1,npars_uv*2]) ones(1,npars_w,nrepeat) repmat(ss,[1,npars_uv]) repmat(-ss,[1,npars_uv])]),1,[]);
+        csrot(sub2ind(size(csrot),idxz,idxn,idxrep,idxrw,idxcol))=val;        
+        st1=matmult(msh(ct).S,permute(csrot,[1 2 3 5 4]),[4 5]);   % Tensor rotation SR' (step 1)
+        msh(ct).cs.S=matmult(csrot,st1,[4 5]); % Tensor rotation R(SR') (step 2)
+        msh(ct).cs.pars=matmult(csrot,msh(ct).pars,[4 5]); % Vector rotation Rv
 
-            if numel(u_par)~=1 || numel(v_par)~=1
-                warning('procTrans2:NoMeanInModel','Could not find mean velocity in u and v models, skipping rotations based on horizontal velocity')
-            else
-                % Rotation to cross-section averaged flow direction
-                msh(ct).cs.dir=atan2(nanmean(nanmean(msh(ct).pars(:,:,:,npars_u+v_par),1),2),nanmean(nanmean(msh(ct).pars(:,:,:,u_par),1),2)); % Transect averaged flow direction
-                cs=cos(msh(ct).cs.dir);
-                ss=sin(msh(ct).cs.dir);
-                csrot=zeros(1,1,nrepeat,npars,npars);
-                idxrw=repmat([1:npars, 1:npars_uv, npars_uv+1:2*npars_uv],[1,nrepeat]);
-                idxcol=repmat([1:npars, npars_uv+1:2*npars_uv, 1:npars_uv],[1,nrepeat]);
-                idxrep=reshape(bsxfun(@times,ones(npars+2*npars_uv,1),1:nrepeat),1,[]);
-                idxz=ones(size(idxrep));
-                idxn=ones(size(idxrep));
-                val=reshape(squeeze([repmat(cs,[1,npars_uv*2]) ones(1,npars_w,nrepeat) repmat(ss,[1,npars_uv]) repmat(-ss,[1,npars_uv])]),1,[]);
-                csrot(sub2ind(size(csrot),idxz,idxn,idxrep,idxrw,idxcol))=val;        
-                st1=matmult(msh(ct).S,permute(csrot,[1 2 3 5 4]),[4 5]);   % Tensor rotation SR' (step 1)
-                msh(ct).cs.S=matmult(csrot,st1,[4 5]); % Tensor rotation R(SR') (step 2)
-                msh(ct).cs.pars=matmult(csrot,msh(ct).pars,[4 5]); % Vector rotation Rv
+        % Vertically averaged flow direction
+        msh(ct).da.dir=atan2(nanmean(v,1),nanmean(u,1)); % depth averaged flow direction
+        darot=zeros(1,siz(2),nrepeat,npars,npars);
+        cs=cos(msh(ct).da.dir);
+        ss=sin(msh(ct).da.dir);
+        idxrw=repmat([1:npars, 1:npars_uv, npars_uv+1:2*npars_uv],[1,nrepeat*siz(2)]);
+        idxcol=repmat([1:npars, npars_uv+1:2*npars_uv, 1:npars_uv],[1,nrepeat*siz(2)]);
+        idxn=repmat(reshape(bsxfun(@times,ones((npars+2*npars_uv),1),1:siz(2)),1,[]),[1,nrepeat]);
+        idxrep=reshape(bsxfun(@times,ones((npars+2*npars_uv)*siz(2),1),1:nrepeat),1,[]);
+        idxz=ones(size(idxrep));     
+        val=reshape(squeeze([repmat(cs,[npars_uv*2,1,1]); ones(npars_w,siz(2),nrepeat); repmat(ss,[npars_uv,1,1]); repmat(-ss,[npars_uv,1,1])]),1,[]);
+        darot(sub2ind(size(darot),idxz,idxn,idxrep,idxrw,idxcol))=val;
+        st1=matmult(msh(ct).S,permute(darot,[1 2 3 5 4]),[4 5]);% Tensor rotation SR' (step 1)
+        msh(ct).da.S=matmult(darot,st1,[4 5]);% Tensor rotation R(SR') (step 2)
+        msh(ct).da.pars=matmult(darot,msh(ct).pars,[4 5]);% Vector rotation Rv
 
-            %     % Vertically averaged flow direction
-                msh(ct).da.dir=atan2(nanmean(msh(ct).pars(:,:,:,npars_u+v_par),1),nanmean(msh(ct).pars(:,:,:,u_par),1)); % depth averaged flow direction
-                darot=zeros(1,siz(2),nrepeat,npars,npars);
-                cs=cos(msh(ct).da.dir);
-                ss=sin(msh(ct).da.dir);
-                idxrw=repmat([1:npars, 1:npars_uv, npars_uv+1:2*npars_uv],[1,nrepeat*siz(2)]);
-                idxcol=repmat([1:npars, npars_uv+1:2*npars_uv, 1:npars_uv],[1,nrepeat*siz(2)]);
-                idxn=repmat(reshape(bsxfun(@times,ones((npars+2*npars_uv),1),1:siz(2)),1,[]),[1,nrepeat]);
-                idxrep=reshape(bsxfun(@times,ones((npars+2*npars_uv)*siz(2),1),1:nrepeat),1,[]);
-                idxz=ones(size(idxrep));     
-                val=reshape(squeeze([repmat(cs,[npars_uv*2,1,1]); ones(npars_w,siz(2),nrepeat); repmat(ss,[npars_uv,1,1]); repmat(-ss,[npars_uv,1,1])]),1,[]);
-                darot(sub2ind(size(darot),idxz,idxn,idxrep,idxrw,idxcol))=val;
-                st1=matmult(msh(ct).S,permute(darot,[1 2 3 5 4]),[4 5]);% Tensor rotation SR' (step 1)
-                msh(ct).da.S=matmult(darot,st1,[4 5]);% Tensor rotation R(SR') (step 2)
-                msh(ct).da.pars=matmult(darot,msh(ct).pars,[4 5]);% Vector rotation Rv
-            end % if numel(u_par)~=1 || numel(v_par)~=1
-        %     % Cross-section direction
-            msh(ct).sec.dir=atan2(N(2),N(1));
-            secrot=zeros(1,1,1,npars,npars);
-            cs=cos(msh(ct).sec.dir);
-            ss=sin(msh(ct).sec.dir);
-            idxrw=[1:npars, 1:npars_uv, npars_uv+1:2*npars_uv];
-            idxcol=[1:npars, npars_uv+1:2*npars_uv, 1:npars_uv];
-            idxrep=ones(size(idxrw));
-            idxz=ones(size(idxrep));
-            idxn=ones(size(idxrep));
-            val=[repmat(cs,[1,npars_uv*2]) ones(1,npars_w) repmat(ss,[1,npars_uv]) repmat(-ss,[1,npars_uv])];
-            secrot(sub2ind(size(secrot),idxz,idxn,idxrep,idxrw,idxcol))=val;
-            st1=matmult(msh(ct).S,permute(secrot,[1 2 3 5 4]),[4 5]);   % Tensor rotation SR' (step 1)
-            msh(ct).sec.S=matmult(secrot,st1,[4 5]);% Tensor rotation R(SR') (step 2)
-            msh(ct).sec.pars=matmult(secrot,msh(ct).pars,[4 5]);% Vector rotation Rv
-        end % if isequal(mod_ut,mod_vt)
+        % Cross-section direction
+        msh(ct).sec.dir=atan2(N(2),N(1));
+        secrot=zeros(1,1,1,npars,npars);
+        cs=cos(msh(ct).sec.dir);
+        ss=sin(msh(ct).sec.dir);
+        idxrw=[1:npars, 1:npars_uv, npars_uv+1:2*npars_uv];
+        idxcol=[1:npars, npars_uv+1:2*npars_uv, 1:npars_uv];
+        idxrep=ones(size(idxrw));
+        idxz=ones(size(idxrep));
+        idxn=ones(size(idxrep));
+        val=[repmat(cs,[1,npars_uv*2]) ones(1,npars_w) repmat(ss,[1,npars_uv]) repmat(-ss,[1,npars_uv])];
+        secrot(sub2ind(size(secrot),idxz,idxn,idxrep,idxrw,idxcol))=val;
+        st1=matmult(msh(ct).S,permute(secrot,[1 2 3 5 4]),[4 5]);   % Tensor rotation SR' (step 1)
+        msh(ct).sec.S=matmult(secrot,st1,[4 5]);% Tensor rotation R(SR') (step 2)
+        msh(ct).sec.pars=matmult(secrot,msh(ct).pars,[4 5]);% Vector rotation Rv
     end % if rotate
+end % for ct
+
+
+end % function
+
+function [mu, mv, mw]=default_model(in)
+    [mu,mv,mw]=deal(ones(size(in,1),1));
 end
-
-
+function [ku, kv, kw]=default_known(in)
+    [ku,kv,kw]=deal(zeros(size(in,1),1));
+end
+function [u, v, w]=default_getvelocity(in)
+    u=in(:,1);
+    v=in(:,2);
+    w=in(:,3);
+end
 function [pars, rsq, S, nin]=estvel(in,rmresid)
 % estimates cartesian velocities given beam velocities and correspoding
 % transformation matrix terms. IN is Nx4, N being the amount of beam
@@ -840,7 +957,7 @@ in(any(isnan(in),2),:)=[]; % Throw out bad data
 rmvel=true; % initialize variable holding indices to outliers
 n_pars=size(in,2)-1;
 while any(rmvel) % iterate until no outliers are found
-    if isempty(in) || rank(in(:,2:end))<n_pars % if no velocity is available or matrix is rank deficient
+    if isempty(in) || n_pars < 1 || rank(in(:,2:end))<n_pars % if no velocity is available or matrix is rank deficient
         pars=nan(n_pars,1); rsq=nan; S=nan(n_pars,n_pars); % return nans
         break; % Exit loop
     else
@@ -857,7 +974,7 @@ pars=shiftdim(pars,-3); % shift dimension to output 1x1x1x1x3 vector
 rsq=shiftdim(rsq,-3); % shift dimension to output 1x1x1x1x3 vector
 S=shiftdim(S,-3); % shift dimension to output 1x1x1x1x3x3 vector
 
-
+end
 
 function [V, mag]=princdir(P,varargin)
 % PRINCDIR find the principal vector of a scattered cloud of points. 
@@ -896,3 +1013,4 @@ end
 [mag, fprinc]=max(sum(eigval,2));
 
 V=eigvec(:,fprinc);
+end
