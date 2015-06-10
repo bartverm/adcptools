@@ -916,7 +916,7 @@ for ct=1:size(tid,1) % For all sections
         msh(ct).da.pars=matmult(darot,msh(ct).pars,[4 5]);% Vector rotation Rv
 
         % Cross-section direction
-        msh(ct).sec.dir=atan2(N(2),N(1));
+        msh(ct).sec.dir=atan2(N(2,ct),N(1,ct));
         secrot=zeros(1,1,1,npars,npars);
         cs=cos(msh(ct).sec.dir);
         ss=sin(msh(ct).sec.dir);
