@@ -100,24 +100,31 @@ else
             end
             [inadcp.VEL,inadcp.btvel] = filterADCP(inadcp,'','filterBT',true); % Filter velocity
             [~, btvel]=corADCP(inadcp,'e'); % transform to earth velocity
-            btvel=(btvel(1:end-1,1:2)+btvel(2:end,1:2))/2;
-            time=datenum(inadcp.timeV);
-            if ~all(diff(time)>0)
-                tv=inadcp.timeV1C;
-                tv(:,1)=tv(:,1)+2000;
-                time=datenum(tv);
+            btvel=(btvel(1:end-1,1:2)+btvel(2:end,1:2))/2; % average two consecutive bottom tracking velocity (matches velocity with delta time)
+            time=datenum(inadcp.timeV); % Get the time
+            
+            % STREAMPRO hack for time vector
+            if ~all(diff(time)>0) % If time is not monotonicallyincreasing
+                tv=inadcp.timeV1C; % Use non 2K compliant time
+                tv(:,1)=tv(:,1)+2000; % add century (assuming it is 21st century)
+                time=datenum(tv); % store result in time array
             end
-            dt=diff(time)*24*3600;
-            fgood=all(isfinite(btvel),2);
-            btvel(~fgood,:)=interp1(time(fgood),btvel(fgood,:),time(~fgood),'pchip');
-            pos=cumsum([0 0; bsxfun(@times,btvel,dt)],1);
-            f_newfile=find(diff(inadcp.FileNumber)>0);
-            reset_pos=zeros(size(pos));
-            find_reset_pos=zeros(size(pos,1),1);
-            find_reset_pos(f_newfile+1)=1;
-            find_reset_pos=cumsum(find_reset_pos);
-            reset_pos(find_reset_pos>0,:)=pos(f_newfile(find_reset_pos(find_reset_pos>0))+1,:);
-            pos=pos-reset_pos;
+            % END STREAMPRO hack for time vector
+            
+            dt=diff(time)*24*3600; % compute delta time
+            fgood=all(isfinite(btvel),2); % find bad bottom tracking
+            btvel(~fgood,:)=interp1(time(fgood),btvel(fgood,:),time(~fgood),'pchip'); % interpolate missing bottom tracking
+            pos=cumsum([0 0; bsxfun(@times,btvel,dt)],1); % compute position based on bottom tracking
+            
+            % Reset position to (0,0) at the start of a new file (avoids
+            % strange jumps in position due to large delta_t)
+            f_newfile=find(diff(inadcp.FileNumber)>0); % find where files end
+            reset_pos=zeros(size(pos)); % vector to hold start position of each track
+            find_reset_pos=inadcp.FileNumber'+1; % vector to hold indices with file number for each ensemble
+            reset_pos(find_reset_pos>0,:)=pos(f_newfile(find_reset_pos(find_reset_pos>0))+1,:); % Store for each file the starting coordinates
+            pos=pos-reset_pos; % Subtract starting coordinates for each file
+            
+            % store output and return
             UTMx=pos(:,1);
             UTMy=pos(:,2);
             return
