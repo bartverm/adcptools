@@ -215,33 +215,33 @@ nens=size(adcp.VEL,2);
 
 P=inputParser;
 P.FunctionName='procTrans';
-P.addParamValue('DepthTransducer',0.3,@(x) isscalar(x) && isnumeric(x) && x>0) % depth of transducer
-P.addParamValue('DeltaN',5,@(x) isscalar(x) && isnumeric(x) && x>0) % N resolution of mesh
-P.addParamValue('DeltaZ',1,@(x) isscalar(x) && isnumeric(x) && x>0) % target Z resolution of mesh
-P.addParamValue('Eta',0,@(x) isvector(x) && isnumeric(x) && (numel(x)==1 || numel(x)==nens)) % eta (water level)
-P.addParamValue('MinimumSigma',0.06,@(x) isscalar(x) && isnumeric(x) && x>=0 && x <=1) % Minimum sigma for meshing (to account for side lobes)
-P.addParamValue('CumulateCrossings',false,@(x) islogical(x) && isscalar(x)) % Set whether to lump consecutive crossings (only works if crossings are indicated in tid)
-P.addParamValue('ConventionalProcessing',false,@(x) islogical(x) && isscalar(x)) % Set whether to use conventional processing
-P.addParamValue('TopMeshLowestEta',false,@(x) islogical(x) && isscalar(x)) % Set whether top of mesh should be set at lowest water level (or top of data if this is lower than lowest water level)
-P.addParamValue('ConstantZetaMesh',false,@(x) islogical(x) && isscalar(x)) % Set whether to keep sigma constant. If false z is kept constant
-P.addParamValue('RemoveOutliers',0,@(x) isscalar(x) && isnumeric(x) && x>=0); % Remove outliers when their residuals exceed this amount of times the median residual in velocity inversion
-P.addParamValue('Proximity',0,@(x) isscalar(x) && isnumeric(x) && x>=0); % Set the maximum distance from the cross-section for data to be included in the calculation
-P.addParamValue('StdFiltering',6,@(x) isscalar(x) && isnumeric(x) && x>=0); % Remove velocity with a standard deviation of the estimate exceeding this amount of times the median standard deviation
-P.addParamValue('ShipReference','bt',@(x) ischar(x) && any(strcmpi(x,{'bt','gps','gpsbt','btgps'}))); % Select which boat velocity calculation to use
-P.addParamValue('Pusr',[], @(x) isnumeric(x)); % User set the central position of a transect (can be usefull when data density is not uniform on transect
+P.addParameter('DepthTransducer',0.3,@(x) isscalar(x) && isnumeric(x) && x>0) % depth of transducer
+P.addParameter('DeltaN',5,@(x) isscalar(x) && isnumeric(x) && x>0) % N resolution of mesh
+P.addParameter('DeltaZ',1,@(x) isscalar(x) && isnumeric(x) && x>0) % target Z resolution of mesh
+P.addParameter('Eta',0,@(x) isvector(x) && isnumeric(x) && (numel(x)==1 || numel(x)==nens)) % eta (water level)
+P.addParameter('MinimumSigma',0.06,@(x) isscalar(x) && isnumeric(x) && x>=0 && x <=1) % Minimum sigma for meshing (to account for side lobes)
+P.addParameter('CumulateCrossings',false,@(x) islogical(x) && isscalar(x)) % Set whether to lump consecutive crossings (only works if crossings are indicated in tid)
+P.addParameter('ConventionalProcessing',false,@(x) islogical(x) && isscalar(x)) % Set whether to use conventional processing
+P.addParameter('TopMeshLowestEta',false,@(x) islogical(x) && isscalar(x)) % Set whether top of mesh should be set at lowest water level (or top of data if this is lower than lowest water level)
+P.addParameter('ConstantZetaMesh',false,@(x) islogical(x) && isscalar(x)) % Set whether to keep sigma constant. If false z is kept constant
+P.addParameter('RemoveOutliers',0,@(x) isscalar(x) && isnumeric(x) && x>=0); % Remove outliers when their residuals exceed this amount of times the median residual in velocity inversion
+P.addParameter('Proximity',0,@(x) isscalar(x) && isnumeric(x) && x>=0); % Set the maximum distance from the cross-section for data to be included in the calculation
+P.addParameter('StdFiltering',6,@(x) isscalar(x) && isnumeric(x) && x>=0); % Remove velocity with a standard deviation of the estimate exceeding this amount of times the median standard deviation
+P.addParameter('ShipReference','bt',@(x) ischar(x) && any(strcmpi(x,{'bt','gps','gpsbt','btgps'}))); % Select which boat velocity calculation to use
+P.addParameter('Pusr',[], @(x) isnumeric(x)); % User set the central position of a transect (can be usefull when data density is not uniform on transect
 % BACKWARD COMPATIBILITY BELOW(REMOVE IN THE FUTURE)
-P.addParamValue('ModelU_t',1,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (ismatrix(x) && size(x,2)==nens))); % Velocity model for u
-P.addParamValue('ModelV_t',1,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (ismatrix(x) && size(x,2)==nens))); % Velocity model for v
-P.addParamValue('ModelW_t',1,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (ismatrix(x) && size(x,2)==nens))); % Velocity model for w
-P.addParamValue('KnownU_t',0,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (isrow(x) && size(x,2)==nens))); % Known parameters for u
-P.addParamValue('KnownV_t',0,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (isrow(x) && size(x,2)==nens))); % Known parameters for v
-P.addParamValue('KnownW_t',0,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (isrow(x) && size(x,2)==nens))); % Known parameters for w
+P.addParameter('ModelU_t',1,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (ismatrix(x) && size(x,2)==nens))); % Velocity model for u
+P.addParameter('ModelV_t',1,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (ismatrix(x) && size(x,2)==nens))); % Velocity model for v
+P.addParameter('ModelW_t',1,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (ismatrix(x) && size(x,2)==nens))); % Velocity model for w
+P.addParameter('KnownU_t',0,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (isrow(x) && size(x,2)==nens))); % Known parameters for u
+P.addParameter('KnownV_t',0,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (isrow(x) && size(x,2)==nens))); % Known parameters for v
+P.addParameter('KnownW_t',0,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (isrow(x) && size(x,2)==nens))); % Known parameters for w
 % BACKWARD COMPATIBILITY ABOVE (REMOVE IN THE FUTURE)
-P.addParamValue('RotatePars',true,@(x) isscalar(x) && islogical(x));
-P.addParamValue('EnableDebugging',false,@(x) isscalar(x) && islogical(x));
-P.addParamValue('Model',@default_model,@(x) isscalar(x) && isa(x,'function_handle'));
-P.addParamValue('Known',@default_known,@(x) isscalar(x) && isa(x,'function_handle'));
-P.addParamValue('GetVelocity',@default_getvelocity,@(x) isscalar(x) && isa(x,'function_handle'));
+P.addParameter('RotatePars',true,@(x) isscalar(x) && islogical(x));
+P.addParameter('EnableDebugging',false,@(x) isscalar(x) && islogical(x));
+P.addParameter('Model',@default_model,@(x) isscalar(x) && isa(x,'function_handle'));
+P.addParameter('Known',@default_known,@(x) isscalar(x) && isa(x,'function_handle'));
+P.addParameter('GetVelocity',@default_getvelocity,@(x) isscalar(x) && isa(x,'function_handle'));
 
 P.parse(varargin{:}); % parse the input
 
