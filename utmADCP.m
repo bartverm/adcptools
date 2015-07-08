@@ -120,7 +120,7 @@ else
             % strange jumps in position due to large delta_t)
             f_newfile=find(diff(inadcp.FileNumber)>0); % find where files end
             reset_pos=zeros(size(pos)); % vector to hold start position of each track
-            find_reset_pos=inadcp.FileNumber'+1; % vector to hold indices with file number for each ensemble
+            find_reset_pos=inadcp.FileNumber'-1; % vector to hold indices with file number for each ensemble
             reset_pos(find_reset_pos>0,:)=pos(f_newfile(find_reset_pos(find_reset_pos>0))+1,:); % Store for each file the starting coordinates
             pos=pos-reset_pos; % Subtract starting coordinates for each file
             
