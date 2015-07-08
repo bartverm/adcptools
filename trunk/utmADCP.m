@@ -94,7 +94,33 @@ else
             lat=inadcp.tFiles.lat';
             long=inadcp.tFiles.long';
         else
-            error('utmADCP:NoData','Could not find coordinates information in ADCP file')
+            warning('utmADCP:NoGPS','Could not find coordinates information in ADCP file, using bottom tracking')
+            if ~isfield(inadcp,'btvel')
+                error('utmADCP:NoGPSNoBt','Could not find bottom tracking data')
+            end
+            [inadcp.VEL,inadcp.btvel] = filterADCP(inadcp,'','filterBT',true); % Filter velocity
+            [~, btvel]=corADCP(inadcp,'e'); % transform to earth velocity
+            btvel=(btvel(1:end-1,1:2)+btvel(2:end,1:2))/2;
+            time=datenum(inadcp.timeV);
+            if ~all(diff(time)>0)
+                tv=inadcp.timeV1C;
+                tv(:,1)=tv(:,1)+2000;
+                time=datenum(tv);
+            end
+            dt=diff(time)*24*3600;
+            fgood=all(isfinite(btvel),2);
+            btvel(~fgood,:)=interp1(time(fgood),btvel(fgood,:),time(~fgood),'pchip');
+            pos=cumsum([0 0; bsxfun(@times,btvel,dt)],1);
+            f_newfile=find(diff(inadcp.FileNumber)>0);
+            reset_pos=zeros(size(pos));
+            find_reset_pos=zeros(size(pos,1),1);
+            find_reset_pos(f_newfile+1)=1;
+            find_reset_pos=cumsum(find_reset_pos);
+            reset_pos(find_reset_pos>0,:)=pos(f_newfile(find_reset_pos(find_reset_pos>0))+1,:);
+            pos=pos-reset_pos;
+            UTMx=pos(:,1);
+            UTMy=pos(:,2);
+            return
         end
     end
 end
