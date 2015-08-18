@@ -57,6 +57,7 @@ end
 
 
 %Initialize variable
-NMEA_GGA.UTCtime=cell2mat(textscan([tmpdat(:).utc],'%2f32 %2f32 %f32','delimiter',','));
+NMEA_ZDA.UTCtime=cell2mat(textscan([tmpdat(:).utc],'%2f32 %2f32 %f32','delimiter',','));
 NMEA_ZDA.date=fliplr(cell2mat(textscan([tmpdat(:).date],'%u16 %u16 %u16','delimiter',',')));
 NMEA_ZDA.zone=cell2mat(textscan([tmpdat(:).zone],'%d8 %d8','delimiter',',*'));
+
