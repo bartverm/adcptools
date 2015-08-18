@@ -49,41 +49,41 @@ allFiles=({allFiles(~[allFiles(:).isdir]).name})';
 
 
 %% Read Transect Files
-rfiles=match_and_cat({'\w*[0-9]{3,3}r\.[0-9]{3,3}'; '\w*.PD0'});% search for raw data files
+rfiles=match_and_cat({'.*[0-9]{3,3}r\.[0-9]{3,3}$'; '.*\.PD0$'; '.*\.000$'});% search for raw data files
 assert(~isempty(rfiles),'ReadDeployment:NoRFiles','Could not find raw data files') % Make sure we found at least one adcp file
 disp('Reading ADCP raw data files...') % Tell something nice to the user
 outADCP=readADCP(rfiles); % Read files
 
 %% Read Navigation Files
-nfiles=match_and_cat({'\w*[0-9]{3,3}n\.[0-9]{3,3}'; '\w*GPS.TXT'}); % search for navigation files
+nfiles=match_and_cat({'.*[0-9]{3,3}n\.[0-9]{3,3}$'; '.*GPS\.TXT$'}); % search for navigation files
 if ~isempty(nfiles) % Found something?
     disp('Reading navigation files...') % Tell something nice to the user
     outADCP.nFiles=readNMEAADCP(outADCP,nfiles); % try to read it
 end
 
 %% Read Depth Sounder Files
-dfiles=match_and_cat({'\w*[0-9]{3,3}d\.[0-9]{3,3}'; '\w*DS.TXT'}); % search for depth sounder files
+dfiles=match_and_cat({'.*[0-9]{3,3}d\.[0-9]{3,3}$'; '.*DS\.TXT$'}); % search for depth sounder files
 if ~isempty(dfiles) % found something
     disp('Reading depth sounder files...')
     outADCP.dFiles=readNMEAADCP(outADCP,dfiles); % read it
 end
 
 %% Read External Heading Files
-hfiles=match_and_cat({'\w*[0-9]{3,3}h\.[0-9]{3,3}'; '\w*EH.TXT'}); % search for depth sounder files
+hfiles=match_and_cat({'.*[0-9]{3,3}h\.[0-9]{3,3}$'; '.*EH\.TXT$'}); % search for depth sounder files
 if ~isempty(hfiles)
     disp('Reading external heading files...')
     outADCP.hFiles=readNMEAADCP(outADCP,hfiles);
 end
 
 %% Read Transect files
-tfiles=match_and_cat('\w*[0-9]{3,3}t\.[0-9]{3,3}'); % search for transect files
+tfiles=match_and_cat('.*[0-9]{3,3}t\.[0-9]{3,3}$'); % search for transect files
 if ~isempty(tfiles) 
     disp('Reading transect files...')
     outADCP.tFiles=readTfiles(outADCP,tfiles);
 end
 
 %% Read VISEA Extern file
-vfiles=match_and_cat('\w*[0-9]{3,3}extern\.dat'); % search for transect files
+vfiles=match_and_cat('.*[0-9]{3,3}extern\.dat$'); % search for transect files
 if ~isempty(vfiles)
     disp('Reading VISEA extern files...')
     outADCP.VISEA_Extern=readViseaExtern(outADCP,vfiles);

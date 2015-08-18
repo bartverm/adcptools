@@ -168,6 +168,7 @@ P.addParamValue('Proximity',0,@(x) isscalar(x) && isnumeric(x) && x>=0);
 P.addParamValue('StdFiltering',6,@(x) isscalar(x) && isnumeric(x) && x>=0);
 P.addParamValue('ShipReference','bt',@(x) ischar(x) && any(strcmpi(x,{'bt','gps','gpsbt','btgps'})));
 P.addParamValue('Pusr',[], @(x) isnumeric(x));
+P.addParamValue('UseExtHeading',true, @(x) islogical(x));
 P.parse(varargin{:});
 
 assert(isADCPstruct(adcp));
@@ -188,6 +189,7 @@ eta=eta(:)';    % Vectorize eta
 eta=eta.*ones(1,size(numel(time),1)); % Ensure eta has same number of elements as the number of ensembles
 shref=P.Results.ShipReference;
 Pusr=P.Results.Pusr;
+UseExtHeading=P.Results.UseExtHeading;
 
 %% Get ADCP positioning data
 [x,y]=utmADCP(adcp); % Get adcp position
@@ -218,8 +220,10 @@ mze=nanmean(mz,3); % determine beam average for conventional velocity processing
 gpsvel=getGPSvel(adcp,'b'); 
 gpsvele=getGPSvel(adcp,'e');
 
-[vele,btvele]=corADCP(adcp,'e','UseExtHeading',true,'Beam3Misalign',misal); % transform to beam velocity
-[adcp.VEL, adcp.btvel]=corADCP(adcp,'b','UseExtHeading',true,'Beam3Misalign',misal); % transform to beam velocity
+% transform to earth velocity
+[vele,btvele]=corADCP(adcp,'e','UseExtHeading',UseExtHeading,'Beam3Misalign',misal);
+% transform to beam velocity
+[adcp.VEL, adcp.btvel]=corADCP(adcp,'b','UseExtHeading',UseExtHeading,'Beam3Misalign',misal);
 
 fbad_bt=any(isnan(adcp.btvel),2);
 fbad_bte=any(isnan(btvele),2);
@@ -228,7 +232,7 @@ dze(:,fbad_bte,:)=nan;
 
 if strcmpi(shref,'gps')
     adcp.btvel=gpsvel;
-    adcp.btvele=gpsvele;
+    btvele=gpsvele;
 elseif strcmpi(shref,'btgps')
     adcp.btvel(fbad_bt,:)=gpsvel(fbad_bt,:);
     btvele(fbad_bte,:)=gpsvele(fbad_bte,:);
@@ -418,7 +422,7 @@ for ct=1:size(tid,1) % For all sections
 
     % Preliminary computations
     nIdxd=floor((dn+veldn/4)/(veldn/2))+1; % Index to determine depth at cell boundaries and centres
-    fgood=isfinite(nIdxd) & nIdxd>0;% & abs(ds)<2*veldn; % MAGIC NUMBER!!!! % Select data to include in depth calculation at cell edges and center
+    fgood=isfinite(nIdxd) & (nIdxd>0) & (nIdxd <= ncells*2+1);% & abs(ds)<2*veldn; % MAGIC NUMBER!!!! % Select data to include in depth calculation at cell edges and center
     fleft=mod(floor(mn/veldn*2),2)==0; % Selects data on the left half of a cell
     flefte=mod(floor(mne/veldn*2),2)==0; % Selects data on the left half of a cell (conventional processing)
     fright=~fleft; % Selects data on the left half of a cell
