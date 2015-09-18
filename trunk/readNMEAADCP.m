@@ -101,11 +101,11 @@ if any(hastime)
         fnan=isnan(intY) | isnan(linesTime{cntfile});                      % find the nans 
         intY(fnan)=[];                                                     % remove them
         linesTime{cntfile}(fnan)=[];                                       % remove them
-        [Dummy,idx]=unique(intY,'first');                                              
+        [~,idx]=unique(intY,'first');                                              
         while numel(idx)~=numel(intY)
             idx2=intersect(1:numel(intY),idx);
             intY(idx2)=intY(idx2)+1e-6;
-            [Dummy,idx]=unique(intY,'first');
+            [~,idx]=unique(intY,'first');
         end
         timeV{cntfile}=datevec(interp1(linesTime{cntfile},intY,...
                                lines{cntfile},'linear'));                  % interpolating time for lines without a time stamp
