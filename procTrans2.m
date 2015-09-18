@@ -300,9 +300,9 @@ zb=bsxfun(@plus,zb-depthtransd,eta); % transform vertical offset to bed level wi
 xb=bsxfun(@plus,xadcp',xb); % transform offsets to UTM coordinate system for horizontal
 yb=bsxfun(@plus,yadcp',yb); % transform offsets to UTM coordinate system for horizontal
 if IsConventional
-    xb=nanmean(xb,3); % determine beam average for conventional velocity processing
-    yb=nanmean(yb,3); % determine beam average for conventional velocity processing
-    zb=nanmean(zb,3); % determine beam average for conventional velocity processing
+    xb=repmat(nanmean(xb,3),[1 1 4]); % determine beam average for conventional velocity processing
+    yb=repmat(nanmean(yb,3),[1 1 4]); % determine beam average for conventional velocity processing
+    zb=repmat(nanmean(zb,3),[1 1 4]); % determine beam average for conventional velocity processing
 end
 
 
@@ -312,9 +312,9 @@ zvel=bsxfun(@plus,zvel-depthtransd,eta); % transform vertical offset to z positi
 xvel=bsxfun(@plus,xadcp',xvel); % transform offsets to vel data to UTM coordinate system for horizontal
 yvel=bsxfun(@plus,yadcp',yvel); % transform offsets to vel data to UTM coordinate system for horizontal
 if IsConventional
-    xvel=nanmean(xvel,3); % determine beam average for conventional velocity processing
-    yvel=nanmean(yvel,3); % determine beam average for conventional velocity processing
-    zvel=nanmean(zvel,3); % determine beam average for conventional velocity processing
+    xvel=repmat(nanmean(xvel,3),[1 1 4]); % determine beam average for conventional velocity processing
+    yvel=repmat(nanmean(yvel,3),[1 1 4]); % determine beam average for conventional velocity processing
+    zvel=repmat(nanmean(zvel,3),[1 1 4]); % determine beam average for conventional velocity processing
 end
 tvel=repmat(time,[size(xvel,1),1,size(xvel,3)]);
 
@@ -739,11 +739,11 @@ for ct=1:size(tid,1) % For all sections
         rowIdx(fnd)=floor((maxz-czvel(fnd))./dZ(fnd))+1; % Calculate Index mapping to the right vertical cell       
     end
     
-    if IsConventional
-        rowIdx=repmat(rowIdx,[1 1 4]);
-        colIdx=repmat(colIdx,[1 1 4]);
-        f_incs=repmat(f_incs,[1 1 4]);
-    end
+%     if IsConventional
+%         rowIdx=repmat(rowIdx,[1 1 4]);
+%         colIdx=repmat(colIdx,[1 1 4]);
+%         f_incs=repmat(f_incs,[1 1 4]);
+%     end
     
     %% Velocity processing
     siz=[size(msh(ct).Z,1) size(msh(ct).Z,2)]; % size of output mesh
@@ -753,7 +753,7 @@ for ct=1:size(tid,1) % For all sections
     cTM3=TM3(:,fcur,:);
     datacol=cell([siz nanmax(tid(ct,:))]); % Initialize variable to collect velocity and tr. matrix data
 
-    for ccr=nanmin(tid(ct,:)):nanmax(tid(ct,:)) % loop over all crossings
+    for ccr=nanmin(tid(ct,tid(ct,:)>0)):nanmax(tid(ct,:)) % loop over all crossings
         if IsCumulative
             fnd=bsxfun(@and,tid(ct,fcur)<=ccr, f_incs & rowIdx<=size(msh(ct).Z,1) & rowIdx>0); % find data in current section, in all crossing up to current, and belonging to any cell
         else
