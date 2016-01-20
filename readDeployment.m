@@ -49,7 +49,7 @@ allFiles=({allFiles(~[allFiles(:).isdir]).name})';
 
 
 %% Read Transect Files
-rfiles=match_and_cat({'.*[0-9]{3,3}r\.[0-9]{3,3}$'; '.*\.PD0$'; '.*\.000$'});% search for raw data files
+rfiles=match_and_cat({'.*[0-9]{3,3}r\.[0-9]{3,3}$'; '.*\.PD0$'});% search for raw data files % Bart Vermeulen: removed .*\.000. This is only usefull for self-contained measurements which should not be read with readDeployment
 assert(~isempty(rfiles),'ReadDeployment:NoRFiles','Could not find raw data files') % Make sure we found at least one adcp file
 disp('Reading ADCP raw data files...') % Tell something nice to the user
 outADCP=readADCP(rfiles); % Read files
