@@ -1,4 +1,4 @@
-function adcpnmea = readNMEAADCP(inadcp,nmeafilename)
+function adcpnmea = match_nmea_adcp(adcp,nmea)
 % READADCPNMEA reads data from files of the NMEA format and outputs
 %              structures for each NMEA message type and its data order for
 %              each ensemble. If multiple values are available for the same
@@ -38,23 +38,36 @@ function adcpnmea = readNMEAADCP(inadcp,nmeafilename)
 % Assumption: Files are given in chronological order and one series at a time!
 
 inp=inputParser;                                                           % Create an object of the InputParser class
-inp.addRequired('inadcp',@isstruct);                                       % Add required input inadcp
-inp.addRequired('nmeafilename',@(x) (iscellstr(x) | ischar(x)));           % Add the required variable 'mmeafilename' and check for right format
-inp.parse(inadcp,nmeafilename);                                            % Parse input
-if ischar(nmeafilename)
-    nmeafilename=cellstr(nmeafilename);                                    % Change character array to cell
-end
+inp.addRequired('adcp',@isstruct);                                       % Add required input inadcp
+inp.addRequired('nmea',@isstruct);           % Add the required variable 'mmeafilename' and check for right format
+inp.parse(adcp,nmea);                                            % Parse input
 clear inp
 
 adcpnmea=struct;                                                           % Initialize adcpnmea as a structure
-innmea=readNMEA(nmeafilename);                                             % Read the data from the NMEA files
 
-if ~isfield(innmea,'RDENS')                                                % If no RDENS information is found
+if ~isfield(nmea,'rdens')                                                % If no RDENS information is found
     error('readNMEAADCP:noRDENS','Cannot find Ensemble information')                 % generate an error
 end
-nmeamsgs=fieldnames(innmea);                                               % Get the names of the available messages
+nmeamsgs=fieldnames(nmea);                                               % Get the names of the available messages
 
 %% Find time and date corresponding to lineids
+time_field='utc';
+date_field='date';
+
+for cnt_msg=1%:numel(nmeamsgs)
+    c_msg=nmeamsgs{cnt_msg};
+    if isfield(nmea.(c_msg),time_field)
+        fids=unique(nmea.(c_msg).file_id);
+        [time,time_lines]=deal(cell(numel(fids),1));
+        for cnt_fid=1:numel(fids)
+            c_fid=fids(cnt_fid);
+            time{cnt_fid}=nmea.(c_msg).(time_field)(:,nmea.(c_msg).file_id==c_fid);
+            time_lines{cnt_fid}=nmea.(c_msg).string_id(nmea.(c_msg).file_id==c_fid);
+        end
+    end
+end
+
+
 
 % Store times and dates and corresponding line ids
 disp('Searching for time and date...')

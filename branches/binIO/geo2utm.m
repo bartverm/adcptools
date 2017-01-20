@@ -1,4 +1,4 @@
-function [UTMx UTMy zone] = geo2utm(lat,long,zone)
+function [UTMx, UTMy, zone] = geo2utm(lat,long,zone)
 %
 %    Copyright 2009,2010 Bart Vermeulen, Maximiliano Sassi
 %
@@ -86,7 +86,11 @@ end % if isempty(zone)
     lat=lat/180*pi;
     a=6378.137;
     finv=298.257223563; f=1/finv;
-    if mean(lat(goodff))>0, N0=0; else N0=10000; end
+    if mean(lat(goodff))>0
+        N0=0;
+    else
+        N0=10000; 
+    end
     k0=0.9996;
     E0=500;
     n=f/(2-f);

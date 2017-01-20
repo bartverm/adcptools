@@ -1,29 +1,44 @@
-function NMEA=readNMEA(infiles)
+function NMEA=readNMEA(infiles, varargin)
 %readNMEA(filenames) Reads in data from nmea text files
 %   
-%   NMEAstruct=readNMEA(filenames)Reads NMEA data from files given in the
-%       charachter array or cell of strings filenames and returns a 
-%       Nfiles x 1 data structure containing one structure for each NMEA 
-%       message encountered. For description of the several NMEA messages 
-%       refer to the corresponding reading functions (i.e. for a $_GGA 
-%       message refer to the help of readGGA.
+%   NMEA=readNMEA(filenames) Reads NMEA data from files given in the
+%       charachter array or cell of strings filenames. The output is a
+%       structure, in which each field is one message type found in the
+%       files. Each message is again a structure containing the data from
+%       that message. For each message a string_id is given, which keeps
+%       track of the line number the data was obtained from and a file_id
+%       that keeps track of the file the data came from.
 %
-%   readNMEA supports the following messages:
-%       $RDENS    : RDI proprietary message containing ensemble number and 
-%                   pc-time. Read by readRDENS
-%       $PSAT,GBS : CSI proprietary message containing error estimates of
-%       $PSAT,HPR : CSI proprietary message containing heading pitch and
-%                   roll. Read by readHPR
-%       $__GGA    : Position information. Read by readGGA
-%                   GPS position. Read by readGBS
-%       $__GLL    : Position information. Read by readGLL
+%   NMEA=readNMEA(filenames, 'ParamName', ParamValue) allows to set the
+%       following parameters:
+%           'RDens' 
+%           {true} | false
+%           Sets whether to read the non-standard RDENS strings
+%
+%           'Concatenate'
+%           {true} | false
+%           Sets whether to concatenate the output. If set to false it will
+%           output an Nx1 cell array, with N being the number of input
+%           files. Each cell contains a structure as described above, but
+%           omitting the file_id information in the message structure
+%
+%   readNMEA currently supports the following standard messages:
+%       $__GGA    : Position information. 
+%       $__GLL    : Position information.
 %       $__GSA    : Dilution of Precision (DOP) and active satellite
-%                   information. Read by readGSA
-%       $__DBT    : Depth below transducer. Read by readDBT
-%       $__DBS    : Depth below surface. Read by readDBS
-%       $__ZDA    : Date and time information. Read by readZDA
-%       $__RMC    : Recommended minimum specific GPS data. Read by readRMC
-%       $__HDT    : Heading. Read by readHDT
+%                   information.
+%       $__DBT    : Depth below transducer.
+%       $__DBS    : Depth below surface.
+%       $__ZDA    : Date and time information.
+%       $__RMC    : Recommended minimum specific GPS data.
+%       $__HDT    : Heading.
+%       Standard NMEA formats are specified in the defineNMEA function.
+%       Additional standard NMEA formats can be added in the defineNMEA
+%       function.
+%
+%   readNMEA currently supports the following proprietary messages:
+%       $RDENS    : RDI proprietary message containing ensemble number and 
+%                   pc-time.
 %
 %   Author: Bart Vermeulen
 %   Last edit: 21-12-2009
@@ -46,224 +61,69 @@ function NMEA=readNMEA(infiles)
 %    along with ADCPTools.  If not, see <http://www.gnu.org/licenses/>.
 
 %% Handle input
-P=inputParser;
-P.addRequired('infiles',@(x) iscellstr(x) || ischar(x));
-P.parse(infiles);
-infiles=P.Results.infiles;
+P=inputParser;                                                             % create an inputParser object
+P.addRequired('infiles',@(x) iscellstr(x) || ischar(x));                   % first input is the filenames
+% P.addParameter('RDens',true,...
+%     @(x) validateattributes(x,{'logical'},{'scalar'}));                    % Parameter to set whether to read RDENS messages
+P.addParameter('Concatenate',true,...
+    @(x) validateattributes(x, {'logical'},{'scalar'}));                   % Parameter to set whether to concatenate output
+P.parse(infiles, varargin{:});                                             % Parse the input
 
-if ischar(infiles)
-    infiles=cellstr(infiles);
+% read_rdens=P.Results.RDens;                                                % Get value of RDens parameter
+cat_cells=P.Results.Concatenate;                                           % Get value of Concatenate parameter
+
+if ischar(infiles)                                                         % if one file is give as char
+    infiles=cellstr(infiles);                                              % transform to scalar cell of char
 end
 
 % check if input files exist
-for cf=length(infiles)
-    assert(exist(infiles{cf},'file')==2,['Couldn''t find file: ', infiles{cf}]);
+for cf=length(infiles)                                                     % Loop over all filenames
+    assert(exist(infiles{cf},'file')==2,...
+        ['Couldn''t find file: ', infiles{cf}]);                           % Make sure file exists
 end
 
 
 %% Parse files
-nfiles=length(infiles);   %find amount if fukes
-NMEA(1:nfiles)=struct();  %initialize an arrray of structures
+nfiles=numel(infiles);                                                     % get number of files
+tmpNMEA=cell(size(infiles));                                               % initialize an arrray of structures
 
-defineNMEA;
-
-for cntfile=1:nfiles
-    disp(['Reading data from file ' infiles{cntfile}]);
-    fid=fopen(infiles{cntfile},'r');   %Open file
-    if (fid < 0)
-	error('readNMEA','unable to open file for reading');
-    else
-    fseek(fid,0,1);                    %Go to the end
-    filesize=ftell(fid);               %Get filesize
-    fseek(fid,0,-1);                   %Go to the beginning
-    rawdat=fread(fid,filesize,'*char')'; %Read entire file
-    fclose(fid);                       % Close the file
-   
+for cntfile=1:nfiles                                                       % loop over files
+    disp(['Reading data from file ' infiles{cntfile}]);                    % display file being read
+    fid=fopen(infiles{cntfile},'r');                                       % Open file
+    if (fid < 0)                                                           % Check whether file was opened succesfully
+        error('readNMEA:bad_fid','unable to open file for reading');       % If not, generate an error
+    end
     
+    lines=textscan(fid,'%s');                                              % Get all lines in the file
+    fclose(fid);                                                           % Close the file
+    lines=lines{1};                                                        % Take lines out of 1x1 cell
     
-    % Search for NMEA and RDI strings
-    [rawdat tok]=regexp(rawdat,patterns.nmea,'match','tokens');
-    tok=vertcat(tok{:});
-
-    if (size(tok,2) < 2)
-        disp('Empty file or invalid NMEA data, skipping it');
-    else
-%     %Search for non RDENS data
-%     csumidx=find(~ (strcmpi('RD',tok(:,1)) & strcmpi('ENS',tok(:,2))));
-%     
-%     %Do checksum test on all the rest
-%     disp('Checking checksum...')
-%     isvalnmea=nmeachecksum(rawdat(csumidx));
-%     
-%     %Remove all that failed checksum test
-%     if ~all(isvalnmea)
-%         disp(['Found ',num2str(length(find(~isvalnmea))),' sentences with bad checksum'])
-%         rawdat(csumidx(~isvalnmea))=[];
-%         tok(csumidx(~isvalnmea),:)=[];
+    tmpNMEA{cntfile}=parseNMEA(lines,true);                                % Parse the lines with NMEA parser
+    
+%     if read_rdens                                                          % If requested
+%         tmpNMEA{cntfile}.rdens=parseRDENS(lines);                          % Parse the lines with RDENS parser
 %     end
-    
-    %Search for RDENS data
-    rdensidx=strcmpi('RD',tok(:,1)) & strcmpi('ENS',tok(:,2));
-    if any(rdensidx), disp('RDENS proprietary data found, reading...' )
-        [NMEA(cntfile).RDENS,discard]=readRDENS(rawdat(rdensidx));
-        NMEA(cntfile).RDENS.lineid=find(rdensidx);
-        if ~isempty(discard)
-            disp(['Discarding ',num2str(length(discard)),' malformed RDENS string(s)'])
-            NMEA(cntfile).RDENS.lineid(discard)=[];
-        end
-    end
-    clear rdensidx
-     
-    
-    %Search for GGA data
-    ggaidx=strcmpi('GGA',tok(:,2));
-    if any(ggaidx), disp('GGA data found, reading...' )
-         [NMEA(cntfile).GGA,discard]=readGGA(rawdat(ggaidx));
-         NMEA(cntfile).GGA.lineid=find(ggaidx);
-         if ~isempty(discard)
-            disp(['Discarding ',num2str(length(discard)),' malformed GGA string(s)'])
-            NMEA(cntfile).GGA.lineid(discard)=[];
-         end
-    end
-    clear ggaidx
-    
-    %Search for GBS data
-    gbsidx=strcmpi('PS',tok(:,1)) & strcmpi('AT',tok(:,2)) & strcmpi('GBS',tok(:,3));
-    if any(gbsidx), disp('GBS proprietary data found, reading...' )
-         [NMEA(cntfile).GBS,discard]=readPSAT(rawdat(gbsidx));
-         NMEA(cntfile).GBS.lineid=find(gbsidx);
-         if ~isempty(discard)
-            disp(['Discarding ',num2str(length(discard)),' malformed GBS string(s)'])
-            NMEA(cntfile).GBS.lineid(discard)=[];
-         end
-    end
-    clear gbsidx
- 
-    %Search for GLL data
-    gllidx=strcmpi('GLL',tok(:,2));
-    if any(gllidx), disp('GLL data found, reading...' )
-        [NMEA(cntfile).GLL,discard]=readGLL(rawdat(gllidx));
-        NMEA(cntfile).GLL.lineid=find(gllidx);
-        if ~isempty(discard)
-           disp(['Discarding ',num2str(length(discard)),' malformed GLL string(s)'])
-           NMEA(cntfile).GLL.lineid(discard)=[];
-        end
-    end
-    clear gllidx
-
-    %Search for GSA data
-    gsaidx=strcmpi('GSA',tok(:,2));
-    if any(gsaidx), disp('GSA data found, reading...' )
-        [NMEA(cntfile).GSA,discard]=readGSA(rawdat(gsaidx));
-        NMEA(cntfile).GSA.lineid=find(gsaidx);
-        if ~isempty(discard)
-            disp(['Discarding ',num2str(length(discard)),' malformed GSA string(s)'])
-            NMEA(cntfile).GSA.lineid(discard)=[];
-        end
-    end
-    clear gsaidx
-
-    %Search for DBT data
-    dbtidx=strcmpi('DBT',tok(:,2));
-    if any(dbtidx), disp('DBT data found, reading...' )
-        [NMEA(cntfile).DBT,discard]=readDBT(rawdat(dbtidx));
-        NMEA(cntfile).DBT.lineid=find(dbtidx);
-        if ~isempty(discard)
-            disp(['Discarding ',num2str(length(discard)),' malformed DBT string(s)'])
-            NMEA(cntfile).DBT.lineid(discard)=[];
-        end
-    end
-    clear dbtidx
-
-    % Search for HPR data
-    hpridx=strcmpi('PS',tok(:,1)) & strcmpi('AT',tok(:,2)) & strcmpi('HPR',tok(:,3));
-    if any(hpridx), disp('HPR data found, reading...' )
-        [NMEA(cntfile).HPR,discard]=readHPR(rawdat(hpridx));
-        NMEA(cntfile).HPR.lineid=find(hpridx);
-        if ~isempty(discard)
-            disp(['Discarding ',num2str(length(discard)),' malformed HPR string(s)'])
-            NMEA(cntfile).HPR.lineid(discard)=[];
-        end
-    end
-    clear hpridx
- 
- 
-    %Search for DPT data (readDPT not yet implemented!)
-%     dptidx=find(~(cellfun(@isempty,regexpi(rawdat,'\$..DPT'))));
-%     if ~isempty(dptidx), disp('DPT data found, reading...' )
-%         NMEA.DPT(cntfile)=readDPT(rawdat(dptidx));
-%         NMEA.DPT(cntfile).lineid=dptidx';
-%     end
-%     clear dptidx
-
-    %Search for DBS data
-    dbsidx=strcmpi('DBS',tok(:,2));
-    if any(dbsidx), disp('DBS data found, reading...' )
-        [NMEA(cntfile).DBS,discard]=readDBS(rawdat(dbsidx));
-        NMEA(cntfile).DBS.lineid=find(dbsidx);
-        if ~isempty(discard)
-            disp(['Discarding ',num2str(length(discard)),' malformed DBS string(s)'])
-            NMEA(cntfile).DBS.lineid(discard)=[];
-        end
-    end
-    clear dbsidx
-
-    %Search for ZDA data
-    zdaidx=strcmpi('ZDA',tok(:,2));
-    if any(zdaidx), disp('ZDA data found, reading...' )
-        [NMEA(cntfile).ZDA,discard]=readZDA(rawdat(zdaidx));
-        NMEA(cntfile).ZDA.lineid=find(zdaidx);
-        if ~isempty(discard)
-            disp(['Discarding ',num2str(length(discard)),' malformed ZMA string(s)'])
-            NMEA(cntfile).ZDA.lineid(discard)=[];
-        end       
-    end
-    clear zdaidx
-
-    %Search for RMC data
-   rmcidx=strcmpi('RMC',tok(:,2));
-     if any(rmcidx), disp('RMC data found, reading...' )
-        [NMEA(cntfile).RMC,discard]=readRMC(rawdat(rmcidx));
-        NMEA(cntfile).RMC.lineid=find(rmcidx);
-        if ~isempty(discard)
-            disp(['Discarding ',num2str(length(discard)),' malformed RMC string(s)'])
-            NMEA(cntfile).RMC.lineid(discard)=[];
-        end
-    end
-    clear rmcidx
-
-    %Search for HDT data
-    hdtidx=strcmpi('HDT',tok(:,2));
-    if any(hdtidx), disp('HDT data found, reading...' )
-        [NMEA(cntfile).HDT,discard]=readHDT(rawdat(hdtidx));
-        NMEA(cntfile).HDT.lineid=find(hdtidx);
-        if ~isempty(discard)
-            disp(['Discarding ',num2str(length(discard)),' malformed HDT string(s)'])
-            NMEA(cntfile).HDT.lineid(discard)=[];
-        end
-    end
-    clear hdtidx
-    
-        % search for VTG data 
-    vtgidx=strcmpi('VTG',tok(:,2));
-    if any(vtgidx), disp('VTG data found, reading...' )
-        [NMEA(cntfile).VTG,discard]=readVTG(rawdat(vtgidx));
-        NMEA(cntfile).VTG.lineid=find(vtgidx);
-        if ~isempty(discard)
-            disp(['Discarding ',num2str(length(discard)),' malformed VTG string(s)'])
-            NMEA(cntfile).VTG.lineid(discard)=[];
-        end
-    end
-    clear vtgidx
-%     
-% 
-% %     gstpos=regexpi(rawdat,'\$..GST');
-% %     rrepos=regexpi(rawdat,'\$..RRE');
-% 
-% %     hdgpos=regexpi(rawdat,'\$..HDG');
-% %     hdmpos=regexpi(rawdat,'\$..HDM');
-% %     rotpos=regexpi(rawdat,'\$..ROT');
-    end % else of if size(tok,2) < 2
-    end % else of if (fid < 0) 
 end % for cntfile
+
+%% Concatenate outputs if requested
+if cat_cells                                                               % If outputs must be concatenated
+    fnames=cellfun(@fields, tmpNMEA, 'UniformOutput', false);              % Get all the message names
+    fnames=unique(vertcat(fnames{:}));                                     % Retain only unique message names
+    for c_field=1:numel(fnames)                                            % Loop over unique message names
+        c_fname=fnames{c_field};                                           % Get current message name
+        f_field=find(cellfun(@(x) isfield(x, c_fname), tmpNMEA));          % Find files which contain the current message (used also to store the file_id)
+        tmpStruct=cellfun(@(x) x.(c_fname), tmpNMEA(f_field));             % Create N element structure with current message as field, where N is the number of files with the current message
+        dnames=[fields(tmpStruct); {'file_id'}];                           % Get the names of the data fields in the current message and add the 'file_id' data to keep track of file
+        for c_str=1:numel(tmpStruct)                                       % Loop over valid files
+            tmpStruct(c_str).file_id=ones(1,size(...
+                tmpStruct(c_str).(dnames{1}),2))*f_field(c_str);           % Create the file_id to keep track of originating file
+        end
+        for c_dat=1:numel(dnames)                                          % For each data field in current message
+            c_dname=dnames{c_dat};                                         % Get the data field name                                  
+            NMEA.(c_fname).(c_dname)=[tmpStruct.(c_dname)];                % Concatenate the data from each file
+        end
+    end
+else                                                                       % If no concatenation is requested
+    NMEA=tmpNMEA;                                                          % output data as is
+end
 

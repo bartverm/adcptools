@@ -99,32 +99,6 @@ pitch=atan(tan(pitch).*cos(roll));                                         %Calc
 %     roll=roll+pi;
 % end
 
-%% Calculate offset in vertical due to boat movements
-% Determine boat pitch and roll
-% cb=cosd(Beam3mis);                                                         % Get cosine of beam 3 misalignment
-% sb=sind(Beam3mis);                                                         % Get sin of beam 3 misalignment
-% RM=[cb, sb; -sb, cb];                                                      % Make the rotation matrix
-% Broll=roll*RM(1,1)+pitch*RM(1,2);
-% Bpitch=roll*RM(2,1)+pitch*RM(2,2);                                         % Calculate the roll of the boat
-% BoatRollOffset=-DistCentreStar*sin(Broll);                                 % Calculate the vertical offset of the boat due to roll of the boat
-% BoatPitchOffset=-DistCentreFwd*sin(Bpitch);
-
-%% Calculate offset in vertical from vertical bt velocity
-% btOffset=zeros(1,length(heading));
-% if fBtOffset
-%     if ~(strcmp(inadcp.corinfo(4:5),'00')) %beam
-%         btvelup=double(inadcp.btvel(:,3));
-%         btvelup(btvelup==-32768)=0;
-%         btvelup=btvelup/1000;
-%         btvelup=btvelup-mean(btvelup);
-%         TimeS=datenum(inadcp.timeV);
-%         TimeS=(TimeS-TimeS(1))*3600*24;
-%         Dt=diff(TimeS);
-%         Dt=[Dt(1);Dt];
-%         btOffset=(cumsum(btvelup).*Dt)';   
-%     end
-% end
-
 %% Find beam angle
 switch inadcp.sysconf(9:10)
     case '00'
