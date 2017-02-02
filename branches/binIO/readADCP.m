@@ -90,6 +90,12 @@ raw_dat=cat(1,raw_dat{:});                                                 % con
 ens.pos=find_valid_ensembles();
 assert(~isempty(ens.pos),'readADCP:NoEnsemble','Could not find any valid ensemble')      % Generate error
 
+file_id=nan(size(ens.pos));
+cum_size=[0; cumsum(filesize)];
+for cnt_files=1:nfiles
+    file_id(ens.pos>=cum_size(cnt_files) & ens.pos < cum_size(cnt_files+1))=cnt_files;
+end
+
 % locate the data fields
 ens.ndat=double(raw_dat(ens.pos+5)');
 data=locate_data_fields();
@@ -106,7 +112,7 @@ end
 dataout=rmfield(dataout,'root');
 nfields=numel(fieldnames(dataout));
 dataout=orderfields(dataout,[n_nonroot_fields+1:nfields 1:n_nonroot_fields]);
-
+dataout.file_id=file_id;
 % END OF MAIN FUNCTION %%
 
 % FUNCTIONS BELOW SHARE SCOPE WITH MAIN FUNCTIONS  
