@@ -1,4 +1,4 @@
-function datadefs=define_data_types()
+function [fl, vl, datadefs]=define_data_types()
 % defines PD0 data types
 
 % Remarks:
@@ -7,11 +7,10 @@ function datadefs=define_data_types()
 
 
 %%% FIXED LEADER %%% (tested)
+fl=PD0.DataBlock_Traits;
 fl.name='fixed_leader';
 fl.header='0';
-fl.type='fields';
-fl.in_structure='root';
-fl.postaction=[];
+fl.fields(34)=PD0.DataField_Traits;
 fl.fields(1 ).name='firmver';           fl.fields(1 ).size=1;    fl.fields(1 ).type='uint8';   fl.fields(1 ).offset=3;
 fl.fields(2 ).name='firmrev';           fl.fields(2 ).size=1;    fl.fields(2 ).type='uint8';   fl.fields(2 ).offset=4;
 fl.fields(3 ).name='sysconf';           fl.fields(3 ).size=1;    fl.fields(3 ).type='uint16';  fl.fields(3 ).offset=5;
@@ -48,14 +47,12 @@ fl.fields(32).name='basefreqid';        fl.fields(32).size=1;    fl.fields(32).t
 fl.fields(33).name='serial';            fl.fields(33).size=4;    fl.fields(33).type='uint8';   fl.fields(33).offset=55;
 fl.fields(34).name='beamangle';         fl.fields(34).size=1;    fl.fields(34).type='uint8';   fl.fields(34).offset=59;
 
-datadefs(1)=fl;
 
 %%% VARIABLE LEADER %%% (tested)
+vl=PD0.DataBlock_Traits;
 vl.name='variable_leader';
 vl.header='0080';
-vl.type='fields';
-vl.in_structure='root';
-vl.postaction=[];
+vl.fields(22)=PD0.DataField_Traits;
 vl.fields(1 ).name='ensnum_lsb';        vl.fields(1 ).size=1;    vl.fields(1 ).type='uint16';  vl.fields(1 ).offset=3;
 vl.fields(2 ).name='time';              vl.fields(2 ).size=7;    vl.fields(2 ).type='uint8';   vl.fields(2 ).offset=5;
 vl.fields(3 ).name='ensnum_msb';        vl.fields(3 ).size=1;    vl.fields(3 ).type='uint8';   vl.fields(3 ).offset=12;
@@ -78,50 +75,55 @@ vl.fields(19).name='errorstat';         vl.fields(19).size=4;    vl.fields(19).t
 vl.fields(20).name='pressure';          vl.fields(20).size=1;    vl.fields(20).type='uint32';  vl.fields(20).offset=49;
 vl.fields(21).name='pressurevar';       vl.fields(21).size=1;    vl.fields(21).type='uint32';  vl.fields(21).offset=53;
 vl.fields(22).name='time_y2k';          vl.fields(22).size=8;    vl.fields(22).type='uint8';   vl.fields(22).offset=58;
-datadefs(end+1)=vl;
 
 %%% VELOCITY DATA %%% (tested)
+vel=PD0.ArrayBlock_Traits;
 vel.name='velocity';
 vel.header='0100';
-vel.type='array';
-vel.in_structure='root';
-vel.postaction=[];
+vel.nbins_block=fl;
+vel.nbins_field=fl.get_field_by_name('nbins')';
+vel.nbeams=4;
 vel.fields(1).name='VEL'; vel.fields(1).type='int16';
-datadefs(end+1)=vel;
+datadefs(1)=vel;
 
 %%% ECHO DATA %%% (tested)
+echo=PD0.ArrayBlock_Traits;
 echo.name='echo';
 echo.header='0200';
-echo.type='array';
-echo.in_structure='root';
-echo.postaction=[];
+echo.nbins_block=fl;
+echo.nbins_field=fl.get_field_by_name('nbins')';
+echo.nbeams=4;
+echo.fields=PD0.DataField_Traits;
 echo.fields(1).name='ECHO'; echo.fields(1).type='uint8';
 datadefs(end+1)=echo;
 
 %%% CORRELATION DATA %%% (tested)
+corr=PD0.ArrayBlock_Traits;
 corr.name='correlation';
 corr.header='0300';
-corr.type='array';
-corr.in_structure='root';
-corr.postaction=[];
+corr.nbins_block=fl;
+corr.nbins_field=fl.get_field_by_name('nbins')';
+corr.nbeams=4;
+corr.fields=PD0.DataField_Traits;
 corr.fields(1).name='CORR'; corr.fields(1).type='uint8';
 datadefs(end+1)=corr;
 
 %%% PERCENTAGE GOOD DATA %%% (tested)
+perc=PD0.ArrayBlock_Traits;
 perc.name='percentage';
 perc.header='0400';
-perc.type='array';
-perc.in_structure='root';
-perc.postaction=[];
+perc.nbins_block=fl;
+perc.nbins_field=fl.get_field_by_name('nbins')';
+perc.nbeams=4;
+perc.fields=PD0.DataField_Traits;
 perc.fields(1).name='PERC'; perc.fields(1).type='uint8';
 datadefs(end+1)=perc;
 
 %% BOTTOM TRACKING DATA %%% (tested)
+bt=PD0.DataBlock_Traits;
 bt.name='bottom_tracking';
 bt.header='0600';
-bt.type='fields';
-bt.in_structure='root';
-bt.postaction=[];
+bt.fields(23)=PD0.DataField_Traits;
 bt.fields(1 ).name='btpingperens';   bt.fields(1 ).size=1;   bt.fields(1 ).type='uint16';  bt.fields(1 ).offset=3;
 bt.fields(2 ).name='reacqdelay';     bt.fields(2 ).size=1;   bt.fields(2 ).type='uint16';  bt.fields(2 ).offset=5;
 bt.fields(3 ).name='mincormag';      bt.fields(3 ).size=1;   bt.fields(3 ).type='uint8';   bt.fields(3 ).offset=7;
@@ -148,67 +150,72 @@ bt.fields(23).name='btrange_msb';    bt.fields(23).size=4;   bt.fields(23).type=
 datadefs(end+1)=bt;
 
 %% SURFACE LAYER VELOCITY LEADER %%
+sll=PD0.DataBlock_Traits;
 sll.name='surface_layer_leader';
 sll.header='0010';
-sll.type='fields';
-sll.in_structure='surface_layer';
-sll.postaction=@(x) set_usedbeams_to_n(x,4,size(x.nbins,2));
+sll.fields(3)=PD0.DataField_Traits;
 sll.fields(1).name='nbins';    sll.fields(1).size=1; sll.fields(1).type='uint8';  sll.fields(1).offset=3;
 sll.fields(2).name='binsize';  sll.fields(2).size=1; sll.fields(2).type='uint16'; sll.fields(2).offset=4;
 sll.fields(3).name='bin1dist'; sll.fields(3).size=1; sll.fields(3).type='uint16'; sll.fields(3).offset=6;
 datadefs(end+1)=sll;
 
 %% SURFACE LAYER VELOCITY %%
+slv=PD0.ArrayBlock_Traits;
 slv.name='surface_layer_velocity';
 slv.header='0110';
-slv.type='array';
-slv.in_structure='surface_layer';
-slv.postaction=[];
+slv.nbins_block=sll;
+slv.nbins_field=sll.get_field_by_name('nbins');
+slv.nbeams=4;
+slv.fields=PD0.DataField_Traits;
 slv.fields(1).name='vel'; slv.fields(1).type='int16';
 datadefs(end+1)=slv;
 
 %% SURFACE LAYER CORRELATION %%
+slc=PD0.ArrayBlock_Traits;
 slc.name='surface_layer_correlation';
 slc.header='0210';
-slc.type='array';
-slc.in_structure='surface_layer';
-slc.postaction=[];
+slc.nbins_block=sll;
+slc.nbins_field=sll.get_field_by_name('nbins');
+slc.nbeams=4;
+slc.fields=PD0.DataField_Traits;
 slc.fields(1).name='corr'; slc.fields(1).type='uint8';
 datadefs(end+1)=slc;
 
 %% SURFACE LAYER ECHO %%
+sle=PD0.ArrayBlock_Traits;
 sle.name='surface_layer_echo';
 sle.header='0310';
-sle.type='array';
-sle.in_structure='surface_layer';
-sle.postaction=[];
+sle.nbins_block=sll;
+sle.nbins_field=sll.get_field_by_name('nbins');
+sle.nbeams=4;
+sle.fields=PD0.DataField_Traits;
 sle.fields(1).name='echo'; sle.fields(1).type='uint8';
 datadefs(end+1)=sle;
 
 %% SURFACE LAYER PERCENTAGE GOOD %%
+slp=PD0.ArrayBlock_Traits;
 slp.name='surface_layer_percentage';
 slp.header='0410';
-slp.type='array';
-slp.in_structure='surface_layer';
-slp.postaction=[];
+slp.nbins_block=sll;
+slp.nbins_field=sll.get_field_by_name('nbins');
+slp.nbeams=4;
+slp.fields=PD0.DataField_Traits;
 slp.fields(1).name='perc'; slp.fields(1).type='uint8';
 datadefs(end+1)=slp;
 
 %% SURFACE LAYER STATUS %%
+sls=PD0.DataBlock_Traits;
 sls.name='surface_layer_status';
 sls.header='0510';
-sls.type='array';
-sls.in_structure='surface_layer';
-sls.postaction=[];
+sls.fields=PD0.DataField_Traits;
 sls.fields(1).name='status'; sls.fields(1).type='uint8';
 datadefs(end+1)=sls;
 
 %% AUTOMATIC MODE 3 %%
+am3=PD0.DataBlock_Traits;
 am3.name='mode3_settings';
 am3.header='4401';
-am3.type='fields';
-am3.in_structure='mode3_settings';
-am3.postaction=[];
+am3.fields(54)=PD0.DataField_Traits;
 am3.fields( 1).name='n_beams';           am3.fields( 1).size=1; am3.fields( 1).type='uint8' ; am3.fields( 1).offset=3;
 am3.fields( 2).name='beam1_setup';       am3.fields( 2).size=1; am3.fields( 2).type='uint8' ; am3.fields( 2).offset=4;
 am3.fields( 3).name='beam1_depth';       am3.fields( 3).size=1; am3.fields( 3).type='uint16'; am3.fields( 3).offset=5;
@@ -266,11 +273,10 @@ am3.fields(54).name='reserved';          am3.fields(54).size=1; am3.fields(54).t
 datadefs(end+1)=am3;
 
 %% FIRMWARE STATUS %%
+fs=PD0.DataBlock_Traits;
 fs.name='firmware_status';
 fs.header='4400';
-fs.type='fields';
-fs.in_structure='firmware_status';
-fs.postaction=[];
+fs.fields(5)=PD0.DataField_Traits;
 fs.fields(1).name='version_alpha';  fs.fields(1).size=1;  fs.fields(1).type='char';  fs.fields(1).offset=3;
 fs.fields(2).name='version_branch'; fs.fields(2).size=14; fs.fields(2).type='char';  fs.fields(2).offset=4;
 fs.fields(3).name='test_data';      fs.fields(3).size=2;  fs.fields(3).type='char';  fs.fields(3).offset=18;
@@ -279,11 +285,10 @@ fs.fields(5).name='reserved';       fs.fields(5).size=1;  fs.fields(5).type='uin
 datadefs(end+1)=fs;
 
 %% VERTICAL BEAM RANGE %%
+vr=PD0.DataBlock_Traits;
 vr.name='vertical_beam_range';
 vr.header='4100';
-vr.type='fields';
-vr.in_structure='vertical_beam';
-vr.postaction=[];
+vr.fields(4)=PD0.DataField_Traits;
 vr.fields(1).name='eval_amp'; vr.fields(1).size=1; vr.fields(1).type='uint8' ; vr.fields(1).offset=3;
 vr.fields(2).name='rssi_amp'; vr.fields(2).size=1; vr.fields(2).type='uint8' ; vr.fields(2).offset=4;
 vr.fields(3).name='range';    vr.fields(3).size=1; vr.fields(3).type='uint32'; vr.fields(3).offset=5;
@@ -291,11 +296,11 @@ vr.fields(4).name='status';   vr.fields(4).size=1; vr.fields(4).type='uint8' ; v
 datadefs(end+1)=vr;
 
 %% VERTICAL BEAM LEADER %%
+vbl=PD0.DataBlock_Traits;
 vbl.name='vertical_beam_leader';
 vbl.header='0F01';
-vbl.type='fields';
-vbl.in_structure='vertical_beam';
 vbl.postaction=@(x) set_usedbeams_to_n(x,1,size(nbins,2));
+vbl.fields(7)=PD0.DataField_Traits;
 vbl.fields(1).name='nbins';       vbl.fields(1).size=1; vbl.fields(1).type='uint16'; vbl.fields(1).offset=3;
 vbl.fields(2).name='npings';      vbl.fields(2).size=1; vbl.fields(2).type='uint16'; vbl.fields(2).offset=5;
 vbl.fields(3).name='binsize';     vbl.fields(3).size=1; vbl.fields(3).type='uint16'; vbl.fields(3).offset=7;
@@ -306,67 +311,60 @@ vbl.fields(7).name='ncod_el';     vbl.fields(7).size=1; vbl.fields(7).type='uint
 datadefs(end+1)=vbl;
 
 %% VERTICAL BEAM VELOCITY %%
+vbv=PD0.ArrayBlock_Traits;
 vbv.name='vertical_beam_velocity';
 vbv.header='0A00';
-vbv.type='array';
-vbv.in_structure='vertical_beam';
-vbv.postaction=[];
+vbv.fields=PD0.DataField_Traits;
 vbv.fields(1).name='vel'; vbv.fields(1).type='int16';
 datadefs(end+1)=vbv;
 
 %% VERTICAL BEAM CORRELATION %%
+vbc=PD0.ArrayBlock_Traits;
 vbc.name='vertical_beam_correlation';
 vbc.header='0B00';
-vbc.type='array';
-vbc.in_structure='vertical_beam';
-vbc.postaction=[];
+vbc.fields=PD0.DataField_Traits;
 vbc.fields(1).name='corr'; vbc.fields(1).type='uint8';
 datadefs(end+1)=vbc;
 
 %% VERTICAL BEAM ECHO %%
+vbe=PD0.ArrayBlock_Traits;
 vbe.name='vertical_beam_echo';
 vbe.header='0C00';
-vbe.type='array';
-vbe.in_structure='vertical_beam';
-vbe.postaction=[];
+vbe.fields=PD0.DataField_Traits;
 vbe.fields(1).name='echo'; vbe.fields(1).type='uint8';
 datadefs(end+1)=vbe;
 
 %% VERTICAL BEAM PERCENTAGE GOOD %%
+vbp=PD0.ArrayBlock_Traits;
 vbp.name='vertical_beam_percentage';
 vbp.header='0D00';
-vbp.type='array';
-vbp.in_structure='vertical_beam';
-vbp.postaction=[];
+vbp.fields=PD0.DataField_Traits;
 vbp.fields(1).name='perc'; vbp.fields(1).type='uint8';
 datadefs(end+1)=vbp;
 
 %% VERTICAL BEAM STATUS %%
+vbs=PD0.ArrayBlock_Traits;
 vbs.name='vertical_beam_status';
 vbs.header='0E00';
-vbs.type='array';
-vbs.in_structure='vertical_beam';
-vbs.postaction=[];
+vbs.fields=PD0.DataField_Traits;
 vbs.fields(1).name='status'; vbs.fields(1).type='uint8';
 datadefs(end+1)=vbs;
 
 %% BEAM CORRECTION MATRIX %%
+bcm=PD0.DataBlock_Traits;
 bcm.name='beam_correction_matrix';
 bcm.header='3200';
-bcm.type='fields';
-bcm.in_structure='beam_correction_matrix';
 bcm.postaction=@reshape_corr_matrix;
+bcm.fields=PD0.DataField_Traits;
 bcm.fields(1).name='cal_matrix'; bcm.fields(1).size=16; bcm.fields(1).type='int16'; bcm.fields(1).offset=3;
 datadefs(end+1)=bcm;
 
 
 %% NMEA WRII NEW GGA %% (tested)
-
+gga_wr2_2=PD0.DataBlock_Traits;
 gga_wr2_2.name='gga_wr2_2';
 gga_wr2_2.header='0068';
-gga_wr2_2.type='fields';
-gga_wr2_2.in_structure='gga_wr2_2';
-gga_wr2_2.postaction=[];
+gga_wr2_2.fields(16)=PD0.DataField_Traits;
 gga_wr2_2.fields(1 ).name='dt';             gga_wr2_2.fields(1 ).size=1;   gga_wr2_2.fields(1 ).type='double';   gga_wr2_2.fields(1 ).offset=7 ;
 gga_wr2_2.fields(2 ).name='header';         gga_wr2_2.fields(2 ).size=7;   gga_wr2_2.fields(2 ).type='char';     gga_wr2_2.fields(2 ).offset=15;
 gga_wr2_2.fields(3 ).name='utc';            gga_wr2_2.fields(3 ).size=10;  gga_wr2_2.fields(3 ).type='char';     gga_wr2_2.fields(3 ).offset=22;
@@ -386,11 +384,10 @@ gga_wr2_2.fields(16).name='ref_station_id'; gga_wr2_2.fields(16).size=1;   gga_w
 datadefs(end+1)=gga_wr2_2;
 
 %% NMEA WRII NEW VTG %% (tested)
+vtg_wr2_2=PD0.DataBlock_Traits;
 vtg_wr2_2.name='vtg_wr2_2';
 vtg_wr2_2.header='0069';
-vtg_wr2_2.type='fields';
-vtg_wr2_2.in_structure='vtg_wr2_2';
-vtg_wr2_2.postaction=[];
+vtg_wr2_2.fields(11)=PD0.DataField_Traits;
 vtg_wr2_2.fields(1 ).name='dt';                    vtg_wr2_2.fields(1 ).size=1; vtg_wr2_2.fields(1 ).type='double'; vtg_wr2_2.fields(1 ).offset=7 ;
 vtg_wr2_2.fields(2 ).name='header';                vtg_wr2_2.fields(2 ).size=7; vtg_wr2_2.fields(2 ).type='char';   vtg_wr2_2.fields(2 ).offset=15;
 vtg_wr2_2.fields(3 ).name='track_dir_true';        vtg_wr2_2.fields(3 ).size=1; vtg_wr2_2.fields(3 ).type='single'; vtg_wr2_2.fields(3 ).offset=22;
@@ -405,11 +402,10 @@ vtg_wr2_2.fields(11).name='mode_indicator';        vtg_wr2_2.fields(11).size=1; 
 datadefs(end+1)=vtg_wr2_2;
 
 %% NMEA WRII NEW HDT %% (untested)
+hdt_wr2_2=PD0.DataBlock_Traits;
 hdt_wr2_2.name='hdt_wr2_2';
 hdt_wr2_2.header='006B';
-hdt_wr2_2.type='fields';
-hdt_wr2_2.in_structure='hdt_wr2_2';
-hdt_wr2_2.postaction=[];
+hdt_wr2_2.fields(4)=PD0.DataField_Traits;
 hdt_wr2_2.fields(1 ).name='dt';                    hdt_wr2_2.fields(1 ).size=1; hdt_wr2_2.fields(1 ).type='double'; hdt_wr2_2.fields(1 ).offset=7 ;
 hdt_wr2_2.fields(2 ).name='header';                hdt_wr2_2.fields(2 ).size=7; hdt_wr2_2.fields(2 ).type='char';   hdt_wr2_2.fields(2 ).offset=15;
 hdt_wr2_2.fields(3 ).name='heading';               hdt_wr2_2.fields(3 ).size=1; hdt_wr2_2.fields(3 ).type='double'; hdt_wr2_2.fields(3 ).offset=22;
@@ -417,11 +413,10 @@ hdt_wr2_2.fields(4 ).name='true_indicator';        hdt_wr2_2.fields(4 ).size=1; 
 datadefs(end+1)=hdt_wr2_2;
 
 %% NMEA WRII NEW DBT %% (untested)
+dbt_wr2_2=PD0.DataBlock_Traits;
 dbt_wr2_2.name='dbt_wr2_2';
 dbt_wr2_2.header='006A';
-dbt_wr2_2.type='fields';
-dbt_wr2_2.in_structure='dbt_wr2_2';
-dbt_wr2_2.postaction=[];
+dbt_wr2_2.fields(8)=PD0.DataField_Traits;
 dbt_wr2_2.fields(1 ).name='dt';            dbt_wr2_2.fields(1 ).size=1; dbt_wr2_2.fields(1 ).type='double'; dbt_wr2_2.fields(1 ).offset=7 ;
 dbt_wr2_2.fields(2 ).name='header';        dbt_wr2_2.fields(2 ).size=7; dbt_wr2_2.fields(2 ).type='char';   dbt_wr2_2.fields(2 ).offset=15;
 dbt_wr2_2.fields(3 ).name='water_depth_ft';dbt_wr2_2.fields(3 ).size=1; dbt_wr2_2.fields(3 ).type='single'; dbt_wr2_2.fields(3 ).offset=22;
@@ -433,12 +428,10 @@ dbt_wr2_2.fields(8 ).name='f_indicator';   dbt_wr2_2.fields(8 ).size=1; dbt_wr2_
 datadefs(end+1)=dbt_wr2_2;
 
 %% NMEA WRII OLD GGA %% (untested)
-
+gga_wr2=PD0.DataBlock_Traits;
 gga_wr2.name='gga_wr2';
 gga_wr2.header='0064';
-gga_wr2.type='fields';
-gga_wr2.in_structure='gga_wr2';
-gga_wr2.postaction=[];
+gga_wr2.fields(16)=PD0.DataField_Traits;
 gga_wr2.fields(1 ).name='dt';             gga_wr2.fields(1 ).size=1;   gga_wr2.fields(1 ).type='double';   gga_wr2.fields(1 ).offset=7 ;
 gga_wr2.fields(2 ).name='header';         gga_wr2.fields(2 ).size=10;  gga_wr2.fields(2 ).type='char';     gga_wr2.fields(2 ).offset=15;
 gga_wr2.fields(3 ).name='utc';            gga_wr2.fields(3 ).size=10;  gga_wr2.fields(3 ).type='char';     gga_wr2.fields(3 ).offset=25;
@@ -458,11 +451,10 @@ gga_wr2.fields(16).name='ref_station_id'; gga_wr2.fields(16).size=1;   gga_wr2.f
 datadefs(end+1)=gga_wr2;
 
 %% NMEA WRII OLD VTG %% (untested)
+vtg_wr2=PD0.DataBlock_Traits;
 vtg_wr2.name='vtg_wr2';
 vtg_wr2.header='0065';
-vtg_wr2.type='fields';
-vtg_wr2.in_structure='vtg_wr2';
-vtg_wr2.postaction=[];
+vtg_wr2.fields(11)=PD0.DataField_Traits;
 vtg_wr2.fields(1 ).name='dt';                    vtg_wr2.fields(1 ).size=1; vtg_wr2.fields(1 ).type='double'; vtg_wr2.fields(1 ).offset=7 ;
 vtg_wr2.fields(2 ).name='header';                vtg_wr2.fields(2 ).size=10;vtg_wr2.fields(2 ).type='char';   vtg_wr2.fields(2 ).offset=15;
 vtg_wr2.fields(3 ).name='track_dir_true';        vtg_wr2.fields(3 ).size=1; vtg_wr2.fields(3 ).type='single'; vtg_wr2.fields(3 ).offset=25;
@@ -477,11 +469,10 @@ vtg_wr2.fields(11).name='mode_indicator';        vtg_wr2.fields(11).size=1; vtg_
 datadefs(end+1)=vtg_wr2;
 
 %% NMEA WRII OLD HDT %% (untested)
+hdt_wr2=PD0.DataBlock_Traits;
 hdt_wr2.name='hdt_wr2';
 hdt_wr2.header='0067';
-hdt_wr2.type='fields';
-hdt_wr2.in_structure='hdt_wr2';
-hdt_wr2.postaction=[];
+hdt_wr2.fields(4)=PD0.DataField_Traits;
 hdt_wr2.fields(1 ).name='dt';                    hdt_wr2.fields(1 ).size=1; hdt_wr2.fields(1 ).type='double'; hdt_wr2.fields(1 ).offset=7 ;
 hdt_wr2.fields(2 ).name='header';                hdt_wr2.fields(2 ).size=10;hdt_wr2.fields(2 ).type='char';   hdt_wr2.fields(2 ).offset=15;
 hdt_wr2.fields(3 ).name='heading';               hdt_wr2.fields(3 ).size=1; hdt_wr2.fields(3 ).type='double'; hdt_wr2.fields(3 ).offset=25;
@@ -489,11 +480,10 @@ hdt_wr2.fields(4 ).name='true_indicator';        hdt_wr2.fields(4 ).size=1; hdt_
 datadefs(end+1)=hdt_wr2;
 
 %% NMEA WRII OLD DBT %% (untested)
+dbt_wr2=PD0.DataBlock_Traits;
 dbt_wr2.name='dbt_wr2';
 dbt_wr2.header='0066';
-dbt_wr2.type='fields';
-dbt_wr2.in_structure='dbt_wr2';
-dbt_wr2.postaction=[];
+dbt_wr2.fields(8)=PD0.DataField_Traits;
 dbt_wr2.fields(1 ).name='dt';            dbt_wr2.fields(1 ).size=1; dbt_wr2.fields(1 ).type='double'; dbt_wr2.fields(1 ).offset=7 ;
 dbt_wr2.fields(2 ).name='header';        dbt_wr2.fields(2 ).size=10;dbt_wr2.fields(2 ).type='char';   dbt_wr2.fields(2 ).offset=15;
 dbt_wr2.fields(3 ).name='water_depth_ft';dbt_wr2.fields(3 ).size=1; dbt_wr2.fields(3 ).type='single'; dbt_wr2.fields(3 ).offset=25;
@@ -505,20 +495,20 @@ dbt_wr2.fields(8 ).name='f_indicator';   dbt_wr2.fields(8 ).size=1; dbt_wr2.fiel
 datadefs(end+1)=dbt_wr2;
 
 %% NMEA WR GGA %%
+gga_wr=PD0.DataBlock_Traits;
 gga_wr.name='gga_wr';
 gga_wr.header='2101';
-gga_wr.type='fields';
-gga_wr.in_structure='gga_wr';
 gga_wr.postaction=@(x) parseNMEA(x.message');
+gga_wr.fields=PD0.DataField_Traits;
 gga_wr.fields(1).name='message';        gga_wr.fields(1).size=94; gga_wr.fields(1).type='char'; gga_wr.fields(1).offset=3;
 datadefs(end+1)=gga_wr;
 
 %% NMEA WR DBT %%
+dbt_wr=PD0.DataBlock_Traits;
 dbt_wr.name='dbt_wr';
 dbt_wr.header='2100';
-dbt_wr.type='fields';
-dbt_wr.in_structure='dbt_wr';
 dbt_wr.postaction=@(x) parseNMEA(x.message');
+dbt_wr.fields=PD0.DataField_Traits;
 dbt_wr.fields(1).name='message';        dbt_wr.fields(1).size=38; dbt_wr.fields(1).type='char'; dbt_wr.fields(1).offset=3;
 datadefs(end+1)=dbt_wr;
 
@@ -527,6 +517,7 @@ end
 
 
 function x=set_usedbeams_to_n(x,n,nens)
+  x.addprop('usedbeams');
   x.usedbeams=uint8(ones(1,nens)*n);
 end
 

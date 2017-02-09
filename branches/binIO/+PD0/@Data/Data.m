@@ -1,14 +1,9 @@
-classdef PD0 < handle
-    properties
-        raw_data
+classdef Data < dynamicprops
+    properties (GetAccess=public, SetAccess={?PD0.Reader})
+        fixed_leader
+        variable_leader
     end
     methods
-        function obj=PD0(varargin)
-            narginchk(0,1);
-            if nargin > 0
-                obj.raw_data=varargin{1};
-            end
-        end
         function time=get_time(obj)
             time=double(obj.raw_data.time_y2k)';
             time(:,2)=time(:,1)*100+time(:,2);
