@@ -33,4 +33,9 @@ classdef DataBlock_Traits < matlab.mixin.Heterogeneous & handle
         end
         
     end
+    methods(Sealed)
+        function tf=isequal(obj1,obj2)
+            tf=strcmp({obj1.name},{obj2.name});
+        end
+    end
 end

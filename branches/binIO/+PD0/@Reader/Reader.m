@@ -42,36 +42,48 @@ classdef Reader < handle
         end
         function obj=Reader(varargin)
             [obj.fixed_leader_traits, obj.variable_leader_traits, obj.dynamic_data_type_traits]=PD0.define_data_types();
+            if nargin > 0
+                obj.load_data_from_file(varargin{1});
+            end
         end
-        function data=get_data(obj)
-            data=PD0.Data();
-            data.fixed_leader=obj.read_block(obj.fixed_leader_traits);
-            data.variable_leader=obj.read_block(obj.variable_leader_traits);
+        function out_data=get_data(obj)
+            out_data=PD0.Data();
+            out_data.fixed_leader=obj.read_block(obj.fixed_leader_traits);
+            out_data.variable_leader=obj.read_block(obj.variable_leader_traits);
             data_block_q=obj.dynamic_data_type_traits;
+            [~, idx_block_in_file, ~]=intersect(hex2dec(vertcat(data_block_q.header)),unique(obj.data.headers),'stable');
+            data_block_q=data_block_q(idx_block_in_file);
             while ~isempty(data_block_q)
                 current_data_block_traits=data_block_q(1);
                 switch class(current_data_block_traits)
                     case 'PD0.ArrayBlock_Traits'
                         vl=current_data_block_traits.nbins_block;          % Get name of the leader
-                        if ~isprop(data,vl.name)                           % If leader has not been read yet
-                            data_block_q(isequal(data_block_q,vl))=[];     % Put it on top of the que
-                            data_block_q=[vl; data_block_q];               %#ok<AGROW> % Continue to item on top of que
-                            continue
+                        if ~isprop(out_data,vl.name)                         % If leader has not been read yet
+                            idx_vl_in_q=isequal(data_block_q,vl);
+                            if any(idx_vl_in_q)
+                                data_block_q(idx_vl_in_q)=[];     % Put it on top of the que
+                                data_block_q=[vl data_block_q];               %#ok<AGROW> % Continue to item on top of que
+                                continue
+                            else
+                                warning('cannot read data due to missing leader information')
+                                data_block_q(1)=[];
+                                continue
+                            end
                         end
                         fl=current_data_block_traits.nbins_field;
-                        if ~isprop(data.(vl.name),fl.name)
+                        if ~isprop(out_data.(vl.name),fl.name)
                             warning('cannot read data due to missing leader information')
                             data_block_q(1)=[];
                             continue
                         end
-                        tmp_dat=obj.read_array(current_data_block_traits, data);
+                        tmp_dat=obj.read_array(current_data_block_traits, out_data);
                     case 'PD0.DataBlock_Traits'
                         tmp_dat=obj.read_block(current_data_block_traits);
                 end
                 if ~isempty(tmp_dat)
-                    propmeta=data.addprop(current_data_block_traits.name);
-                    % set property characteristics
-                    data.(current_data_block_traits.name)=tmp_dat;
+                    propmeta=out_data.addprop(current_data_block_traits.name);
+                    propmeta.SetAccess={'PD0.Reader'};
+                    out_data.(current_data_block_traits.name)=tmp_dat;
                 end
                 data_block_q(1)=[];
             end
@@ -79,47 +91,15 @@ classdef Reader < handle
     end
     
     methods (Access=protected)
-        function val=get_array_data(header, field_meta, struct_name)
-            nval=nullval(field_meta.type);
-            nbins_max=max(array.(struct_name).nbins);
-            nbeams_max=max(array.(struct_name).usedbeams);
-            val=nval(ones(nbins_max,numel(ens.pos),nbeams_max)); % Initialize
-            if isempty(val), return, end;
-            ndat=array.(struct_name).ndat;        % locate array data
-            pos=find_last_datafield(header); % Locate all  data
-            if (all(isnan(pos))), return, end;
-            
-            % get indices
-            ensidx=array.(struct_name).ensidx;
-            idces=array.(struct_name).idces;
-            
-            % compute offest in array field to each datum
-            offset_in_array_field=cumsum([0 sizeof(field_meta.type)*ones(1,sum(ndat)-1)]); % pretend all velocities are behind each other
-            cnvels=cumsum([0 ndat(1:end-1)]); % compute number of data in previous ensembles
-            offset_in_array_field=offset_in_array_field-cnvels(ensidx)*sizeof(field_meta.type); % subtract them
-            
-            % account for possible ensembles without data (does this ever happen? assume yes for now)
-            f_bad_ens=find(~isfinite(pos));
-            f_bad_idx=ismember(ensidx,f_bad_ens); % Get index of all ensembles with missing data
-            ensidx(f_bad_idx)=[];
-            offset_in_array_field(f_bad_idx)=[];
-            idces(f_bad_idx)=[];
-            
-            % compute position in raw data
-            pos=data.offset(pos(ensidx))+2+offset_in_array_field; % This line is slow, any way to improve?
-            val(idces)=parse_blocks(pos,field_meta.type);
-        end
         function array_block=read_array(obj,traits,data)
             % First chack if there is any of this data in the raw data
-            if ~any(obj.data.headers==hex2dec(traits.header))
-                return
-            end
-            if ~obj.init_array_indexing(traits,data)
-                return
-            end
-            array_block=PD0.DataBlock(traits);
-            array_block.(traits.fields.name)=obj.get_array_data(traits.header,traits.fields);
-            if ~isempty(array_block) && ~isempty(traits.postaction)
+%             if ~any(obj.data.headers==hex2dec(traits.header))
+%                 return
+%             end
+            obj.init_array_indexing(traits,data)
+            array_block=PD0.ArrayBlock(traits);
+            array_block.data=obj.get_array_data(traits);
+            if ~isempty(traits.postaction)
                 array_block=traits.postaction(array_block);
             end
         end
@@ -143,7 +123,7 @@ classdef Reader < handle
                 end
                 data_block.(field_meta.name)=out_dat;
             end
-            if ~isempty(data_block) && ~isempty(traits.postaction)
+            if ~isempty(traits.postaction)
                 data_block=traits.postaction(data_block);
             end
         end
@@ -209,20 +189,18 @@ classdef Reader < handle
                 out=reshape(typecast(reshape(obj.raw_data(permute(bsxfun(@plus,pos,shiftdim(0:nb-1,-1)),[3 1 2])),[],1),type),size(pos));
             end
         end
-        function tf=init_array_indexing(obj,traits,data)
+        function init_array_indexing(obj,traits,data)
             % Here we create indices that map the data as laid out
             % in the PD0 files to the shape of the output matrices
-            tf=false;
             block=traits.nbins_block.name;
             field=traits.nbins_field.name;
             if isfield(obj.array,block)
-                tf=true;
                 return
             end
             
-            obj.array.(block).nbins=double(data.(block).(field)); % fix for scalar nbins?
+            obj.array.(block).nbins=zeros(1,obj.n_ensembles)+double(data.(block).(field)); % fix for scalar nbins?
             obj.array.(block).nbins(obj.array.(block).nbins==PD0.Reader.nullval(class(data.(block).(field))))=0;
-            obj.array.(block).usedbeams=traits.nbeams;
+            obj.array.(block).usedbeams=zeros(1,obj.n_ensembles)+traits.nbeams;
             nbeams=ones(1,obj.n_ensembles).*traits.nbeams;
             ndat=obj.array.(block).nbins.*obj.array.(block).usedbeams;
             
@@ -254,7 +232,43 @@ classdef Reader < handle
             obj.array.(block).ndat=ndat;
             
             % Set output to true, since it seems everything went well
-            tf=true;
+        end
+        function data_idx=find_last_datafield(obj,header)
+            data_idx=nan(1,numel(obj.ensemble.pos));
+            ftype=find(obj.data.headers==hex2dec(header));
+            data_idx(obj.data.ensid(ftype))=ftype; % Keeps last, if multiple data blocks of same type. nan means data not found in ensemble
+        end
+        function val=get_array_data(obj,traits)
+            field_meta=traits.fields;
+            struct_name=traits.nbins_block.name;
+            nval=PD0.Reader.nullval(field_meta.type);
+            nbins_max=max(obj.array.(struct_name).nbins);
+            nbeams_max=max(obj.array.(struct_name).usedbeams);
+            val=nval(ones(nbins_max,obj.n_ensembles,nbeams_max)); % Initialize
+            if isempty(val), return, end;
+            ndat=obj.array.(struct_name).ndat;        % locate array data
+            pos=obj.find_last_datafield(traits.header); % Locate all  data
+            if (all(isnan(pos))), return, end;
+            
+            % get indices
+            ensidx=obj.array.(struct_name).ensidx;
+            idces=obj.array.(struct_name).idces;
+            
+            % compute offest in array field to each datum
+            offset_in_array_field=cumsum([0 PD0.Reader.sizeof(field_meta.type)*ones(1,sum(ndat)-1)]); % pretend all velocities are behind each other
+            cnvels=cumsum([0 ndat(1:end-1)]); % compute number of data in previous ensembles
+            offset_in_array_field=offset_in_array_field-cnvels(ensidx)*PD0.Reader.sizeof(field_meta.type); % subtract them
+            
+            % account for possible ensembles without data (does this ever happen? assume yes for now)
+            f_bad_ens=find(~isfinite(pos));
+            f_bad_idx=ismember(ensidx,f_bad_ens); % Get index of all ensembles with missing data
+            ensidx(f_bad_idx)=[];
+            offset_in_array_field(f_bad_idx)=[];
+            idces(f_bad_idx)=[];
+            
+            % compute position in raw data
+            pos=obj.data.offset(pos(ensidx))+2+offset_in_array_field; % This line is slow, any way to improve?
+            val(idces)=obj.parse_blocks(pos,field_meta.type);
         end
     end
     methods (Static, Access=protected)
