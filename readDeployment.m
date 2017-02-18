@@ -49,7 +49,10 @@ allFiles=({allFiles(~[allFiles(:).isdir]).name})';
 
 
 %% Read Transect Files
-rfiles=match_and_cat({'.*[0-9]{3,3}r\.[0-9]{3,3}$'; '.*\.PD0$'});% search for raw data files % Bart Vermeulen: removed .*\.000. This is only usefull for self-contained measurements which should not be read with readDeployment
+% search for raw data files
+% pattern '.*\.000$' typical for HADCPs is not included
+% as this is only usefull for self-contained measurements which should not be read with readDeployment
+rfiles=match_and_cat({'.*[0-9]{3,3}r\.[0-9]{3,3}$'; '.*\.PD0$'});
 assert(~isempty(rfiles),'ReadDeployment:NoRFiles','Could not find raw data files') % Make sure we found at least one adcp file
 disp('Reading ADCP raw data files...') % Tell something nice to the user
 outADCP=readADCP(rfiles); % Read files
@@ -98,7 +101,7 @@ function files=match_and_cat(rex)
     files={}; % Initialize empty list of files
     for crex=1:numel(rex) % Match each regular expression given
         tmpfiles=regexp(allFiles,rex{crex},'match'); % search for cells matching regular expression
-        files=[files;tmpfiles{~cellfun(@isempty,tmpfiles)}]; %#ok<AGROW> % Get result as cell of strings and add to output(growth should be insignificant)
+        files=[files;vertcat(tmpfiles{~cellfun(@isempty,tmpfiles)})]; %#ok<AGROW> % Get result as cell of strings and add to output(growth should be insignificant)
     end
     files=cellfun(@(x,y) [x y],repmat({path},size(files)),files,'UniformOutput',false); % Concatenate path and filenames
 end
