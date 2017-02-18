@@ -573,8 +573,11 @@ for ct=1:size(tid,1) % For all sections
     % progressive velocity processing
     if progflag % if progressive processing is needed
        progdatacol=cell([siz nanmax(tid(ct,:))]); % Initialize variable to collect velocity and tr. matrix data
-        for ccr=nanmin(tid(ct,:)):nanmax(tid(ct,:)) % loop over all crossings
-           fnd=bsxfun(@and,tid(ct,fcur)<=ccr, f_incs & sigIdx<=size(msh(ct).Z,1) & sigIdx>0); % find data in current section, in all crossing up to current, and belonging to any cell
+	tidct = tid(ct,:);
+	u = unique(tidct(isfinite(tidct) & (tidct > 0)));
+        for ccr=u(:)' % loop over all crossings
+           % find data in current section, in all crossing up to current, and belonging to any cell
+           fnd=bsxfun(@and,tid(ct,fcur)<=ccr, f_incs & sigIdx<=size(msh(ct).Z,1) & sigIdx>0);
             if proxim>0 % if a proximity is given
                 fnd=fnd & abs(ms)<=proxim; % only include data within proxim distance from the section
             end
@@ -614,8 +617,11 @@ for ct=1:size(tid,1) % For all sections
     
     if progflag % if progressive processing is needed
        progdatacol=cell([siz nanmax(tid(ct,:))]); % Initialize variable to collect velocity and tr. matrix data
-        for ccr=nanmin(tid(ct,:)):nanmax(tid(ct,:)) % loop over all crossings
-           fnde=bsxfun(@and,tid(ct,fcur)<=ccr, f_incse & sigIdxe<=size(msh(ct).Z,1) & sigIdxe>0); % find data in current section, in all crossing up to current, and belonging to any cell
+	tidct = tid(ct,:);
+	u = unique(tidct(isfinite(tidct) & (tidct > 0)));
+        for ccr=u(:)' % loop over all crossings
+          % find data in current section, in all crossing up to current, and belonging to any cell
+          fnde=bsxfun(@and,tid(ct,fcur)<=ccr, f_incse & sigIdxe<=size(msh(ct).Z,1) & sigIdxe>0);
             if proxim>0 % if a proximity is given
                 fnde=fnde & abs(mse)<=proxim; % only include data within proxim distance from the section
             end

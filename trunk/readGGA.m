@@ -3,7 +3,7 @@ function [NMEA_GGA,discard]=readGGA(instr)
 %
 %   [GGAstruct]=readGGA(instr) Reads a NMEA sentence in the character array
 %   or cell of strings and returns a structure with the gga data.
-%   
+%
 %   The output structure will contain the following fields:
 %   UTCtime : Hour minutes and seconds of the UTC time
 %   lat     : Latitude in decimal degrees. Negative for the
@@ -14,9 +14,9 @@ function [NMEA_GGA,discard]=readGGA(instr)
 %                 1 = GPS fix
 %                 2 = Differential GPS fix
 %                 3 = GPS PPS Mode, fix valid
-%                 4 = Real Time Kinematic. System used in RTK mode with 
+%                 4 = Real Time Kinematic. System used in RTK mode with
 %                     fixed integers
-%                 5 = Float RTK. Satellite system used in RTK mode, 
+%                 5 = Float RTK. Satellite system used in RTK mode,
 %                     floating integers
 %                 6 = Estimated (dead reckoning) mode
 %                 7 = Manual Input Mode
@@ -67,27 +67,35 @@ if any(discard)
         nbad=numel(regexp(split{discard(cdis)},patterns.nmea));
         fdiscard=[fdiscard,repmat(discard(cdis),1,nbad)]; %#ok<AGROW>
     end
-    discard=fdiscard+(1:length(fdiscard))-1;     
+    discard=fdiscard+(1:length(fdiscard))-1;
 end
 
 %read the data
-NMEA_GGA.UTCtime=cell2mat(textscan([tmpdat(:).utc],'%2f32 %2f32 %f32','delimiter',','));
-tmplat=textscan([tmpdat(:).lat],'%2f64 %f64 %s','delimiter',',');
-NMEA_GGA.lat=tmplat{1}+tmplat{2}/60;
-isneg=strcmp(tmplat{3},'S');
+NMEA_GGA.UTCtime=cell2mat(textscan_checked([tmpdat(:).utc],'%2f32 %2f32 %f32','delimiter',','));
+tmplat=textscan_checked([tmpdat(:).lat],'%s %s','delimiter',',');
+lat = str2double(tmplat{1});
+% GGA coordinates are stored as as seconds (fractions of 60) times 100
+lat = lat/100;
+lat = fix(lat) + (100/60)*(lat-fix(lat));
+NMEA_GGA.lat = lat;
+isneg        = strcmp(tmplat{2},'S');
 NMEA_GGA.lat(isneg)=-NMEA_GGA.lat(isneg);
 clear tmplat
-tmplong=textscan([tmpdat(:).long],'%3f64 %f64 %s','delimiter',',');
-NMEA_GGA.long=tmplong{1}+tmplong{2}/60;
-isneg=strcmp(tmplong{3},'W');
+tmplong=textscan_checked([tmpdat(:).long],'%s %s','delimiter',',');
+long = str2double(tmplong{1});
+long  = long/100;
+long = fix(long) + (100/60)*(long-fix(long));
+NMEA_GGA.long=long;
+isneg=strcmp(tmplong{2},'W');
 NMEA_GGA.long(isneg)=-NMEA_GGA.long(isneg);
 clear tmplong isneg
-NMEA_GGA.qualind=cell2mat(textscan([tmpdat(:).qualind],'%u8','delimiter',','));
-NMEA_GGA.numsat=cell2mat(textscan([tmpdat(:).numsat],'%u8','delimiter',','));
-NMEA_GGA.hdop=cell2mat(textscan([tmpdat(:).hdop],'%f32','delimiter',','));
-NMEA_GGA.antalt=cell2mat(textscan([tmpdat(:).antalt],'%f32','delimiter',','));
-NMEA_GGA.geosep=cell2mat(textscan([tmpdat(:).geosep],'%f32','delimiter',','));
-NMEA_GGA.agediff=cell2mat(textscan([tmpdat(:).agediff],'%f32','delimiter',','));
-NMEA_GGA.diffid=cell2mat(textscan([tmpdat(:).diffid],'%u16','delimiter','*'));
+NMEA_GGA.qualind=cell2mat(textscan_checked([tmpdat(:).qualind],'%u8','delimiter',','));
+NMEA_GGA.numsat =cell2mat(textscan_checked([tmpdat(:).numsat],'%u8','delimiter',','));
+NMEA_GGA.hdop   =cell2mat(textscan_checked([tmpdat(:).hdop],'%f32','delimiter',','));
+NMEA_GGA.antalt =cell2mat(textscan_checked([tmpdat(:).antalt],'%f32','delimiter',','));
+NMEA_GGA.geosep =cell2mat(textscan_checked([tmpdat(:).geosep],'%f32','delimiter',','));
+NMEA_GGA.agediff=cell2mat(textscan_checked([tmpdat(:).agediff],'%f32','delimiter',','));
+NMEA_GGA.diffid =cell2mat(textscan_checked([tmpdat(:).diffid],'%u16','delimiter','*'));
 
+end % function readGGA
 
