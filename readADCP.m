@@ -432,6 +432,10 @@ if fmes==-1                                                                %Chec
     return
 end
 EnsBytes=fread(fid,1,'uint16=>double');                                    %read number of bytes in ensemble
+if isempty(EnsBytes)
+    valens=false;
+    return
+end
 fmes=fseek(fid,headpos+EnsBytes+2,-1);                                     %Go to the end of the ensemble to check if file doesn't end before
 if fmes==-1
     valens=false;
