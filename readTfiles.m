@@ -58,83 +58,86 @@ for cf=1:numel(filenames)
     assert(fid~=-1);
     out.note1{cf}=fgetl(fid);
     out.note2{cf}=fgetl(fid);
-    dat=fscanf(fid,'%d',7);
-    out.depthCellLength(cf)=dat(1);
-    out.blanking(cf)=dat(2);
-    out.adcpDepth(cf)=dat(3);
-    out.nbins(cf)=dat(4);
-    out.pingsperens(cf)=dat(5);
-    out.timeperens(cf)=dat(6);
-    out.profilingMode(cf)=dat(7);
-    while ~(feof(fid))
-        dat=fscanf(fid,'%d',9);
-        if feof(fid), break, end
-        out.timeV(csect,:)=dat(1:6);
-        out.timeV(csect,6)=out.timeV(csect,6)+dat(7)/100;
-        out.segNum(csect)=dat(8);
-        out.ensInSeg(csect)=dat(9);
-        dat=fscanf(fid,'%f',4);
-        out.pitch(csect)=dat(1);
-        out.roll(csect)=dat(2);
-        out.corrHead(csect)=dat(3);
-        out.adcpTemp(csect)=dat(4);
-        dat=fscanf(fid,'%f',12);
-        out.btvel(:,csect)=dat(1:4)';
-        out.gpsvel(:,csect)=dat(5:8)';
-        out.depth(:,csect)=dat(9:12)';
-        dat=fscanf(fid,'%f',5);
-        out.elapsDist(csect)=dat(1);
-        out.elapsTime(csect)=dat(2);
-        out.distNorth(csect)=dat(3);
-        out.distEast(csect)=dat(4);
-        out.distGood(csect)=dat(5);
-        dat=fscanf(fid,'%f',5);
-        out.lat(csect)=dat(1);
-        out.long(csect)=dat(2);
-        dat=fscanf(fid,'%f',9);
-        out.qmid(csect)=dat(1);
-        out.qtop(csect)=dat(2);
-        out.qbot(csect)=dat(3);
-        out.qstart(csect)=dat(4);
-        out.distStart(csect)=dat(5);
-        out.qend(csect)=dat(6);
-        out.distEnd(csect)=dat(7);
-        out.startDepthMid(csect)=dat(8);
-        out.endDepthMid(csect)=dat(9);
-        dat=textscan(fid,'%d %s %s %s %f %f',1);
-        nrows=dat{1};
-        out.lengthUnit(csect)=dat(2);
-        out.velRef(csect)=dat(3);
-        out.intensityUnit(csect)=dat(4);
-        out.intensityScFact(csect)=dat{5};
-        out.soundAbsorbtion(csect)=dat{6};
-        dat=textscan(fid,'%f %f %f %f %f %f %f %f %f %f %f %f %f',nrows);
-        if isfield(out,'veldepth') && nrows > size(out.veldepth,1)
-            pad=ones(nrows-size(out.veldepth,1),size(out.veldepth,2));
-            out.veldepth=cat(1,out.veldepth,pad*nan);
-            out.velmag=cat(1,out.velmag,pad*nan);
-            out.veldir=cat(1,out.veldir,pad*nan);
-            out.pgood=cat(1,out.pgood,pad*nan);
-            out.Q=cat(1,out.Q,pad*nan);
-            pad=repmat(pad,[1 1 4]);
-            out.vel=cat(1,out.vel,pad*nan);
-            out.echo=cat(1,out.echo,pad*nan);
-        end 
-        out.veldepth(:,csect)=dat{1};
-        out.velmag(:,csect)=dat{2};
-        out.veldir(:,csect)=dat{3};
-        out.vel(:,csect,:)=cat(3,dat{4},dat{5},dat{6},dat{7});
-        out.echo(:,csect,:)=cat(3,dat{8},dat{9},dat{10},dat{11});
-        out.pgood(:,csect)=dat{12};
-        out.Q(:,csect)=dat{13};
-        csect=csect+1;
-    end
+    [dat,cnt]=fscanf(fid,'%d',7);
+    if (7 == cnt)
+        out.depthCellLength(cf)=dat(1);
+        out.blanking(cf)=dat(2);
+        out.adcpDepth(cf)=dat(3);
+        out.nbins(cf)=dat(4);
+        out.pingsperens(cf)=dat(5);
+        out.timeperens(cf)=dat(6);
+        out.profilingMode(cf)=dat(7);
+        while ~(feof(fid))
+            dat=fscanf(fid,'%d',9);
+            if feof(fid), break, end
+            out.timeV(csect,:)=dat(1:6);
+            out.timeV(csect,6)=out.timeV(csect,6)+dat(7)/100;
+            out.segNum(csect)=dat(8);
+            out.ensInSeg(csect)=dat(9);
+            dat=fscanf(fid,'%f',4);
+            out.pitch(csect)=dat(1);
+            out.roll(csect)=dat(2);
+            out.corrHead(csect)=dat(3);
+            out.adcpTemp(csect)=dat(4);
+            dat=fscanf(fid,'%f',12);
+            out.btvel(:,csect)=dat(1:4)';
+            out.gpsvel(:,csect)=dat(5:8)';
+            out.depth(:,csect)=dat(9:12)';
+            dat=fscanf(fid,'%f',5);
+            out.elapsDist(csect)=dat(1);
+            out.elapsTime(csect)=dat(2);
+            out.distNorth(csect)=dat(3);
+            out.distEast(csect)=dat(4);
+            out.distGood(csect)=dat(5);
+            dat=fscanf(fid,'%f',5);
+            out.lat(csect)=dat(1);
+            out.long(csect)=dat(2);
+            dat=fscanf(fid,'%f',9);
+            out.qmid(csect)=dat(1);
+            out.qtop(csect)=dat(2);
+            out.qbot(csect)=dat(3);
+            out.qstart(csect)=dat(4);
+            out.distStart(csect)=dat(5);
+            out.qend(csect)=dat(6);
+            out.distEnd(csect)=dat(7);
+            out.startDepthMid(csect)=dat(8);
+            out.endDepthMid(csect)=dat(9);
+            dat=textscan(fid,'%d %s %s %s %f %f',1);
+            nrows=dat{1};
+            out.lengthUnit(csect)=dat(2);
+            out.velRef(csect)=dat(3);
+            out.intensityUnit(csect)=dat(4);
+            out.intensityScFact(csect)=dat{5};
+            out.soundAbsorbtion(csect)=dat{6};
+            dat=textscan(fid,'%f %f %f %f %f %f %f %f %f %f %f %f %f',nrows);
+            if isfield(out,'veldepth') && nrows > size(out.veldepth,1)
+                pad=ones(nrows-size(out.veldepth,1),size(out.veldepth,2));
+                out.veldepth=cat(1,out.veldepth,pad*nan);
+                out.velmag=cat(1,out.velmag,pad*nan);
+                out.veldir=cat(1,out.veldir,pad*nan);
+                out.pgood=cat(1,out.pgood,pad*nan);
+                out.Q=cat(1,out.Q,pad*nan);
+                pad=repmat(pad,[1 1 4]);
+                out.vel=cat(1,out.vel,pad*nan);
+                out.echo=cat(1,out.echo,pad*nan);
+            end % isfield out
+            out.veldepth(:,csect)=dat{1};
+            out.velmag(:,csect)=dat{2};
+            out.veldir(:,csect)=dat{3};
+            out.vel(:,csect,:)=cat(3,dat{4},dat{5},dat{6},dat{7});
+            out.echo(:,csect,:)=cat(3,dat{8},dat{9},dat{10},dat{11});
+            out.pgood(:,csect)=dat{12};
+            out.Q(:,csect)=dat{13};
+            csect=csect+1;
+        end % while ~feof 
+    end % if cnt == 7
     fclose(fid);
     out.filenumber(lastens:csect-1)=cf;
     lastens=csect;
 end
 
 %% Try to align data if number of ensembles don't match based on time vector
+if (isfield(out,'ensInSeg'))
 nens=numel(adcp.ensnum);
 if csect-1~=nens && all(out.ensInSeg==1)
     time1=datenum(adcp.timeV);
@@ -171,4 +174,5 @@ if csect-1~=nens && all(out.ensInSeg==1)
         out.(allfields{cfld})(:,i1,:)=out2.(allfields{cfld})(:,i2,:);
     end  
 end
+end % if ~ isemty out.ensInSeg
 
