@@ -1,4 +1,4 @@
-function [UTMx UTMy zone] = geo2utm(lat,long,zone)
+function [UTMx, UTMy, zone] = geo2utm(lat,long,zone)
 %
 %    Copyright 2009,2010 Bart Vermeulen, Maximiliano Sassi
 %
