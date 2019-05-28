@@ -12,7 +12,7 @@ classdef LoessInterpolator < Interpolator
         end
         function val=interpolate(obj,query_position)
             validateattributes(query_position,{'numeric'},{'2d','real'},'interpolate','query_position',2)
-            assert(size(query_position,1)==obj.n_dims,['query_position must have ',obj.n_dims,' dimensions'])
+            assert(size(query_position,1)==obj.n_dims,['query_position must have ',num2str(obj.n_dims),' dimensions'])
             
             % call to loess function
             fl=exist('loess','file');

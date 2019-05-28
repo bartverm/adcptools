@@ -25,10 +25,10 @@ classdef MeshCell < handle
                 tf=[];
                 return
             end
-            if iscalar(obj)
-                if nargin < 3
-                    dim = 1;
-                end
+            if nargin < 3
+                dim = 1;
+            end
+            if isscalar(obj)
                 assert(size(qcoord,dim)==2,['qcoord must have size 2 along dimension ', dim])
                 perm=1:ndims(qcoord);
                 perm(dim)=[];
@@ -49,7 +49,7 @@ classdef MeshCell < handle
             if isempty(obj) 
                 hp=[];
             elseif isscalar(obj)
-                patch(obj.coordinates(1,:),obj.coordinates(2,:),zeros(1,obj.n_coordinates),varargin{:})
+                hp=patch(obj.coordinates(1,:),obj.coordinates(2,:),zeros(1,obj.n_coordinates),varargin{:});
             else
                 hp=nan(size(obj));
                 for co=1:numel(obj)

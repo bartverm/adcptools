@@ -1,6 +1,6 @@
 classdef ConstantWaterLevel < WaterLevel
     properties
-        level=0;
+        level(1,1) double {mustBeFinite}= 0;
     end
     methods
         function obj=ConstantWaterLevel(varargin)

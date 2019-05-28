@@ -232,8 +232,10 @@ nstd=P.Results.StdFiltering;
 maxz_mineta=P.Results.TopMeshLowestEta;
 constant_sigma_mesh=~P.Results.ConstantZetaMesh;
 time=datenum(adcp.timeV)'; % Get time
-eta=eta(:)';    % Vectorize eta
-eta=eta.*ones(1,size(numel(time),1)); % Ensure eta has same number of elements as the number of ensembles
+
+water_level=ConstantWaterLevel(eta);
+eta=water_level.get_water_level(time);
+
 shref=P.Results.ShipReference;
 Pusr=P.Results.Pusr;
 IsCumulative=P.Results.CumulateCrossings;
@@ -358,9 +360,10 @@ Pm=nan(2,nsec); % Average section location vector
 Pn=nan(2,nsec); % Average section location vector
 mesh(nsec)=Mesh;
 bathy(nsec)=BathymetryScatteredPoints;
+[bathy(1:nsec).water_level]=deal(water_level);
 
-%% create time index (mapping to right time cell)
-eta = eta .* ones(1,nens); % make sure eta is row vector with same number of elements as number of ensembles
+% %% create time index (mapping to right time cell)
+% eta = eta .* ones(1,nens); % make sure eta is row vector with same number of elements as number of ensembles
 
 % Start processing
 for ct=1:size(tid,1) % For all sections  
@@ -395,9 +398,9 @@ for ct=1:size(tid,1) % For all sections
     mesh(ct).direction=princdir(P); % Section tangential vector, determined as largest eigenvector of P
     
     % Project positions (inner product with unit vectors)
-    [posb, posvel]=mesh(ct).xy2sn([xb(:,fcur,:);yb(:,fcur,:)],...
-                               [shiftdim(xvel(:,fcur,:),-1);shiftdim(yvel(:,fcur,:),-1)]);
-        
+    posb=mesh(ct).xy2sn([xb(:,fcur,:);yb(:,fcur,:)]);
+    posvel=mesh(ct).xy2sn([shiftdim(xvel(:,fcur,:),-1);shiftdim(yvel(:,fcur,:),-1)]);
+    
     % Store important vectors
     msh(ct).Tvec=mesh(ct).direction; % tangential vector
     msh(ct).Nvec=mesh(ct).direction_orthogonal; % orthogonal vector
@@ -415,10 +418,11 @@ for ct=1:size(tid,1) % For all sections
     
     bathy(ct).pos=reshape(posb(fgoodb),3,[]);
     zbvel(fgoodvel)=bathy(ct).get_bed_elev(reshape(posvel(repmat(fgoodvel,2,1)),2,[]));
-    posvel=[posvel;zbvel];
+%     posvel=[posvel;zbvel];
     
     % Compute sigma
     czvel=shiftdim(zvel(:,fcur,:),-1);
+    posvel=[posvel; czvel];
     if numel(eta)>1
         ceta=eta(fcur); 
     else
@@ -434,269 +438,53 @@ for ct=1:size(tid,1) % For all sections
     
     %% Meshing
     % Compute minimum and maximum n
-    nmin=nanmin(posvel(f_incs & [false; true; false]),[],2); % determine minimum n
-    Pn(:,ct)=Pm(:,ct)+T(:,ct)*nmin; % compute vector pointing to minimum n location (projected on section)
-    nvel=nvel-nmin; % remove minimum n from velocity n coordinates (now they range between 0 and maximum n)
-    nb=nb-nmin; % remove minimum n from depth n coordinates (now they range between 0 and maximum n)
-    if (~isempty(Pusr))
-        nmax = max(T(:,ct)'*(Pusr(:,:,ct) - Pn(:,ct)*[1 1]));
-    else
-    nmax=nanmax(nvel(f_incs)); % compute maximum n
-    end
-    ncells=ceil(nmax./veldn); % determine number of vertical in section
+    nmin=nanmin(posvel(f_incs & [false; true; false])); % determine minimum n
+%     Pn=mesh(ct).origin+mesh(ct).direction*nmin; % vector pointing to minimum n
+%     posvel=posvel-[0; nmin; 0]; % remove minimum n from velocity n coordinates (now they range between 0 and maximum n)
+%     posb=posb-[0; nmin; 0]; % remove minimum n from depth n coordinates (now they range between 0 and maximum n)
+    nmax=nanmax(posvel(f_incs & [false; true; false])); % compute maximum n
+    num_verticals=ceil((nmax-nmin)./veldn); % determine number of vertical in section
 
-    % Preliminary computations0
-    nIdxd=floor((nb+veldn/4)/(veldn/2))+1; % Index to determine depth at cell boundaries and centres
-    fgood=isfinite(nIdxd) & nIdxd>0 & nIdxd<=ncells*2+1; % Select data to include in depth calculation at cell edges and center
-    fleft=mod(floor(nvel/veldn*2),2)==0; % Selects data on the left half of a cell
-    fright=~fleft; % Selects data on the left half of a cell
-
-    % determine n coordinate and bed_elevation of cell edges and centres (for crossing with maximum eta)
-    zb_tmp=accumarray(reshape(nIdxd(fgood),[],1),reshape(czb(fgood),[],1),[ncells*2+1,1],@nanmean,nan); % Determine elevation (z) at cell centres and boundaries (where available)
-    fgood_zb=isfinite(zb_tmp); % find all available elevations at cell centres and boundaries
-    Int=griddedInterpolant(find(fgood_zb),zb_tmp(fgood_zb)); % create interpolant to calculate elevation where it's missing (probably at the edges)
-    zb_tmp(~fgood_zb)=Int(find(~fgood_zb)); %#ok<FNDSB> % interpolate at cell centres or boundaries with missing depth
+    delta_n=(nmax-nmin)/num_verticals;
+    n_cell_left=nmin+((1:num_verticals)-1)*delta_n;
+    n_cell_center=n_cell_left+delta_n/2;
+    n_cell_right=n_cell_left+delta_n;
+%     xy_cell_left=mesh(ct).origin+n_cell_left.*mesh(ct).direction;
+%     xy_cell_right=mesh(ct).origin+n_cell_left.*mesh(ct).direction;
+%     xy_cell_center=mesh(ct).origin+n_cell_left.*mesh(ct).direction;
+    zb_cell_left=bathy(ct).get_bed_elev(n_cell_left.*[0; 1]);
+    zb_cell_right=bathy(ct).get_bed_elev(n_cell_right.*[0; 1]);
+    zb_cell_center=bathy(ct).get_bed_elev(n_cell_center.*[0; 1]);
+    
+    
 
     % Compute maximum z verticals
-    maxEta=max(msh(ct).maxeta); % Get maximum crossing avareged eta   
-    if constant_sigma_mesh
-%         maxsig=nanmax(sigVel(f_incs)); % maximum Sigma measured in all data belonging to current section
-%         max_zb=nanmax(zb_tmp);
-%         maxz=max_zb+maxsig*(maxEta-max_zb); % Transform maximum sigma to maximum mesh elevation at section location
-        maxz=nanmax(czvel(:));
-    else
-        maxz=nanmax(czvel(:));
-        if ~constant_sigma_mesh && maxz_mineta
-            maxz=min(maxz,nanmin(msh(ct).mineta));
-        end
-    end
-    
-    % check for degenerate cells (left or right boundary exceeds maximum z)
-    % and fix them (This should only be due to extrapolation and should not
-    % occur anywhere except at the edges)
-    ntmp=(0:0.5:ncells)*veldn; 
-    if zb_tmp(1)>maxz
-        ntmp(1)=ntmp(2)-abs((zb_tmp(2)-maxz)./(zb_tmp(2)-zb_tmp(1))*(veldn/2));
-        zb_tmp(1)=maxz;
-    end
-    if zb_tmp(end)>maxz
-        ntmp(end)=ntmp(end-1)+abs((zb_tmp(end-1)-maxz)./(zb_tmp(end)-zb_tmp(end-1))*(veldn/2));
-        zb_tmp(end)=maxz;
-    end
-    if(any(zb_tmp(2:end-1)>maxz))
-        warning('procTrans2:DegenerateCells','Degenerate cells found (round 1)!')
-    end
-    
-    % compute minimum z
-    d_tmp=maxEta-zb_tmp; % depth at cell boundaries and centres
-    minz_tmp=zb_tmp+sigmin*d_tmp; % minimum bed level for mesh (centres and boundaries)
-    if minz_tmp(1)>maxz
-        ntmp(1)=ntmp(2)-abs((minz_tmp(2)-maxz)./(minz_tmp(2)-minz_tmp(1))*(veldn/2));
-        minz_tmp(1)=maxz;
-        zb_tmp(1)=(minz_tmp(1)-sigmin*maxEta)/(1-sigmin);
-        d_tmp(1)=maxEta-zb_tmp(1);
-    end
-    if minz_tmp(end)>maxz
-        ntmp(end)=ntmp(end-1)+abs((minz_tmp(end-1)-maxz)./(minz_tmp(end)-minz_tmp(end-1))*(veldn/2));
-        minz_tmp(end)=maxz;
-        zb_tmp(end)=(minz_tmp(end)-sigmin*maxEta)/(1-sigmin);
-        d_tmp(end)=maxEta-zb_tmp(end);
-    end
-    if(any(minz_tmp(2:end-1)>maxz))
-        warning('procTrans2:DegenerateCells','Degenerate cells found (round 2)!')
-    end
+    maxz=nanmax(czvel(:));
+    minz_cell_left=zb_cell_left+(water_level.get_water_level()-zb_cell_left)*sigmin;
+    minz_cell_center=zb_cell_center+(water_level.get_water_level()-zb_cell_center)*sigmin;
+    minz_cell_right=zb_cell_right+(water_level.get_water_level()-zb_cell_right)*sigmin;
 
+    num_cells_per_vert= ceil((maxz-minz_cell_center)./veldz);
+    num_cells=sum(num_cells_per_vert);
+    mesh(ct).cells(num_cells)=MeshCell;
+    dz_center=(maxz-minz_cell_center)./num_cells_per_vert;
+    dz_left=(maxz-minz_cell_left)./num_cells_per_vert;
+    dz_right=(maxz-minz_cell_right)./num_cells_per_vert;
+    max_num_cells=max(num_cells_per_vert);
+    mask_mesh=(1:max_num_cells)'<=num_cells_per_vert';
+    [col_number,row_number]=meshgrid(1:num_verticals,1:max_num_cells);
+    col_idx=col_number(mask_mesh);
+    row_idx=row_number(mask_mesh);
+    nz_coords=[permute(cat(3, n_cell_left(col_idx), n_cell_center(col_idx), n_cell_right(col_idx), n_cell_right(col_idx), n_cell_center(col_idx), n_cell_left(col_idx), n_cell_left(col_idx)), [1 3 2]);...
+            permute(cat(3,maxz-dz_left(col_idx).*row_idx, maxz-dz_center(col_idx).*row_idx, maxz-dz_right(col_idx).*row_idx, maxz-dz_right(col_idx).*(row_idx-1), maxz-dz_center(col_idx).*(row_idx-1), maxz-dz_left(col_idx).*(row_idx-1), maxz-dz_left(col_idx).*row_idx),[2 3 1])];
+    mesh(ct).bed_position=[n_cell_left(1) n_cell_center n_cell_right(end); zb_cell_left(1) zb_cell_center' zb_cell_right(end)];
+    sig_coords=(nz_coords(2,:,:)-permute(cat(3,zb_cell_left(col_idx), zb_cell_center(col_idx), zb_cell_right(col_idx), zb_cell_right(col_idx), zb_cell_center(col_idx), zb_cell_left(col_idx), zb_cell_left(col_idx)),[2 3 1]))./...
+        (water_level.get_water_level() -  permute(cat(3,zb_cell_left(col_idx), zb_cell_center(col_idx), zb_cell_right(col_idx), zb_cell_right(col_idx), zb_cell_center(col_idx), zb_cell_left(col_idx), zb_cell_left(col_idx)),[2 3 1]));
     
-    % store some stuff usefull for plotting
-    msh(ct).p.nbed=ntmp; % n coordinate of both cell centres and boundaries
-    msh(ct).p.xbed=Pn(1,ct)+T(1,ct)*msh(ct).p.nbed; % x coordinate of both cell centres and boundaries
-    msh(ct).p.ybed=Pn(2,ct)+T(2,ct)*msh(ct).p.nbed; % y coordinate of both cell centres and boundaries
-    msh(ct).p.zbed=zb_tmp'; % store the z coordinate of the bed for cell centres and boundaries
-
-    
-    d_ncntr=d_tmp(2:2:end); % get elevation at cell centres
-    d_nbnds=d_tmp(1:2:end); % get average bed elevation at cell boundaries
-    d_nleft=d_nbnds(1:end-1); % get average bed elevation at cell left boundary
-    d_nright=d_nbnds(2:end); % get average bed elevation at cell right boundary
-    
-    zb_ncntr=zb_tmp(2:2:end); % get elevation at cell centres
-    zb_nbnds=zb_tmp(1:2:end); % get average bed elevation at cell boundaries
-    zb_nleft=zb_nbnds(1:end-1); % get average bed elevation at cell left boundary
-    zb_nright=zb_nbnds(2:end); % get average bed elevation at cell right boundary
-    
-    minz_cnt=minz_tmp(2:2:end); % minimum z for each vertical at cell centres
-    minz_bnd=minz_tmp(1:2:end); % minimum z for each vertical at cell boundaries   
-    minz_left=minz_bnd(1:end-1); % minimum z for each vertical at cell left boundaries
-    minz_right=minz_bnd(2:end); % minimum z for each vertical at cell right boundaries
-
-    n_cntr=ntmp(2:2:end);
-    n_bnds=ntmp(1:2:end);
-    n_left=n_bnds(1:end-1);
-    n_right=n_bnds(2:end);
-    
-    % Compute n indices
-    colIdx=floor((nvel-n_right(1))./veldn)+2; % Compute N index, mapping velocity data to correct vertical
-
-    % select points within transect range
-    inrange = colIdx >0 & colIdx <= ncells;
-    colIdx(colIdx < 1 & colIdx > ncells) = NaN;    
-    
-    
-    % Compute number of cells in each vertical and cell-size (in sigma and zed)
-    nz_cnt=round((maxz-minz_cnt)/veldz); % best guess number of z values in vertical giving a dz as close as possible to the given one
-    dzed_cnt=(maxz-minz_cnt)./nz_cnt; % compute dz at cell centers
-    dzed_left=(maxz-minz_left)./nz_cnt; % compute dz at left cell boundary
-    dzed_right=(maxz-minz_right)./nz_cnt; % compute dz at right cell boundary
-    
-    % generate N coordinates of the mesh
-    NL=repmat(n_left,[nanmax(nz_cnt),1]); % n of left vertices (same for upper and lower)
-    NM=repmat(n_cntr,[nanmax(nz_cnt),1]); % n of central vertices (same for upper and lower)
-    NR=repmat(n_right,[nanmax(nz_cnt),1]); % n of right vertices (same for upper and lower)
-
-    % make fgood
-    nz_cnt(isnan(nz_cnt))=0; % use number of cells in vertical to generate fgood
-    msh(ct).p.fgood=bsxfun(@le,cumsum(ones(size(NL)),1),nz_cnt'); % fgood masks the data that is in the section  
- 
-    % generate N, X and Y coordinates for centres and patch vertices
-    msh(ct).N=repmat(n_cntr,[nanmax(nz_cnt),1]); % Create N position matrix for cell centres
-    msh(ct).X=Pn(1,ct)+T(1,ct)*msh(ct).N; % Create X position matrix for cell centres
-    msh(ct).Y=Pn(2,ct)+T(2,ct)*msh(ct).N; % Create Y position matrix for cell centres
-    msh(ct).p.N=[NL(msh(ct).p.fgood)';... % Store patch edges N coordinate
-                 NM(msh(ct).p.fgood)';...
-                 NR(msh(ct).p.fgood)';...
-                 NR(msh(ct).p.fgood)';...
-                 NM(msh(ct).p.fgood)';...
-                 NL(msh(ct).p.fgood)';...
-                 NL(msh(ct).p.fgood)']; % Generate matrix with n positions as is needed for patch (each column is one cell, each row a vertex)
-    msh(ct).p.X=Pn(1,ct)+T(1,ct)*msh(ct).p.N; % Compute X coordinates of patch vertices
-    msh(ct).p.Y=Pn(2,ct)+T(2,ct)*msh(ct).p.N; % Compute Y coordinates of patch vertices
-
-    % Bed elevations at patch vertices
-    [~, idx_pedges]=ind2sub(size(msh(ct).N),find(msh(ct).p.fgood)); % N index of patch edges to get bed elevation at patch corners
-    ZBED= [ zb_nleft(idx_pedges)';... % Get bed elevation for patch vertices
-            zb_ncntr(idx_pedges)';...
-            zb_nright(idx_pedges)';...
-            zb_nright(idx_pedges)';...
-            zb_ncntr(idx_pedges)';...
-            zb_nleft(idx_pedges)';...
-            zb_nleft(idx_pedges)'];                   
-
-    % Initialize row idx
-    rowIdx=nan(size(nvel)); % Sigma index (mapping to right depth cell)
-
-    % generate Sigma and Z coordinates of mesh   
-    if constant_sigma_mesh      
-        dsig_cnt=dzed_cnt./d_ncntr; % compute dsigma at cell centers
-        dsig_left=dzed_left./d_nleft; % compute dsigma at left cell boundary
-        dsig_right=dzed_right./d_nright; % comput dsigma at right cell boundary
-
-         % Determine Sigma coordinates of mesh
-        Scnt=cumsum([sigmin+dsig_cnt'/2; repmat(dsig_cnt',[nanmax(nz_cnt)-1,1])]); % generate sigma positions of cell centres
-        SLmin=cumsum([sigmin'+dsig_left'*0; repmat(dsig_left',[nanmax(nz_cnt)-1,1])]); % lower left
-        SLmax=cumsum([sigmin'+dsig_left'; repmat(dsig_left',[nanmax(nz_cnt)-1,1])]); % upper left
-        SMmin=cumsum([sigmin'+dsig_cnt'*0; repmat(dsig_cnt',[nanmax(nz_cnt)-1,1])]); % lower central
-        SMmax=cumsum([sigmin'+dsig_cnt'; repmat(dsig_cnt',[nanmax(nz_cnt)-1,1])]); % upper central
-        SRmin=cumsum([sigmin'+dsig_right'*0; repmat(dsig_right',[nanmax(nz_cnt)-1,1])]); % lower right
-        SRmax=cumsum([sigmin'+dsig_right'; repmat(dsig_right',[nanmax(nz_cnt)-1,1])]); % upper right
-    
-        % reorder matrix (small sigma at the bottom)
-        fgood=find(msh(ct).p.fgood);
-        [colm, rwm]=meshgrid(1:size(Scnt,2),1:size(Scnt,1));
-        maxrow=accumarray(colm(fgood),rwm(fgood),[size(Scnt,2) 1],@max,nan)';
-        rwm=bsxfun(@minus,maxrow,rwm)+1;
-        fgoodr=sub2ind(size(Scnt),rwm(fgood),colm(fgood));
-        Scnt(fgoodr)=Scnt(fgood);
-        SLmin(fgoodr)=SLmin(fgood);
-        SLmax(fgoodr)=SLmax(fgood);
-        SMmin(fgoodr)=SMmin(fgood);
-        SMmax(fgoodr)=SMmax(fgood);
-        SRmin(fgoodr)=SRmin(fgood);
-        SRmax(fgoodr)=SRmax(fgood);
-        
-        % make mesh in sigma
-        msh(ct).p.Sig=repmat([SLmin(msh(ct).p.fgood)';... % Store patch edges Sigma coordinates
-                              SMmin(msh(ct).p.fgood)';...
-                              SRmin(msh(ct).p.fgood)';...
-                              SRmax(msh(ct).p.fgood)';...
-                              SMmax(msh(ct).p.fgood)';...
-                              SLmax(msh(ct).p.fgood)';...
-                              SLmin(msh(ct).p.fgood)'],[1,1,nanmax(tid(ct,:))]); % Generate matrix with z positions as is needed for patch (each column is one cell, each row a vertex)
-        msh(ct).Sig=Scnt;
-        msh(ct).Sig(~msh(ct).p.fgood)=nan;
-        msh(ct).Sig=repmat(msh(ct).Sig,[1,1,nanmax(tid(ct,:))]);
-        
-        % compute mesh in Z
-        msh(ct).Z=bsxfun(@plus,bsxfun(@times,msh(ct).Sig,bsxfun(@minus,reshape(msh(ct).eta,1,1,[]),zb_ncntr')),zb_ncntr'); % z= zb+sig(eta-zb)
-        msh(ct).p.Z=bsxfun(@plus,bsxfun(@times,msh(ct).p.Sig,bsxfun(@minus,reshape(msh(ct).eta,1,1,[]),ZBED)),ZBED); % z= zb+sig(eta-zb)
-        
-        % Make row indices for velocity
-        vel_maxsig=nan(size(sigVel));
-        fnd=fleft & inrange;
-        vel_maxsig(fnd)=SLmax(1,colIdx(fnd))+(SMmax(1,colIdx(fnd))-SLmax(1,colIdx(fnd)))./(n_cntr(colIdx(fnd))-n_left(colIdx(fnd))).*(nvel(fnd)-n_left(colIdx(fnd))')';
-        fnd=fright & inrange;
-        vel_maxsig(fnd)=SMmax(1,colIdx(fnd))+(SRmax(1,colIdx(fnd))-SMmax(1,colIdx(fnd)))./(n_right(colIdx(fnd))-n_cntr(colIdx(fnd))).*(nvel(fnd)-n_cntr(colIdx(fnd))')';
-        f_incs=sigVel<=vel_maxsig & sigVel >= sigmin;
-        dSig=nan(size(nvel)); % Step in sigma
-        fnd=f_incs & fleft & inrange; % Select all data in current section, whithin the section and on the left side of cells
-        dSig(fnd)=dsig_left(colIdx(fnd))+(dsig_cnt(colIdx(fnd))-dsig_left(colIdx(fnd)))./(n_cntr(colIdx(fnd))-n_left(colIdx(fnd)))'.*(nvel(fnd)-n_left(colIdx(fnd))'); % Determine local vertical cell size (in sigma coordinates) for velocity estimates
-        fnd=f_incs & fright & inrange; % Select all data in current section, whithin the section and on the right side 
-        dSig(fnd)=dsig_cnt(colIdx(fnd))+(dsig_right(colIdx(fnd))-dsig_cnt(colIdx(fnd)))./(n_right(colIdx(fnd))-n_cntr(colIdx(fnd)))'.*(nvel(fnd)-n_cntr(colIdx(fnd))');% Determine local vertical cell size (in sigma coordinates) for velocity estimates 
-        fnd=f_incs & inrange; % find velocity data belonging to current section, within the section
-        rowIdx(fnd)=floor((sigVel(fnd)-sigmin)./dSig(fnd))+1; % Calculate Index mapping to the right vertical cell
-        rowIdx(fnd)=maxrow(colIdx(fnd))-rowIdx(fnd)'+1; % Reverse indices to have data measured on top in the top of the matrix
-    else
-        % Determine z-coordinates of mesh
-        Zcnt=cumsum([maxz-dzed_cnt'/2; repmat(-dzed_cnt',[nanmax(nz_cnt)-1,1])],1);
-        ZLmax=cumsum([maxz-dzed_left'*0; repmat(-dzed_left',[nanmax(nz_cnt)-1,1])],1);
-        ZLmin=cumsum([maxz-dzed_left'; repmat(-dzed_left',[nanmax(nz_cnt)-1,1])],1);
-        ZMmax=cumsum([maxz-dzed_cnt'*0; repmat(-dzed_cnt',[nanmax(nz_cnt)-1,1])],1);
-        ZMmin=cumsum([maxz-dzed_cnt'; repmat(-dzed_cnt',[nanmax(nz_cnt)-1,1])],1);
-        ZRmax=cumsum([maxz-dzed_right'*0; repmat(-dzed_right',[nanmax(nz_cnt)-1,1])],1);
-        ZRmin=cumsum([maxz-dzed_right'; repmat(-dzed_right',[nanmax(nz_cnt)-1,1])],1);
-        
-        % make mesh in Z
-        msh(ct).p.Z=repmat([ZLmin(msh(ct).p.fgood)';... % Store patch edges Z coordinates
-                            ZMmin(msh(ct).p.fgood)';...
-                            ZRmin(msh(ct).p.fgood)';...
-                            ZRmax(msh(ct).p.fgood)';...
-                            ZMmax(msh(ct).p.fgood)';...
-                            ZLmax(msh(ct).p.fgood)';...
-                            ZLmin(msh(ct).p.fgood)'],[1,1,nanmax(tid(ct,:))]); % Generate matrix with z positions as is needed for patch (each column is one cell, each row a vertex)
-        msh(ct).Z=Zcnt;
-        msh(ct).Z(~msh(ct).p.fgood)=nan;
-        msh(ct).Z=repmat(msh(ct).Z,[1,1,nanmax(tid(ct,:))]);
-        
-        % Compute mesh in Sigma
-        msh(ct).Sig=bsxfun(@rdivide,bsxfun(@minus,msh(ct).Z,zb_ncntr'),bsxfun(@minus,reshape(msh(ct).eta,1,1,[]),zb_ncntr')); % sig=(z-zb)/(eta-zb)
-        msh(ct).p.Sig=bsxfun(@rdivide,bsxfun(@minus,msh(ct).p.Z,ZBED),bsxfun(@minus,reshape(msh(ct).eta,1,1,[]),ZBED)); % sig=(z-zb)/(eta-zb)
-        
-        % Make row indices for velocity
-        vel_minz=nan(size(czvel));
-        fnd=fleft & inrange;
-        frw=sum(msh(ct).p.fgood,1);
-        idx_cell=sub2ind(size(msh(ct).Z),max(1,frw(colIdx(fnd))),colIdx(fnd)'); % max is quick and dirty solution?
-        vel_minz(fnd)=ZLmin(idx_cell)+(ZMmin(idx_cell)-ZLmin(idx_cell))./(n_cntr(colIdx(fnd))-n_left(colIdx(fnd))).*(nvel(fnd)-n_left(colIdx(fnd))')';
-        fnd=fright & inrange;
-        idx_cell=sub2ind(size(msh(ct).Z),max(1,frw(colIdx(fnd))),colIdx(fnd)');
-        vel_minz(fnd)=ZMmin(idx_cell)+(ZRmin(idx_cell)-ZMmin(idx_cell))./(n_right(colIdx(fnd))-n_cntr(colIdx(fnd))).*(nvel(fnd)-n_cntr(colIdx(fnd))')';
-        f_incs=czvel<=maxz & czvel >= vel_minz & sigVel > sigmin;
-        dZ=nan(size(nvel)); % Step in sigma
-        fnd=f_incs & fleft & inrange; % Select all data in current section, whithin the section and on the left side of cells
-        dZ(fnd)=dzed_left(colIdx(fnd))+(dzed_cnt(colIdx(fnd))-dzed_left(colIdx(fnd)))./(n_cntr(colIdx(fnd))-n_left(colIdx(fnd)))'.*(nvel(fnd)-n_left(colIdx(fnd))'); % Determine local vertical cell size (in sigma coordinates) for velocity estimates
-        fnd=f_incs & fright & inrange; % Select all data in current section, whithin the section and on the right side 
-        dZ(fnd)=dzed_cnt(colIdx(fnd))+(dzed_right(colIdx(fnd))-dzed_cnt(colIdx(fnd)))./(n_right(colIdx(fnd))-n_cntr(colIdx(fnd)))'.*(nvel(fnd)-n_cntr(colIdx(fnd))');% Determine local vertical cell size (in sigma coordinates) for velocity estimates 
-        fnd=f_incs & inrange; % find velocity data belonging to current section, within the section
-        rowIdx(fnd)=floor((maxz-czvel(fnd))./dZ(fnd))+1; % Calculate Index mapping to the right vertical cell       
-    end
-    
-%     if IsConventional
-%         rowIdx=repmat(rowIdx,[1 1 4]);
-%         colIdx=repmat(colIdx,[1 1 4]);
-%         f_incs=repmat(f_incs,[1 1 4]);
-%     end
+    mesh(ct).coordinates=[nz_coords(1,:,:); sig_coords];
     
     %% Velocity processing
-    siz=[size(msh(ct).Z,1) size(msh(ct).Z,2)]; % size of output mesh
+    siz=size(mask_mesh); % size of output mesh
     cvel=vel(:,fcur,:);
     cTM1=TM1(:,fcur,:);
     cTM2=TM2(:,fcur,:);
@@ -704,11 +492,7 @@ for ct=1:size(tid,1) % For all sections
     datacol=cell([siz nanmax(tid(ct,:))]); % Initialize variable to collect velocity and tr. matrix data
 
     for ccr=nanmin(tid(ct,tid(ct,:)>0)):nanmax(tid(ct,:)) % loop over all crossings
-        if IsCumulative
-            fnd=bsxfun(@and,tid(ct,fcur)<=ccr, f_incs & rowIdx<=size(msh(ct).Z,1) & rowIdx>0); % find data in current section, in all crossing up to current, and belonging to any cell
-        else
-            fnd=bsxfun(@and,tid(ct,fcur)==ccr, f_incs & rowIdx<=size(msh(ct).Z,1) & rowIdx>0); % find data in current section, in current crossing, and belonging to any cell
-        end
+        fnd=bsxfun(@and,tid(ct,fcur)==ccr, f_incs & rowIdx<=size(msh(ct).Z,1) & rowIdx>0); % find data in current section, in current crossing, and belonging to any cell
         if proxim>0 % if a proximity is given
             fnd=fnd & abs(svel)<=proxim; % only include data within proxim distance from the section
         end
