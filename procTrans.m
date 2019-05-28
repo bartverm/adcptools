@@ -1,4 +1,4 @@
-function msh=procTrans2(adcp,tid,varargin)
+function msh=procTrans(adcp,tid,varargin)
 % PROCTRANS processes repeat transect vessel mounted ADCP data
 %
 %   MSH=PROCTRANS(ADCP,TID) is processing the adcp-structure ADCP (as 
@@ -163,24 +163,6 @@ function msh=procTrans2(adcp,tid,varargin)
 %           the estimated parameters. It accepts and nxP matrix as input.
 %           It returns three matrices with the estimated u,v and w
 %           velocity.
-%         Instead of defining the velocity models through function handles
-%         it is also possible to define them with the following parameters
-%         (included for backward compatibility):
-%         'ModelU_t'
-%         'ModelV_t'
-%         'ModelW_t'
-%           PxE matrix - Each row corresponds to a model parameter for the
-%           velocity component. The values are the time-varying 
-%           coefficients of the velocity model. Default is ones(1,E) which
-%           corresponds to computing the average velocity.
-%         'KnownU_t'
-%         'KnownV_t'
-%         'KnownW_t'
-%           Px1 row-vector - Allows to set any known term of the velocity 
-%           model. Default is zeros(1,E) which corresponds to no known term 
-%         Note that if this last way of defining a velocity model is used
-%         the functions given in the 'Model', 'Known' and
-%         'GetVelocity' inputs will be ignored.
 
 %       TODO: make fitting function for:
 %       fourier fitting
@@ -229,14 +211,6 @@ P.addParameter('Proximity',0,@(x) isscalar(x) && isnumeric(x) && x>=0); % Set th
 P.addParameter('StdFiltering',6,@(x) isscalar(x) && isnumeric(x) && x>=0); % Remove velocity with a standard deviation of the estimate exceeding this amount of times the median standard deviation
 P.addParameter('ShipReference','bt',@(x) ischar(x) && any(strcmpi(x,{'bt','gps','gpsbt','btgps'}))); % Select which boat velocity calculation to use
 P.addParameter('Pusr',[], @(x) isnumeric(x)); % User set the central position of a transect (can be usefull when data density is not uniform on transect
-% BACKWARD COMPATIBILITY BELOW(REMOVE IN THE FUTURE)
-P.addParameter('ModelU_t',1,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (ismatrix(x) && size(x,2)==nens))); % Velocity model for u
-P.addParameter('ModelV_t',1,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (ismatrix(x) && size(x,2)==nens))); % Velocity model for v
-P.addParameter('ModelW_t',1,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (ismatrix(x) && size(x,2)==nens))); % Velocity model for w
-P.addParameter('KnownU_t',0,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (isrow(x) && size(x,2)==nens))); % Known parameters for u
-P.addParameter('KnownV_t',0,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (isrow(x) && size(x,2)==nens))); % Known parameters for v
-P.addParameter('KnownW_t',0,@(x) isnumeric(x) && ~isempty(x) && (isscalar(x) || (isrow(x) && size(x,2)==nens))); % Known parameters for w
-% BACKWARD COMPATIBILITY ABOVE (REMOVE IN THE FUTURE)
 P.addParameter('RotatePars',true,@(x) isscalar(x) && islogical(x));
 P.addParameter('EnableDebugging',false,@(x) isscalar(x) && islogical(x));
 P.addParameter('Model',@default_model,@(x) isscalar(x) && isa(x,'function_handle'));
@@ -262,21 +236,6 @@ eta=eta(:)';    % Vectorize eta
 eta=eta.*ones(1,size(numel(time),1)); % Ensure eta has same number of elements as the number of ensembles
 shref=P.Results.ShipReference;
 Pusr=P.Results.Pusr;
-
-%BACKWARD COMPATIBILITY BELOW(REMOVE IN THE FUTURE)
-use_old=false;
-if ~any(strcmp(P.UsingDefaults,'ModelU_t')) || ~any(strcmp(P.UsingDefaults,'ModelV_t')) || ~any(strcmp(P.UsingDefaults,'ModelU_t')) || ~any(strcmp(P.UsingDefaults,'KnownU_t')) || ~any(strcmp(P.UsingDefaults,'KnownV_t')) || ~any(strcmp(P.UsingDefaults,'KnownW_t'))
-    use_old=true;
-    nens = size(adcp.timeV,1);
-    mod_ut=bsxfun(@times, ones(1,nens),P.Results.ModelU_t);
-    mod_vt=bsxfun(@times, ones(1,nens),P.Results.ModelV_t);
-    mod_wt=bsxfun(@times, ones(1,nens),P.Results.ModelW_t);
-    knw_ut=bsxfun(@times, ones(1,nens),P.Results.KnownU_t);
-    knw_vt=bsxfun(@times, ones(1,nens),P.Results.KnownV_t);
-    knw_wt=bsxfun(@times, ones(1,nens),P.Results.KnownW_t);
-end
-%BACKWARD COMPATIBILITY ABOVE(REMOVE IN THE FUTURE)
-
 IsCumulative=P.Results.CumulateCrossings;
 IsConventional=P.Results.ConventionalProcessing;
 rotate=P.Results.RotatePars;
@@ -397,7 +356,8 @@ T=nan(2,nsec); % Unit vector tangential to section
 N=nan(2,nsec); % Unit vector orthogonal to section 
 Pm=nan(2,nsec); % Average section location vector
 Pn=nan(2,nsec); % Average section location vector
-
+mesh(nsec)=Mesh;
+bathy(nsec)=BathymetryScatteredPoints;
 
 %% create time index (mapping to right time cell)
 eta = eta .* ones(1,nens); % make sure eta is row vector with same number of elements as number of ensembles
@@ -424,53 +384,47 @@ for ct=1:size(tid,1) % For all sections
         msh(ct).eta=cumsum(msh(ct).eta)./(1:numel(msh(ct).eta))';% Compute cumulative average if processing is cumulative
     end
     
+
     % Compute relevant vectors
     P=[xadcp(fcur)';yadcp(fcur)']; % ADCP position vectors
     if (~isempty(Pusr))
-        Pm = mean(Pusr(:,:,ct),2);
-        T(:,ct) = diff(Pusr(:,:,ct),[],2);
-        T(:,ct) = T(:,ct)/norm(T(:,ct));
+        mesh(ct).origin = mean(Pusr(:,:,ct),2);
     else
-        Pm(:,ct)=nanmean(P,2); % Average ADCP position vector
-        T(:,ct)=princdir(P); % Section tangential vector, determined as largest eigenvector of P
+        mesh(ct).origin=nanmean(P,2); % Average ADCP position vector
     end
-    N(:,ct)=[T(2,ct); -T(1,ct)]; % Section orthogonal vector (orthogonal to T)
+    mesh(ct).direction=princdir(P); % Section tangential vector, determined as largest eigenvector of P
     
     % Project positions (inner product with unit vectors)
-    nb=T(1,ct)*(xb(:,fcur,:)-Pm(1,ct))+T(2,ct)*(yb(:,fcur,:)-Pm(2,ct)); % depth position, n component
-    sb=N(1,ct)*(xb(:,fcur,:)-Pm(1,ct))+N(2,ct)*(yb(:,fcur,:)-Pm(2,ct)); % depth position, s component
-    nvel=T(1,ct)*(xvel(:,fcur,:)-Pm(1,ct))+T(2,ct)*(yvel(:,fcur,:)-Pm(2,ct)); % velocity position, n component
-    svel=N(1,ct)*(xvel(:,fcur,:)-Pm(1,ct))+N(2,ct)*(yvel(:,fcur,:)-Pm(2,ct)); % velocity position, s component
-    
+    [posb, posvel]=mesh(ct).xy2sn([xb(:,fcur,:);yb(:,fcur,:)],...
+                               [shiftdim(xvel(:,fcur,:),-1);shiftdim(yvel(:,fcur,:),-1)]);
+        
     % Store important vectors
-    msh(ct).Tvec=T(:,ct); % tangential vector
-    msh(ct).Nvec=N(:,ct); % orthogonal vector
-    msh(ct).Pm=Pm(:,ct); % mean position vector
+    msh(ct).Tvec=mesh(ct).direction; % tangential vector
+    msh(ct).Nvec=mesh(ct).direction_orthogonal; % orthogonal vector
+    msh(ct).Pm=mesh(ct).origin; % mean position vector
     
     %% Calculate sigma for velocity locations
-    czb=zb(:,fcur,:);
+    posb=[posb; zb(:,fcur,:)];   
     
     % Finite depth and velocity masks
-    dfg=isfinite(nb) & isfinite(sb) & isfinite(czb); % Mask for finite depth locations
-    velfg=isfinite(nvel) & isfinite(svel); % Mask for finite velocity locations
+    fgoodb=repmat(all(isfinite(posb),1),3,1); % Mask for finite bed positions
+    fgoodvel=all(isfinite(posvel),1); % Masf for finite velocity positions
 
     % Initialize variables
-    zbvel=nan(size(nvel)); % Bed elevation at velocity locations
-
-    % Compute Bed elevations at velocity sample locations (use accumarray instead?)
-    if verLessThan('matlab','7.10')
-        zbvel(velfg) = griddata(reshape(sb(dfg),[],1),reshape(nb(dfg),[],1),reshape(czb(dfg),[],1),svel(velfg),nvel(velfg),'natural'); %#ok<GRIDD>
-    elseif verLessThan('matlab','8.1')
-        Int=TriScatteredInterp(reshape(sb(dfg),[],1),reshape(nb(dfg),[],1),reshape(czb(dfg),[],1),'natural'); %#ok<REMFF1> % Create interpolant (natural interpolation with linear extrapolation)
-        zbvel(velfg)=Int(svel(velfg),nvel(velfg)); % interpolate bed elevation at velocity locations
-    else
-        Int=scatteredInterpolant(reshape(sb(dfg),[],1),reshape(nb(dfg),[],1),reshape(czb(dfg),[],1),'natural','none'); % Create interpolant (natural interpolation with linear extrapolation)
-        zbvel(velfg)=Int(svel(velfg),nvel(velfg)); % interpolate bed elevation at velocity locations
-    end  
-
+    zbvel=nan(size(fgoodvel)); % Bed elevation at velocity locations
+    
+    bathy(ct).pos=reshape(posb(fgoodb),3,[]);
+    zbvel(fgoodvel)=bathy(ct).get_bed_elev(reshape(posvel(repmat(fgoodvel,2,1)),2,[]));
+    posvel=[posvel;zbvel];
+    
     % Compute sigma
-    czvel=zvel(:,fcur,:);
-    if numel(eta)>1, ceta=eta(fcur); else ceta=eta; end
+    czvel=shiftdim(zvel(:,fcur,:),-1);
+    if numel(eta)>1
+        ceta=eta(fcur); 
+    else
+        ceta=eta; 
+    end
+    ceta=shiftdim(ceta,-1);
     sigVel=nan(size(czvel));
     f_incs=bsxfun(@gt,czvel,zbvel);
     dVel=bsxfun(@minus,ceta,zbvel);
@@ -480,11 +434,7 @@ for ct=1:size(tid,1) % For all sections
     
     %% Meshing
     % Compute minimum and maximum n
-    if (~isempty(Pusr))
-        nmin = min(T(:,ct)'*(Pusr(:,:,ct) - Pm(:,ct)*[1 1]));
-    else
-    nmin=nanmin(nvel(f_incs)); % determine minimum n
-    end
+    nmin=nanmin(posvel(f_incs & [false; true; false]),[],2); % determine minimum n
     Pn(:,ct)=Pm(:,ct)+T(:,ct)*nmin; % compute vector pointing to minimum n location (projected on section)
     nvel=nvel-nmin; % remove minimum n from velocity n coordinates (now they range between 0 and maximum n)
     nb=nb-nmin; % remove minimum n from depth n coordinates (now they range between 0 and maximum n)
@@ -495,7 +445,7 @@ for ct=1:size(tid,1) % For all sections
     end
     ncells=ceil(nmax./veldn); % determine number of vertical in section
 
-    % Preliminary computations
+    % Preliminary computations0
     nIdxd=floor((nb+veldn/4)/(veldn/2))+1; % Index to determine depth at cell boundaries and centres
     fgood=isfinite(nIdxd) & nIdxd>0 & nIdxd<=ncells*2+1; % Select data to include in depth calculation at cell edges and center
     fleft=mod(floor(nvel/veldn*2),2)==0; % Selects data on the left half of a cell
@@ -766,38 +716,26 @@ for ct=1:size(tid,1) % For all sections
             
 
         % compute model coefficients from dz, dn, ds and dt
-        %   BACKWARD COMPATIBILITY BELOW
-        if use_old
-            colt=accumarray({rowIdx(fnd), colIdx(fnd)},ctvel(fnd),siz,@(x) {x}, {double.empty(0,1)});
-            colmu=cellfun(@(x) interp1(time',mod_ut',x,'nearest','extrap'),colt,'UniformOutput',false);
-            colmv=cellfun(@(x) interp1(time',mod_vt',x,'nearest','extrap'),colt,'UniformOutput',false);
-            colmw=cellfun(@(x) interp1(time',mod_wt',x,'nearest','extrap'),colt,'UniformOutput',false);
-            colku=cellfun(@(x) interp1(time',knw_ut',x,'nearest','extrap'),colt,'UniformOutput',false);
-            colkv=cellfun(@(x) interp1(time',knw_vt',x,'nearest','extrap'),colt,'UniformOutput',false);
-            colkw=cellfun(@(x) interp1(time',knw_wt',x,'nearest','extrap'),colt,'UniformOutput',false);
-        else
-        %BACKWARD COMPATIBILITY ABOVE
-            % Compute dz, dn, ds and dt and collect them for each mesh cell
-            coldz=cellfun(@minus,...
-                accumarray({rowIdx(fnd), colIdx(fnd)},czvel(fnd),siz,@(x) {x}, {double.empty(0,1)}),...
-                num2cell(msh(ct).Z(:,:,ccr)),...
-                'UniformOutput',false);
-            colSig=cellfun(@minus,...
-                accumarray({rowIdx(fnd), colIdx(fnd)},sigVel(fnd),siz,@(x) {x}, {double.empty(0,1)}),...
-                num2cell(msh(ct).Z(:,:,ccr)),...
-                'UniformOutput',false);
-            coldn=cellfun(@minus,...
-                accumarray({rowIdx(fnd), colIdx(fnd)},nvel(fnd),siz,@(x) {x}, {double.empty(0,1)}),...
-                num2cell(msh(ct).N(:,:)),...
-                'UniformOutput',false);
-            colds=accumarray({rowIdx(fnd), colIdx(fnd)},svel(fnd),siz,@(x) {x}, {double.empty(0,1)});
-            coldt=cellfun(@(x,y) (x-y)*24*3600,...
-            accumarray({rowIdx(fnd), colIdx(fnd)},ctvel(fnd),siz,@(x) {x}, {double.empty(0,1)}),...
-            repmat({msh(ct).time(ccr)},siz),...
-            'UniformOutput',false);            
-            [colmu,colmv,colmw]=cellfun(@(n,z,Sig,s,t) f_model([n,z,Sig,s,t]),coldn, coldz, colSig, colds,coldt,'UniformOutput',false);
-            [colku,colkv,colkw]=cellfun(@(n,z,Sig,s,t) f_known([n,z,Sig,s,t]),coldn, coldz, colSig, colds,coldt,'UniformOutput',false);
-        end
+        % Compute dz, dn, ds and dt and collect them for each mesh cell
+        coldz=cellfun(@minus,...
+            accumarray({rowIdx(fnd), colIdx(fnd)},czvel(fnd),siz,@(x) {x}, {double.empty(0,1)}),...
+            num2cell(msh(ct).Z(:,:,ccr)),...
+            'UniformOutput',false);
+        colSig=cellfun(@minus,...
+            accumarray({rowIdx(fnd), colIdx(fnd)},sigVel(fnd),siz,@(x) {x}, {double.empty(0,1)}),...
+            num2cell(msh(ct).Z(:,:,ccr)),...
+            'UniformOutput',false);
+        coldn=cellfun(@minus,...
+            accumarray({rowIdx(fnd), colIdx(fnd)},nvel(fnd),siz,@(x) {x}, {double.empty(0,1)}),...
+            num2cell(msh(ct).N(:,:)),...
+            'UniformOutput',false);
+        colds=accumarray({rowIdx(fnd), colIdx(fnd)},svel(fnd),siz,@(x) {x}, {double.empty(0,1)});
+        coldt=cellfun(@(x,y) (x-y)*24*3600,...
+        accumarray({rowIdx(fnd), colIdx(fnd)},ctvel(fnd),siz,@(x) {x}, {double.empty(0,1)}),...
+        repmat({msh(ct).time(ccr)},siz),...
+        'UniformOutput',false);            
+        [colmu,colmv,colmw]=cellfun(@(n,z,Sig,s,t) f_model([n,z,Sig,s,t]),coldn, coldz, colSig, colds,coldt,'UniformOutput',false);
+        [colku,colkv,colkw]=cellfun(@(n,z,Sig,s,t) f_known([n,z,Sig,s,t]),coldn, coldz, colSig, colds,coldt,'UniformOutput',false);
         npars_u=size(colmu{1},2);
         npars_v=size(colmv{1},2);
         npars_w=size(colmv{1},2);
@@ -859,28 +797,10 @@ for ct=1:size(tid,1) % For all sections
         warning('No parameters estimated, not performing rotations')
         rotate=false;
     end
-    
-    %   BACKWARD COMPATIBILITY BELOW
-    if rotate && use_old
-        u_par=find(all(mod_ut(:,fcur,:,:)==1,2));
-        v_par=find(all(mod_vt(:,fcur,:,:)==1,2));
-        if numel(u_par)~=1 || numel(v_par)~=1
-            warning('procTrans2:NoMeanInModel','Could not find mean velocity in u and v models, skipping rotations based on horizontal velocity')
-            rotate = false;
-        end
-    end
-    %BACKWARD COMPATIBILITY ABOVE
-    
+        
     if rotate
         npars_uv=npars_u;
-        % BACKWARD COMPATIBILITY BELOW
-        if use_old
-            u=msh(ct).pars(:,:,:,npars_u+v_par);
-            v=msh(ct).pars(:,:,:,u_par); 
-        else
-        % BACKWARD COMPATIBILITY ABOVE
-            [u, v]=f_velocity(reshape(msh(ct).pars,[],npars));
-        end
+        [u, v]=f_velocity(reshape(msh(ct).pars,[],npars));
         sizvel=size(msh(ct).pars); sizvel(end)=1;
         u=reshape(u,sizvel);
         v=reshape(v,sizvel);
