@@ -46,7 +46,10 @@ classdef XSection < handle
         end
                 
         function varargout=plot(obj,varargin)
-            [varargout{:}]=plot(obj.bed_position,varargin{:});
+            hbed=plot(obj.bed_position(1,:),obj.bed_position(2,:),varargin{:});
+            if nargout>0
+                varargout{1}=hbed;
+            end
         end
     end
     methods (Static, Access=protected)
