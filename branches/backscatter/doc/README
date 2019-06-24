@@ -1,0 +1,5 @@
+Requires: LaTeX distribution, latexmk, inkscape
+
+Compile the documentation using: 'latexmk adcptools.tex'
+Use 'latexmk -c' to cleanup everything except the generated pdf file
+
