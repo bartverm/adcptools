@@ -22,6 +22,7 @@ classdef Water < handle
     properties
         temperature double {mustBeFinite}=20 % Temperature of water in Celsius, default is 20
         salinity double {mustBeNonnegative}=200  % Salinity of water in ppm (parts per million), default is 200
+        pH double {mustBeFinite}=7
     end
     properties(Dependent)
         % Density of seawater
@@ -90,7 +91,7 @@ classdef Water < handle
         %   Uses Medwin and Clay, pg 85, Eq 3.3.3
         %
         %   see also: acoustics.Water.speedsound
-           util.elementwise_output_size(temperature, salinity, depth);
+           utils.elementwise_output_size(temperature, salinity, depth);
            c = 1448.96 + 4.591     * temperature-...
                          5.304e-2  * temperature.^2+...
                          2.374e-4  * temperature.^3+...
@@ -111,7 +112,7 @@ classdef Water < handle
         %   density will be NaN
         %
         %   see also: acoustics.Water.density
-            util.elementwise_output_size(temperature, salinity)
+            utils.elementwise_output_size(temperature, salinity)
             t=temperature;
             S=salinity/1e6;
             a1 = 9.999e2;
@@ -139,7 +140,7 @@ classdef Water < handle
         %   result will be NaN
         %
         %   see also: acoustics.Water.dyn_viscosity
-            util.elementwise_output_size(temperature, salinity)
+            utils.elementwise_output_size(temperature, salinity)
             t=temperature;
             S=salinity/1e6;
             mu_w = 4.2844e-5 + (0.157 * ( t + 64.993 ) .^ 2 - 91.296 ) .^ (-1);
