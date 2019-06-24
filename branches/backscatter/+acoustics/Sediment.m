@@ -36,7 +36,7 @@ classdef Sediment < handle
 %
 
 %   Author: Bart Vermeulen
-%   Last edit: 13-04-2010
+%   Last edit: 06_2019
 
     properties
         density=2650 %Sediment density in kg/m^3
@@ -163,8 +163,8 @@ classdef Sediment < handle
         function setgrdist(obj,~,~)
             % Estimates the parameters of the lognormal grain size
             % distribution
-            D84=interp1(obj.distrib(:,1),obj.distrib(:,2),84.1,'cubic','extrap')*1000;
-            D16=interp1(obj.distrib(:,1),obj.distrib(:,2),15.9,'cubic','extrap')*1000;
+            D84=interp1(obj.distrib(:,1),obj.distrib(:,2),84.1,'pchip','extrap')*1000;
+            D16=interp1(obj.distrib(:,1),obj.distrib(:,2),15.9,'pchip','extrap')*1000;
             muphi=-log2(sqrt(D84*D16));
             sigphi=log2(sqrt(D84/D16));
             x0(1)=-muphi*log(2)-3*log(10);

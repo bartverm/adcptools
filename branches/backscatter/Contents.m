@@ -27,7 +27,8 @@
 %   tayl_expand      - Defines taylor expansions for use with procTrans
 %
 %% Packages
-% see also: acoustics, util
+%   acoustics        - acoustics package
+%   helpers          - helper functions and classes
 %
 %% Helper functions (usually not called directly)
 %   defineNMEA       - This file defines all regular expressions for nmea strings
