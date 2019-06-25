@@ -1,4 +1,33 @@
-%    Copyright 2014 Bart Vermeulen
+function [Q, A] = compQ(msh, sections, nfrac)
+% Computes discharge through cross sections
+%
+%   Q = compQ(msh) computes the discharge through the mesh defined in msh
+%       and obtained with procTrans. Q is an array with the same size as
+%       msh, containing the following fields:
+%     Q.mid - The discharge through the measured section
+%     Q.top - The discharge through the top of the measured section and the
+%             water surface
+%     Q.bot - The discharge through the bottom of the mesh and the bed
+%     Q.left - Discharge in the left edge of the measurements and the banks
+%     Q.right - Discharge in the right edge of the measurements and the
+%               banks
+%     Q.total - Total discharge
+%
+%   [Q, A] = compQ(msh) also returns the areas of the different parts of
+%   the cross section described above
+%
+%   compQ(msh, sections) allows to specify which cross sections should be
+%   processed. Default is all.
+%
+%   compQ(msh, sections, nfrac) allows to specify which fraction of the bed
+%       must be used to find the bank position by linear extrapolation
+%   
+%   Please note: this function is a very simplistic approach to discharge
+%   estimates, especially for the unmeasured parts.
+%
+%   see also: procTrans, readDeployment
+
+%    Copyright 2019 Bart Vermeulen
 %
 %    This file is part of ADCPTools.
 %
@@ -18,69 +47,46 @@
 %    input
 %    msh       : adcpttools mesh
 %    trancsts : trancsts to process (default: all)
-% 
-%
+
+
 % TODO zero value boundary conditions should be given at bottom and
 %      side walls in combination with linear interpolation,
 %      while interpolating the top still with the nearest neighbour method    
 %      better: quadratic interpolation with enforced bank angle of say 30 deg at surface
 % TODO linear extrapolation of bank position may yield implausible large values
-%      if the bottom slope is low or if the GPS coordinates contain an outlier
-function [msh Q A] = compQ(msh, trancsts, nfrac, vfield)
+%      if the bottom slope is low or if the GPS coordinates contain an
+%      outlier
+% TODO not accounting for progressive velocity processing, just using last
+%       velocity
 
     % automatically select all trancsts
-    if (nargin() < 2 || isempty(trancsts))
-            trancsts = 1:length(msh);
+    if (nargin() < 2 || isempty(sections))
+            sections = 1:length(msh);
     end
 
     % relative size of cross section that is used to determination the bank position
     %nfrac=[0.1 0.3 0.3 0.5 0.3 0.1 0.1] ;
     if (nargin()<3 || isempty(nfrac))
-            nfrac = 0.2*ones(size(trancsts));
+            nfrac = 0.2*ones(size(sections));
     end
 
-    if (nargin < 4)
-	    vfield = 'vel';
-    end
-    progvelfield = ['prog' vfield];
     sfield = 'cs';
-  
+   
     % estimate discharge
-    for ct=trancsts(:)'
-	[A(ct) p  ] = integrate_area(msh(ct).p, msh(ct).N, msh(ct).Z, trancsts,nfrac(ct));
-	[Q(ct) vel] = integrate_discharge(A(ct), p, msh(ct).N, msh(ct).Z, msh(ct).(sfield).(vfield));
-	msh(ct).p    = p;
-	msh(ct).cs.Q = Q(ct);
-	msh(ct).cs.A = A(ct);
+    for ct=sections(:)'
+        [A(ct), p  ] = integrate_area(msh(ct).p, nfrac(ct));
+        Q(ct) = integrate_discharge(A(ct), p, msh(ct).(sfield).pars);
+        msh(ct).p    = p;
+        msh(ct).cs.Q = Q(ct);
+        msh(ct).cs.A = A(ct);
     end % for ct
-
-    % compute discharge for progressive
-    if (isfield(msh(1),'progvel') && ~isempty(msh(1).progvel))
-	for ct=1:length(msh)
-		secrot=[ cos(msh(ct).(sfield).dir) sin(msh(ct).(sfield).dir) 0;...
-        	        -sin(msh(ct).(sfield).dir) cos(msh(ct).(sfield).dir) 0;...
-                        0 0 1];
-	for idx=1:size(msh(ct).progvel,3)
-		vel = squeeze(msh(ct).(progvelfield)(:,:,idx,:));
-		% rotate
-		vel1 = vel(:,:,1);
-		vel2 = vel(:,:,2);
-		vel12 = [vel1(:), vel2(:)]*secrot(1:2,1:2)';
-		vel(:,:,1:2) = reshape(vel12,[size(vel,1),size(vel,2),2]);
-		Q_ = integrate_discharge(A(ct), msh(ct).p, msh(ct).N, msh(ct).Z, vel);
-		msh(ct).progQ(idx) = Q_;
-	end % for idx
-	end % for ct
-    end % if progflag
 end % function compQ
 
-% p   : msh mesh structure
-% vel : velocity associated with the cells
-function [A p] = integrate_area(p, N, Z, transcsts,nfrac)
+function [A, p] = integrate_area(p, nfrac)
     % estimate surface area of cells
-    p.A=0.5*(sum(bsxfun(@times,p.Z([6 1 5 2],:),[1 -1 1 -1]'),1).*...
+    p.A=0.5*(sum(bsxfun(@times,p.Z([6 1 5 2],:,end),[1 -1 1 -1]'),1).*...
                     sum(bsxfun(@times,p.N([2 1],:),[1 -1]'),1)+...
-                    sum(bsxfun(@times,p.Z([5 2 4 3],:),[1 -1 1 -1]'),1).*...
+                    sum(bsxfun(@times,p.Z([5 2 4 3],:,end),[1 -1 1 -1]'),1).*...
                     sum(bsxfun(@times,p.N([3 2],:),[1 -1]'),1));
 
     % Make cells and determine area for bottom cells
@@ -117,7 +123,6 @@ function [A p] = integrate_area(p, N, Z, transcsts,nfrac)
     ntr   =round(diff(p.nbed([1 end]))*nfrac/nanmedian(diff(p.nbed)));
     poly  =polyfit(p.zbed(1:ntr),p.nbed(1:ntr),1);
     nleft =poly(2);
-%    if ct==5, nleft=-10; end
     poly  =polyfit(p.zbed(end-ntr+1:end),p.nbed(end-ntr+1:end),1);
     nright=poly(2);
 
@@ -136,10 +141,8 @@ function [A p] = integrate_area(p, N, Z, transcsts,nfrac)
     p.A(isnan(p.A)) = 0;
     fdx = isnan(p.Abot);
     p.Abot(fdx)     = 0;
-%    velBot(fdx)     = 0;
     fdx = isnan(p.Atop);
     p.Atop(fdx)     = 0;
-%    velTop(fdx) = 0;
     p.Aleft(isnan(p.Aleft)) = 0;
     p.Aright(isnan(p.Aright)) = 0;
 
@@ -152,27 +155,12 @@ function [A p] = integrate_area(p, N, Z, transcsts,nfrac)
     A.total = A.mid+A.top+ A.bot+A.left + A.right;
 end % integrate_area
 
-function [Q vel] = integrate_discharge(A,p,N,Z,vel)
-    % ensure backward compatibility to old matlab versions
-    % TODO use matlab ver function
-    verstr = version();
-    if (str2num([verstr(1) verstr(3)]) < 81)
-            ifunc = @(x,y) TriScatteredInterp(x,y,'nearest');
-    else
-            ifunc = @(x,y) scatteredInterpolant(x,y,'nearest','nearest');        
-    end
-
+function Q = integrate_discharge(A,p,vel)
     % Extrapolate velocity and fill in missing velocity
-    fgood  = isfinite(vel(:,:,1));
+    xvel = vel(p.progfgood_vec(:,end,1));
+    fgood  = isfinite(xvel);
     fbad   = ~fgood;
-    fgood3 = cat(3,fgood,false(size(fgood)),false(size(fgood)));
-    fbad3  = cat(3,fbad,false(size(fgood)),false(size(fgood)));   
-    X      = [N(fgood),Z(fgood)];
-        % the triangular interpolator does not extrapolate,
-        % therefore a covex hull of zeros is created
-        %            TU     = feval(ifunc, [X; 1./sqrt(eps)*[-1, -1; -1, +1; +1 -1; +1, +1]], ...
-        %                                  [msh(ct).cs.vel(fgood3); [0 0 0 0]']);
-
+    X      = [p.N(fgood),p.Z(fgood)];
     Nbot = p.Nbot(2,:);
     Zbot = nanmean(p.Zbot([2 5],:),1);
     Ntop = Nbot; % TODO : why not top ?
@@ -183,17 +171,24 @@ function [Q vel] = integrate_discharge(A,p,N,Z,vel)
     Zright   = nanmean(p.Zright(1:3,:),1);
 
     % extrapolate top, bottom and side flow
-    TU         = feval(ifunc, X, vel(fgood3));
+    if exist('scatteredInterpolant','class')==8
+        TU = scatteredInterpolant(X,xvel(fgood),'nearest','nearest');
+    elseif exist('TriScatteredInterp','class')==8
+        TU = TriScatteredInterp(X,xvel(fgood),'nearest'); %#ok<DTRIINT>
+    else
+        TU = @(x) griddata(X(:,1),X(:,2),xvel(fgood),x(:,1), x(:,2), 'nearest');
+    end
+
     velBot     = TU([Nbot;   Zbot]');
     velTop     = TU([Ntop;   Ztop]');
     velLeft    = TU([Nleft;  Zleft]');
     velRight   = TU([Nright; Zright]');
 
     % interpolate invalid cells
-    vel(fbad3) = TU([N(fbad) Z(fbad)]);
+    xvel(fbad) = TU([p.N(fbad) p.Z(fbad)]);
 
     % compute discharge
-    Q.mid   = sum(vel(p.fgood_3(:,1)).*p.A');
+    Q.mid   = sum(xvel.*p.A');
     Q.top   = sum(velTop.*p.Atop');
     Q.bot   = sum(velBot.*p.Abot');
     Q.left  = velLeft.*A.left;
