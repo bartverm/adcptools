@@ -172,7 +172,7 @@ Rangefilter=EnsRange(1):EnsRange(2);
 
 %%  Check if water and BT velocity are converted to double already
 if (~isfloat(inadcp.VEL))||(~isHADCP && isBT && ~isfloat(inadcp.btvel))
-    [inadcp.VEL, inadcp.btvel]=filterADCP(inadcp);
+    [inadcp.VEL, inadcp.btvel]=filterADCP(inadcp,'');
 end
 
 %% Determine type of transformation and generate matrices

@@ -4,7 +4,7 @@
 \usepackage{bookmark}
 \usepackage[T1]{fontenc}
 \usepackage[framed, numbered]{matlab-prettifier}
-\lstset{basicstyle=\mlttfamily, style=Matlab-editor, escapechar=`}
+\lstset{style=Matlab-editor, escapechar=`,basicstyle=\mlttfamily\footnotesize}
 \newcommand{\ml}[1]{\lstinline{#1}}
 \author{Bart Vermeulen}
 \title{ADCPtools}
@@ -74,7 +74,7 @@ Plotting the results can be done easily using e.g. \ml{imagesc} (\autoref{fig:qu
   \label{fig:quick_view}
 \end{figure}
 A prettier figure can be made using the \ml{msh.p} structure, which contain the outlines of the mesh cells and variables (starting with \ml{progfgood}) to select the velocity values corresponding to the mesh cells \autoref{fig:fancy_plot}:
-\begin{lstlisting}[basicstyle=\mlttfamily\small]
+\begin{lstlisting}
 %% Make fancy velocity plot (using p structure in output mesh)
 figure
 cs=3;% select cross section

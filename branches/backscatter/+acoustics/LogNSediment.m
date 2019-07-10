@@ -1,4 +1,4 @@
-classdef Sediment < handle
+classdef LogNSediment < handle
 % Sediment class
 %   Query objects of this class to obtain percentiles of the grain size 
 %   distribution, the parameters of the normal phi (-log2(diameter in mm))
