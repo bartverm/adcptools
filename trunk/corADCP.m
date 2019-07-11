@@ -220,9 +220,8 @@ if ~any(strcmp(P.UsingDefaults,'HeadBias')) %Head alignment is given
     inadcp.heading=double(inadcp.heading)-double(inadcp.headbias(idx))+HeadBias*100;   %Remove bias of ADCP and apply user defined one
 end
 if any(strcmp(P.UsingDefaults,'BeamAngle')) %If beam angle is not given read it from the ADCP
-    if isHADCP
-        alpha=inadcp.HADCPbeamangle(idx);        %For HADCP this is set in a special field
-    else
+    alpha=double(inadcp.HADCPbeamangle(1));        %For HADCP this is set in a special field
+    if alpha==0
         switch inadcp.sysconf(idx,9:10)         %For the others it is read from the system configuration
             case '00' %15E
                 alpha=15;
