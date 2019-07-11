@@ -415,7 +415,7 @@ for ct=1:size(tid,1) % For all sections
     if IsCumulative
         maxprev=-inf;
         minprev=inf;
-        for cs=1:nsec
+        for cs=1%:nsec
             msh(ct).maxeta(cs)=max(msh(ct).maxeta(cs),maxprev);
             maxprev=msh(ct).maxeta(cs);
             msh(ct).mineta(cs)=min(msh(ct).mineta(cs),minprev);
