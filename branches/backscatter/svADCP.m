@@ -61,19 +61,7 @@ EnsIndex = EnsRange(1):EnsRange(end);
 nens = range(EnsIndex) + 1;
 
 %% Step 1: obtain ADCP characteristics measured at RDI's factory
-if IsHadcp
-    bangle = double(inadcp.HADCPbeamangle(inadcp.FileNumber(EnsIndex)));                                % determine beam angle for HADCP
-else
-    bangle=bin2dec(inadcp.sysconf(:,9:10))';
-    bangle(bangle==0)=15;
-    bangle(bangle==2)=20;
-    bangle(bangle==3)=30;
-    bangle=bangle(inadcp.FileNumber(EnsIndex));
-end
-if bangle == 0
-    warning('filterADCP2:UnknownBangle','Beam angle unclear, assuming 20 degrees')
-    bangle = 20;
-end
+bangle=get_beam_angle(inadcp);
 pt=acoustics.PistonTransducer;
 pt.water.salinity=35000;
 % constants from rdi manuals
