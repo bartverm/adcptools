@@ -196,10 +196,12 @@ if inadcp.sysconf(idx,4)==0     % Set c parameter to proper value p.11
 else
     conv=1;  %convex
 end
-if inadcp.corinfo(idx,3)=='1'   % Set flag: true if ADCP used tilts
-    useTiltsADCP=true;
-else
-    useTiltsADCP=false;
+if any(strcmp(P.UsingDefaults,'useTilts')) %If orientation not given, read it from the ADCP
+    if inadcp.corinfo(idx,3)=='1'   % Set flag: true if ADCP used tilts
+        useTilts=true;
+    else
+        useTilts=false;
+    end
 end
 if any(strcmp(P.UsingDefaults,'isUpward')) %If orientation not given, read it from the ADCP
     if inadcp.sysconf(idx,8)==0 %upward
@@ -301,11 +303,11 @@ if any(strcmp(P.UsingDefaults,'OwnMatrix')) %If own transformation matrix not gi
         switch DestCor
         case 'b' %ship to beam
             heading = HeadAlign(inadcp.FileNumber);%heading for instrument 2 ship coordinates (EA)
-            TM=HeadTilt(heading,inadcp.pitch,inadcp.roll,addRoll,useTiltsADCP,nens,1); %apply inverse of heading and tilts
+            TM=HeadTilt(heading,inadcp.pitch,inadcp.roll,addRoll,useTilts,nens,1); %apply inverse of heading and tilts
             TM=MatMult(beam2instr(P,conv,alpha,isHADCP,1,twoBsol),TM);  %beam 2 instrument coordinates
         case 'i' %ship to instrument
             heading = HeadAlign(inadcp.FileNumber);%heading for instrument 2 ship coordinates (EA)
-            TM=HeadTilt(heading,inadcp.pitch,inadcp.roll,addRoll,useTiltsADCP,nens,1); %apply inverse of heading and tilts
+            TM=HeadTilt(heading,inadcp.pitch,inadcp.roll,addRoll,useTilts,nens,1); %apply inverse of heading and tilts
         case 's' %ship to ship
             warning('corADCP:NoTrans','No transformation applied')
             VEL=inadcp.VEL(:,Rangefilter,:);
@@ -321,11 +323,11 @@ if any(strcmp(P.UsingDefaults,'OwnMatrix')) %If own transformation matrix not gi
         switch DestCor
         case 'b' % earth to beam, instrument or ship
             heading = rheading + HeadAlign(inadcp.FileNumber); %heading for instrument 2 earth (TH (H+EB) + EA)
-            TM=HeadTilt(heading,inadcp.pitch,inadcp.roll,addRoll,useTiltsADCP,nens,1); %apply inverse of heading and tilts
+            TM=HeadTilt(heading,inadcp.pitch,inadcp.roll,addRoll,useTilts,nens,1); %apply inverse of heading and tilts
             TM=MatMult(beam2instr(P,conv,alpha,isHADCP,1,twoBsol),TM);
         case 'i' % earth to instrument
             heading = rheading + HeadAlign(inadcp.FileNumber); %heading for instrument 2 earth (TH (H+EB) + EA)
-            TM=HeadTilt(heading,inadcp.pitch,inadcp.roll,addRoll,useTiltsADCP,nens,1); %apply inverse of heading and tilts
+            TM=HeadTilt(heading,inadcp.pitch,inadcp.roll,addRoll,useTilts,nens,1); %apply inverse of heading and tilts
         case 's' % earth to ship
             heading = rheading; %heading for instrument 2 ship (TH (H+EB))
             TM=HeadTilt(heading,inadcp.pitch,inadcp.roll,addRoll,0,nens,1); %apply inverse of heading and NO tilts
