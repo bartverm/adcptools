@@ -54,7 +54,7 @@ classdef PistonTransducer < handle
         angularfreq % The angular frequency of the sound produced by the transducer in rad/s.
         attenuation % Sound attenuation in water in dB/m
         attenuation_e % Sound attenuation in 1/m (neper)
-        speedsound % Speed of sound in the given water m/s
+        speedsound % Speed of sound in the given water m/s       
     end
     properties(Dependent, Access=private)
        f1,f2,A1,A2,A3,P2,P3

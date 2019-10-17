@@ -13,9 +13,12 @@ function M=sassi_inversion(...
 cell_idx=nearest_cells(d_sv_cal,ref_samples);
 sv_ref=sv_cal(cell_idx);
 beta_ref=sv_to_beta(sv_ref); % compute beta for ref (eqs. 12, Sassi et al.)
-k_ref=beta_ref./ref_samples.concentration; % compute k for ref (eqs. 12, Sassi et al.)
-b=10*log10(k_ref)\sv_ref; % least squares fit through origin (eq 14, Sassi et al.)
-
+k_ref=beta_ref./ref_samples.mass_concentration; % compute k for ref (eqs. 12, Sassi et al.)
+if numel(k_ref)<3
+    b=10*log10(k_ref)\sv_ref;
+else
+    b=robustfit(10*log10(k_ref),sv_ref,'bisquare',[],'off'); % least squares fit through origin (eq 14, Sassi et al.)... use robust fit here?
+end
 %% calibration of specific attenuation (paragraph 15)
 
 % number of samples sets the number of attenuation values that can be
@@ -24,7 +27,7 @@ b=10*log10(k_ref)\sv_ref; % least squares fit through origin (eq 14, Sassi et al
 cell_idx=nearest_cells(d_sv_cal,att_samples);
 sv_att=sv_cal(cell_idx);
 beta=sv_to_beta(sv_att);
-ms=[att_samples(:).concentration];
+ms=[att_samples(:).mass_concentration];
 k=beta_ref./ms;
 beta_all=sv_to_beta(sv_cal);
 int_beta=sum((beta_all(cell_idx(1):cell_idx(2)-1)+beta_all(cell_idx(1)+1:cell_idx(2))).*diff(d_sv_cal(cell_idx(1):cell_idx(2)))/2); % trapezoidal integration

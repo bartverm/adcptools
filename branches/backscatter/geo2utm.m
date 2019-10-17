@@ -72,6 +72,7 @@ end % if isempty(zone)
 % else
 %     disp('Using custom UTM forward transformation')
 
+    size_in=size(lat);
 
     lns = (-180:6:180)';
     indx = find(lns <= mean(long(goodff)));
@@ -82,8 +83,8 @@ end % if isempty(zone)
         zone = 60;
     end
     long0=(zone*6-183)/180*pi;
-    long=long/180*pi;
-    lat=lat/180*pi;
+    long=reshape(long/180*pi,[],1);
+    lat=reshape(lat/180*pi,[],1);
     a=6378.137;
     finv=298.257223563; f=1/finv;
     if mean(lat(goodff))>0, N0=0; else N0=10000; end
@@ -102,6 +103,8 @@ end % if isempty(zone)
     UTMy=N0+k0*A*(zeta+sum(bsxfun(@times,alph,sin(2*bsxfun(@times,jvec,zeta)).*cosh(2*bsxfun(@times,jvec,eta))),2));  
     UTMx=UTMx*1000;
     UTMy=UTMy*1000;
+    UTMx=reshape(UTMx, size_in);
+    UTMy=reshape(UTMy, size_in);
 % end
 
 end % function latlon2utm
