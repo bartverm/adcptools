@@ -68,7 +68,7 @@ classdef WaterSample < handle
             obj.distribution=val;
         end
         function val=get.sediment_density(obj)
-            val=obj.mass_concentration./obj.volume_concentration;
+            val=obj.mass_concentration./obj.volume_concentration+1000;
         end
     end
     methods % ordinary methods
