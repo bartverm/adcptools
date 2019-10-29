@@ -7,6 +7,7 @@ classdef WaterSample < handle
 %   time - time the sample was collected
 %   distribution - grain size distribution of the sample
 %   volume_concentration - volume concentration of sediment or particles
+%   mass_concentration - mass concentration of sample
 %
 %   acoustics.WaterSample methods:
 %   backscatter_strength - estimate backscatter strength of sample
