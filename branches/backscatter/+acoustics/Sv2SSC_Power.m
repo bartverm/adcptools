@@ -1,4 +1,4 @@
-classdef Sv2SSC_Power< handle
+classdef Sv2SSC_Power < Sv2SSC
 % Compute SSC from ADCP  backscatter using the power-law method
 %
 %   obj=acoustics.Sv2SSC_Power();

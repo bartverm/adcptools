@@ -9,10 +9,15 @@ classdef VMADCP < ADCP
 %   VMADCP properties:
 %   raw - adcp structure read by readADCP.m
 %   filters - filters for profiled data. Defaults to SideLobeFilter
+%   timezone - timezone of the data
 %   xy_cor_system - geographic coordinate system to be used
 %   adcp_elevation - elevation of the ADCP
 %
 %   VMADCP read-only properties:
+%   *Instrument characteristics*
+%   frequency - operating frequency of the instrument
+%   transducer_radius - radius of the transducer
+%
 %   *Sizing*
 %   fileid - ID of file ensemble was read from
 %   time - time ensembles were measured
@@ -182,7 +187,7 @@ classdef VMADCP < ADCP
             pos(:,:,:,3)=pos(:,:,:,3)+obj.adcp_elevation;
         end
         function pos=depth_cell_position(obj)
-            pos=obj.velocity_offset(CoordinateSystem.Earth);
+            pos=obj.depth_cell_offset(CoordinateSystem.Earth);
             [x,y]=obj.projected();
             pos(:,:,:,1)=pos(:,:,:,1)+x;
             pos(:,:,:,2)=pos(:,:,:,2)+y;

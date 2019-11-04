@@ -2,7 +2,7 @@ classdef WaterSample < handle
 % acoustics.WaterSample water sample for sediment concentration estimates
 %
 %   acoustics.WaterSample properties:
-%   distance - distance from transducer to the water sample
+%   distance - vertical distance from transducer to the water sample
 %   sediment_density - density of sediment, or particles in water
 %   time - time the sample was collected
 %   distribution - grain size distribution of the sample

@@ -1,62 +1,67 @@
 classdef ADCP < handle
-% Wrapper class for adcp structures
-%
-%   obj=ADCP() Constructs default object
-%
-%   obj=ADCP(raw) Allows to assign the adcp structure to be used to the raw
-%   property
-%
-%   ADCP properties:
-%   raw - adcp structure read by readADCP.m
-%   filters - filters for profiled data
-%
-%   ADCP read-only properties:
-%   *Sizing*
-%   fileid - ID of file ensemble was read from
-%   time - time ensembles were measured
-%   nensembles - number of ensembles
-%   nbeams - number of beams
-%   ncells - number of cells
-%
-%   *Coordinate systems properties*
-%   coordinate_system - coordinate system used
-%   beam_angle - angle of acoustic beam with vertical
-%   convexity - convexity of the instrument
-%   three_beam_solutions_used - whether three beams solutions were used
-%   tilts_used_in_transform - whether tilts were used in transformations
-%   bin_mapping_used - wheteher bin mapping was used during measurements     
-%
-%   *Orientation*
-%   pitch - pitch rotation angle
-%   roll - roll rotation
-%   heading - heading rotation
-%   headalign - heading alignment 
-%   is_upward - whether instrument was pointing upward
-%
-%   *Data positioning*
-%   cellsize - vertical size of depth cell
-%   lengthxmitpulse - length of transmitted pulse
-%   blanking - blanking distance
-%   distmidfirstcell - vertical distance to the first measured depth cell
-%   depth_cell_slant_range - slant range to depth cell
-%
-%   ADCP methods
-%   bad - filter in use                           
-%   xform - coordinate transformation matrices
-%   depth_cell_offset - xyz offset from transducer to depth cell
-%   velocity - get velocity profile data
-%   plot_filters - plot active profile data filters
-%   plot_orientations - plot orientations of ADCP
-%   plot_velocity - plot velocity profiling data
-%
-%   ADCP static methods:
-%   beam_2_instrument - beam to instrument transformation matrices
-%   head_tilt - tilt matrices 
-%   instrument_2_beam - instrument to beam transformation matrices
-%   int16_to_double - transform int16 to double values
-%   invert_xform - invert transformation matrices
-%
-% see also:VMADCP
+    % Wrapper class for adcp structures
+    %
+    %   obj=ADCP() Constructs default object
+    %
+    %   obj=ADCP(raw) Allows to assign the adcp structure to be used to the raw
+    %   property
+    %
+    %   ADCP properties:
+    %   raw - adcp structure read by readADCP.m
+    %   filters - filters for profiled data
+    %   timezone - timezone of the data
+    %
+    %   ADCP read-only properties:
+    %   *Instrument characteristics*
+    %   frequency - operating frequency of the instrument
+    %   transducer_radius - radius of the transducer
+    %
+    %   *Sizing*
+    %   fileid - ID of file ensemble was read from
+    %   time - time ensembles were measured
+    %   nensembles - number of ensembles
+    %   nbeams - number of beams
+    %   ncells - number of cells
+    %
+    %   *Coordinate systems properties*
+    %   coordinate_system - coordinate system used
+    %   beam_angle - angle of acoustic beam with vertical
+    %   convexity - convexity of the instrument
+    %   three_beam_solutions_used - whether three beams solutions were used
+    %   tilts_used_in_transform - whether tilts were used in transformations
+    %   bin_mapping_used - wheteher bin mapping was used during measurements
+    %
+    %   *Orientation*
+    %   pitch - pitch rotation angle
+    %   roll - roll rotation
+    %   heading - heading rotation
+    %   headalign - heading alignment
+    %   is_upward - whether instrument was pointing upward
+    %
+    %   *Data positioning*
+    %   cellsize - vertical size of depth cell
+    %   lengthxmitpulse - length of transmitted pulse
+    %   blanking - blanking distance
+    %   distmidfirstcell - vertical distance to the first measured depth cell
+    %   depth_cell_slant_range - slant range to depth cell
+    %
+    %   ADCP methods
+    %   bad - filter in use
+    %   xform - coordinate transformation matrices
+    %   depth_cell_offset - xyz offset from transducer to depth cell
+    %   velocity - get velocity profile data
+    %   plot_filters - plot active profile data filters
+    %   plot_orientations - plot orientations of ADCP
+    %   plot_velocity - plot velocity profiling data
+    %
+    %   ADCP static methods:
+    %   beam_2_instrument - beam to instrument transformation matrices
+    %   head_tilt - tilt matrices
+    %   instrument_2_beam - instrument to beam transformation matrices
+    %   int16_to_double - transform int16 to double values
+    %   invert_xform - invert transformation matrices
+    %
+    % see also:VMADCP
     properties
         % ADCP/raw
         %
@@ -72,6 +77,14 @@ classdef ADCP < handle
         %
         % see also: ADCP, Filter
         filters(:,1) Filter {mustBeNonempty}=Filter;
+        
+        % ADCP/timezone
+        %
+        %   Specify the timezone of the data as char. Default is '', i.e.
+        %   unzoned. Examples are 'UTC', 'Europe/Amsterdam'
+        %
+        % see also: ADCP, datetime/TimeZone, timezones
+        timezone(1,:) char = ''
     end
     properties(Dependent, SetAccess=private)
         % ADCP/fileid read only property
@@ -81,7 +94,7 @@ classdef ADCP < handle
         %
         % see also: ADCP
         fileid
-
+        
         % ADCP/nbeams read only property
         %
         % number of beams in use by the instrument
@@ -134,14 +147,14 @@ classdef ADCP < handle
         % ADCP/heading read only property
         %
         % Heading angle in degrees
-        % 
+        %
         % see also: ADCP
         heading
         
         % ADCP/head_align
         %
         % Heading alignment in degrees
-        % 
+        %
         % see also: ADCP
         head_align
         
@@ -154,7 +167,7 @@ classdef ADCP < handle
         
         % ADCP/is_upward read only property
         %
-        % logical value indicating whether instrument is pointing upward. 
+        % logical value indicating whether instrument is pointing upward.
         %
         % see also: ADCP
         is_upward
@@ -231,6 +244,20 @@ classdef ADCP < handle
         %
         % see also: ADCP
         depth_cell_slant_range
+        
+        % ADCP/frequency read only property
+        %
+        % operating frequency of the instrument in Hz
+        %
+        % see also: ADCP
+        frequency
+
+        % ADCP/tranducer_radius read only property
+        %
+        % transducer radius of the instrument in m
+        %
+        % see also: ADCP
+        transducer_radius
     end
     methods
         %%% Constructor method %%%
@@ -305,7 +332,7 @@ classdef ADCP < handle
             c=double(obj.raw.binsize(obj.fileid))/100;
         end
         function t=get.time(obj)
-            t=reshape(datetime(obj.raw.timeV),1,[]);
+            t=reshape(datetime(obj.raw.timeV,'TimeZone',obj.timezone),1,[]);
         end
         function db1=get.distmidfirstcell(obj)
             db1=double(obj.raw.distmidbin1(obj.fileid))/100;
@@ -317,18 +344,40 @@ classdef ADCP < handle
             bangle=obj.beam_angle;
             rng=(obj.distmidfirstcell+reshape(0:obj.ncells-1,[],1)*obj.cellsize)./cosd(bangle);
         end
-    
+        function freq=get.frequency(obj)
+            % TODO: improve this for different types of ADCPs
+            sysid=obj.raw.sysconf(:,1:3);
+            freq=nan;
+            freq(strcmp(sysid,'000'))=76.8e3;
+            freq(strcmp(sysid,'100'))=153.6e3;
+            freq(strcmp(sysid,'010'))=307.2e3;
+            freq(strcmp(sysid,'110'))=614.4e3;
+            freq(strcmp(sysid,'001'))=1228.8e3;
+            freq(strcmp(sysid,'101'))=2457.6e3;
+        end
+        function rad=get.transducer_radius(obj)
+            % TODO: improve this for different types of ADCPs
+            sysid=obj.raw.sysconf(:,1:3);
+            rad=nan;
+            rad(strcmp(sysid,'000'))=nan;
+            rad(strcmp(sysid,'100'))=nan;
+            rad(strcmp(sysid,'010'))=.0895/2;
+            rad(strcmp(sysid,'110'))=.0895/2;
+            rad(strcmp(sysid,'001'))=.0699/2;
+            rad(strcmp(sysid,'101'))=nan;
+        end
+        
         %%% Ordinary methods
         function bad=bad(obj,filter)
-        % Mask for profiled data
-        %
-        %   isbad=bad(obj) returns a mask with ones for data data is marked bad
-        %   by the filters.
-        %
-        %   isbad=bad(obj,filters) allows to specify custom filters, other than
-        %   the ones given in the ADCP object.
-        %
-        %   see also: ADCP, Filter
+            % Mask for profiled data
+            %
+            %   isbad=bad(obj) returns a mask with ones for data data is marked bad
+            %   by the filters.
+            %
+            %   isbad=bad(obj,filters) allows to specify custom filters, other than
+            %   the ones given in the ADCP object.
+            %
+            %   see also: ADCP, Filter
             if nargin<2
                 filter=obj.filters;
             end
@@ -338,17 +387,17 @@ classdef ADCP < handle
             end
         end
         function vel=velocity(obj,dst,filter)
-        % velocity profile data
-        %
-        %   vel=velocity(obj) returns the profiled velocity in m/s.
-        %
-        %   vel=velocity(obj,dst) specify destination coordinate system as
-        %   CoordinateSystem object.
-        %
-        %   vel=velocity(obj,dst,filter) specify filter to be used insted
-        %   of the ones specified in the current object.
-        %
-        %   see also: ADCP, CoordinateSystem
+            % velocity profile data
+            %
+            %   vel=velocity(obj) returns the profiled velocity in m/s.
+            %
+            %   vel=velocity(obj,dst) specify destination coordinate system as
+            %   CoordinateSystem object.
+            %
+            %   vel=velocity(obj,dst,filter) specify filter to be used insted
+            %   of the ones specified in the current object.
+            %
+            %   see also: ADCP, CoordinateSystem
             vel=ADCP.int16_to_double(obj.raw.VEL)/1000;
             B=CoordinateSystem.Beam;
             src=obj.coordinate_system;
@@ -365,14 +414,14 @@ classdef ADCP < handle
                 bad=obj.bad();
             end
             vel(bad)=nan;
-        end        
+        end
         function plot_orientations(obj)
-        % Plots orientations of instrument
-        %
-        %   plot_orientations(obj) plots the upward status, pitch, roll and
-        %   heading.
-        % 
-        % see also: ADCP, plot_velocity, plot_filters, plot_all
+            % Plots orientations of instrument
+            %
+            %   plot_orientations(obj) plots the upward status, pitch, roll and
+            %   heading.
+            %
+            % see also: ADCP, plot_velocity, plot_filters, plot_all
             figure
             axh(1)=subplot(4,1,1);
             plot(obj.is_upward)
@@ -389,12 +438,12 @@ classdef ADCP < handle
             linkaxes(axh,'x')
         end
         function plot_velocity(obj,vel)
-        % plot the velocity profiles
-        %
-        %   plot_velocity(obj) plot the velocities in Earth coordinate
-        %   system
-        %
-        %   see also: ADCP
+            % plot the velocity profiles
+            %
+            %   plot_velocity(obj) plot the velocities in Earth coordinate
+            %   system
+            %
+            %   see also: ADCP
             figure
             vel_pos=obj.depth_cell_offset;
             vel_pos=nanmean(vel_pos(:,:,:,3),3);
@@ -431,16 +480,16 @@ classdef ADCP < handle
             obj.plot_velocity;
         end
         function pos=depth_cell_offset(obj,dst)
-        % Computes the xyz offset to the profiled depth cells
-        %
-        %   pos=depth_cell_offset(obj) returns the offset vector (ncells x
-        %   nensembles x nbeams x 3) in Earth coordinates
-        %
-        %   pos = depth_cell_offset(obj,dst) specify the coordinate system
-        %   in which the offsets should be returned. dst is a
-        %   CoordinateSystem object.
-        %
-        %   see also: ADCP
+            % Computes the xyz offset to the profiled depth cells
+            %
+            %   pos=depth_cell_offset(obj) returns the offset vector (ncells x
+            %   nensembles x nbeams x 3) in Earth coordinates
+            %
+            %   pos = depth_cell_offset(obj,dst) specify the coordinate system
+            %   in which the offsets should be returned. dst is a
+            %   CoordinateSystem object.
+            %
+            %   see also: ADCP
             if nargin < 2
                 dst=CoordinateSystem.Earth;
             end
@@ -449,17 +498,17 @@ classdef ADCP < handle
             pos=tm.*obj.depth_cell_slant_range;
         end
         function tm=xform(obj,dst, src)
-        % Get transformation matrices for coordinate transformations
-        %
-        %   tm=xform(obj,dst) get the transformation matrices for the
-        %   transformation from obj.coordinate_system to the given
-        %   destination coordinate system. matrix will be 1 x nensembles x
-        %   4 x 4
-        %   
-        %   tm=xform(obj,dst,src) to specify a custom source coordinate
-        %   system
-        %
-        %   see also: ADCP
+            % Get transformation matrices for coordinate transformations
+            %
+            %   tm=xform(obj,dst) get the transformation matrices for the
+            %   transformation from obj.coordinate_system to the given
+            %   destination coordinate system. matrix will be 1 x nensembles x
+            %   4 x 4
+            %
+            %   tm=xform(obj,dst,src) to specify a custom source coordinate
+            %   system
+            %
+            %   see also: ADCP
             if nargin < 3
                 src=obj.coordinate_system;
             end
@@ -513,19 +562,18 @@ classdef ADCP < handle
                 ADCP.instrument_2_beam(bangle(cfilt), conv(cfilt)),...
                 tm(1,cfilt,:,:));
         end
-        
     end
-
+    
     
     methods (Static)
         function b2i=beam_2_instrument(bangle,c)
-        % Return the beam to instrument transformation matrices
-        %
-        %   b2i=beam_2_instrument(bangle,c) returns the beam to instrument
-        %   transformation matrices given the beam angle (bangle) and the 
-        %   instrument convexity (c).
-        %
-        % see also: ADCP, xform
+            % Return the beam to instrument transformation matrices
+            %
+            %   b2i=beam_2_instrument(bangle,c) returns the beam to instrument
+            %   transformation matrices given the beam angle (bangle) and the
+            %   instrument convexity (c).
+            %
+            % see also: ADCP, xform
             a=1./(2*sind(bangle));
             b=1./(4*cosd(bangle));
             d=a./sqrt(2);
@@ -537,13 +585,13 @@ classdef ADCP < handle
                 cat(4,    d,     d,    -d,   -d));
         end
         function i2b=instrument_2_beam(bangle, c)
-        % Return the instrument to beam transformation matrices
-        %
-        %   b2i=beam_2_instrument(bangle,c) returns the instrument to beam
-        %   transformation matrices given the beam angle (bangle) and the 
-        %   instrument convexity (c).
-        %
-        % see also: ADCP, xform
+            % Return the instrument to beam transformation matrices
+            %
+            %   b2i=beam_2_instrument(bangle,c) returns the instrument to beam
+            %   transformation matrices given the beam angle (bangle) and the
+            %   instrument convexity (c).
+            %
+            % see also: ADCP, xform
             a=sind(bangle);
             b=cosd(bangle);
             d=sqrt(2)*a/2;
@@ -555,12 +603,12 @@ classdef ADCP < handle
                 cat(4,    zr,  c.*a, b, -d));
         end
         function tm=head_tilt(heading,pitch,roll)
-        % Return the transformation matrix for the three tilts
-        %
-        %   tm=head_tilt(heading,pitch,roll) computes the rotation matrices
-        %   given the heading, pitch and roll angles in degrees.
-        %
-        %   see also: ADCP, xform
+            % Return the transformation matrix for the three tilts
+            %
+            %   tm=head_tilt(heading,pitch,roll) computes the rotation matrices
+            %   given the heading, pitch and roll angles in degrees.
+            %
+            %   see also: ADCP, xform
             zr=zeros(size(heading));
             on=ones(size(heading));
             sh=sind(heading);
@@ -582,25 +630,26 @@ classdef ADCP < handle
                 cat(4,                 zr,      zr,                zr, on));
         end
         function inv=invert_xform(tm)
-        % Inverts transformation matrices
-        %
-        %   Inverts transformation matrices given in tm. Matrices are
-        %   defined in the third and fourth dimension.
-        %
-        % see also: ADCP, xform
+            % Inverts transformation matrices
+            %
+            %   Inverts transformation matrices given in tm. Matrices are
+            %   defined in the third and fourth dimension.
+            %
+            % see also: ADCP, xform
             inv=nan(size(tm));
             for ce=1:size(tm,2)
                 inv(1,ce,:,:)=shiftdim(inv(squeeze(tm(1,ce,:,:))),-2);
             end
         end
         function d=int16_to_double(i)
-        % Transform 16 bit signed integers to double
-        %
-        %   d=int16_to_double(i) transforms the 16 bit integers in i to
-        %   doubles in d. Integers equal to -32768 are assigned to be NaNs.
+            % Transform 16 bit signed integers to double
+            %
+            %   d=int16_to_double(i) transforms the 16 bit integers in i to
+            %   doubles in d. Integers equal to -32768 are assigned to be NaNs.
             fbad=i==-32768;
             d=double(i);
             d(fbad)=nan;
         end
+        
     end
 end

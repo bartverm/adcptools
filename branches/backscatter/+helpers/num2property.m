@@ -7,6 +7,10 @@ function num2property(obj, property, var, dim)
 %
 %   num2property(OBJ, PROPERTY, VAR, DIM) also specify the dimension along
 %   which to split the varibale
+
+if isscalar(var)
+    var=repmat(var,size(obj));
+end
 if nargin < 4
     nobj=numel(obj);
     siz_var=size(var);
