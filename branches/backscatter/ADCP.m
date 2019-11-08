@@ -10,11 +10,12 @@ classdef ADCP < handle
     %   raw - adcp structure read by readADCP.m
     %   filters - filters for profiled data
     %   timezone - timezone of the data
+    %   type - type of ADCP being used
     %
     %   ADCP read-only properties:
     %   *Instrument characteristics*
-    %   frequency - operating frequency of the instrument
-    %   transducer_radius - radius of the transducer
+    %   transducer - object describing transducer characteristics
+    %   is_workhorse - return whether ADCP is a Workhorse ADCP
     %
     %   *Sizing*
     %   fileid - ID of file ensemble was read from
@@ -44,6 +45,17 @@ classdef ADCP < handle
     %   blanking - blanking distance
     %   distmidfirstcell - vertical distance to the first measured depth cell
     %   depth_cell_slant_range - slant range to depth cell
+    %
+    %   *Backscatter*
+    %   current - transmit current of transducer (A)
+    %   current_factor - factor for current computation from ADC channel
+    %   voltage - transmit voltage of transducer (V)
+    %   voltage_factor - factor for voltage computation from ADC channel
+    %   power - transmit power of transducer (W)
+    %   attitude_temperature - temperature of transducer (Celsius)
+    %   intensity_scale - intensity scale factor (dB/m)
+    %   echo - Raw echo intennstiy (dB)
+    %   backscatter - Volumne backscatter strength (dB)
     %
     %   ADCP methods
     %   bad - filter in use
@@ -85,6 +97,31 @@ classdef ADCP < handle
         %
         % see also: ADCP, datetime/TimeZone, timezones
         timezone(1,:) char = ''
+        
+        % ADCP/type
+        %
+        %   Specify the type of ADCP that is being used. Default is
+        %   ADCP_Type.Monitor.
+        %
+        % see also: ADCP, ADCP_Type
+        type(1,1) ADCP_Type = ADCP_Type.Unknown
+        
+        % ADCP/temperature_offset
+        %
+        %   Specifies the temperature offset for Workhorse ADCPs for ADC
+        %   channels. Default is -0.35. PS0 result
+        %
+        % see also: ADCP
+        temperature_offset(1,1) double = -0.35
+        
+        
+        % ADCP/noise_level
+        %
+        %   Specifies the background noise received by the instrument in
+        %   counts. Default is -40. PT3 command
+        %
+        % see also: ADCP
+        noise_level(1,1) double = -40
     end
     properties(Dependent, SetAccess=private)
         % ADCP/fileid read only property
@@ -245,19 +282,86 @@ classdef ADCP < handle
         % see also: ADCP
         depth_cell_slant_range
         
-        % ADCP/frequency read only property
+        % ADCP/tranducer read only property
         %
-        % operating frequency of the instrument in Hz
+        % returns an acoustics.PistonTransducer object
+        %
+        % see also: ADCP, acoustics.PistonTransducer
+        transducer
+        
+        % ADCP/current read only property
+        %
+        % current on transducer (A)
         %
         % see also: ADCP
-        frequency
-
-        % ADCP/tranducer_radius read only property
+        current
+        
+        % ADCP/current_factor read only property
         %
-        % transducer radius of the instrument in m
+        % factor to compute current from ADCP's ADC channels
         %
         % see also: ADCP
-        transducer_radius
+        current_factor
+        
+        % ADCP/voltage read only property
+        %
+        % voltage on transducer (V)
+        %
+        % see also: ADCP
+        voltage
+        
+        % ADCP/voltage_factor read only property
+        %
+        % factor to convert ADC channel value to voltage
+        %
+        % see also: ADCP
+        voltage_factor
+        
+        % ADCP/power read only property
+        %
+        % Power on transducer (W)
+        %
+        % see also: ADCP
+        power
+        
+        % ADCP/attitude_temperature read only property
+        %
+        % Attitude temperature of transducer (Celsius)
+        %
+        % see also: ADCP
+        attitude_temperature
+        
+        % ADCP/intensity_scale
+        %
+        % Echo intensity scaling (dB/count)
+        %
+        % see also: ADCP
+        intensity_scale
+        
+        % ADCP/backscatter_constant
+        %
+        % Instrument specific backscatter constant (dB)
+        %
+        % see also: ADCP
+        backscatter_constant
+        
+        % ADCP/echo
+        %
+        % Received raw echo intensity (dB).
+        %
+        % see also: ADCP
+        echo
+        
+        % ADCP/backscatter
+        %
+        % Received Volume Backscatter strength (dB) computed according to
+        % Deines (1999) with the corrections of Gostiaux and van Haren. The
+        % backscatter strength is not corrected for attenuation due to
+        % sediment.
+        %
+        % see also: ADCP, acoustics, Sv2SSC
+        backscatter
+        
     end
     methods
         %%% Constructor method %%%
@@ -337,6 +441,7 @@ classdef ADCP < handle
         function db1=get.distmidfirstcell(obj)
             db1=double(obj.raw.distmidbin1(obj.fileid))/100;
         end
+
         function n=get.ncells(obj)
             n=double(obj.raw.nbins(obj.fileid));
         end
@@ -344,30 +449,201 @@ classdef ADCP < handle
             bangle=obj.beam_angle;
             rng=(obj.distmidfirstcell+reshape(0:obj.ncells-1,[],1)*obj.cellsize)./cosd(bangle);
         end
-        function freq=get.frequency(obj)
-            % TODO: improve this for different types of ADCPs
+        function pt=get.transducer(obj)
+            %TODO: compute SentinelV and MonitorV radii back from
+            %beam_width and frequency (see equation in Deines 1999)
+            % Handle phased array ADCPs
+            if obj.type==ADCP_Type.RiverRay
+                pt=acoustics.PhasedArrayTransducer;
+                pt.frequency=614.4e3; % from RiverRay manual
+                pt.radius=0.076/2; % from RiverRay manual
+                return
+            end
+            
+            % Piston transducer ADCPs
+            pt=acoustics.PistonTransducer;
             sysid=obj.raw.sysconf(:,1:3);
-            freq=nan;
-            freq(strcmp(sysid,'000'))=76.8e3;
-            freq(strcmp(sysid,'100'))=153.6e3;
-            freq(strcmp(sysid,'010'))=307.2e3;
-            freq(strcmp(sysid,'110'))=614.4e3;
-            freq(strcmp(sysid,'001'))=1228.8e3;
-            freq(strcmp(sysid,'101'))=2457.6e3;
+            switch sysid
+                case '000' % Only Long Ranger ADCPs
+                    pt.radius=0.203/2; % From operation Manual Long Ranger (drawing 6021, 6055)
+                    pt.frequency=76.8e3; % From operation Manual Long Ranger
+                case '100' % Only QuarterMaster ADCPs
+                    pt.frequency=153.6e3; % From operation Manual Quarter Master
+                    switch obj.type
+                        case {ADCP_Type.QuarterMaster1500,ADCP_Type.QuarterMaster3000}
+                            pt.radius=0.178/2; % From operation manual Quarter Master (drawing 6082, 6083)
+                        case ADCP_Type.QuarterMaster1500ModBeams
+                            pt.radius=0.1854/2; % From operation manual Quarter Master (drawing 1106)
+                        case ADCP_Type.QuarterMaster6000
+                            pt.radius=0.184/2; % From operation manual Quarter Master (drawing 1082)
+                        otherwise
+                            warning('Unknown radius for given ADCP type, assuming QM1500_Modular Beams')
+                            pt.radius=0.1854/2; % From operation manual Quarter Master (drawing 1106)
+                    end
+                case '010'
+                    pt.frequency=307.2e3; % Workhorse and SentinelV manual
+                    switch obj.type
+                        case {ADCP_Type.SentinelV,ADCP_Type.MonitorV}
+                            pt.radius=nan;
+                        case {ADCP_Type.Monitor,ADCP_Type.Sentinel}
+                            pt.radius=0.0984/2; % Workhorse operation manual
+                        case ADCP_Type.Mariner
+                            pt.radius=0.0895/2; % Workhorse operation manual
+                        otherwise
+                            warning('Unknown frequency and radius for ADCP type, assuming Monitor or Sentinel')
+                            pt.radius=0.0984/2; % Workhorse operation manual
+                    end
+                case '110'
+                    switch obj.type
+                        case {ADCP_Type.SentinelV,ADCP_Type.MonitorV}
+                            pt.frequency=491.52e3; % Sentinel V operation manual
+                            pt.radius=nan;
+                        case {ADCP_Type.Monitor,ADCP_Type.Sentinel}
+                            pt.frequency=614.4e3; % Workhorse operation manual
+                            pt.radius=0.0984/2; % Workhorse operation manual
+                        case {ADCP_Type.Mariner,ADCP_Type.RioGrande}
+                            pt.frequency=614.4e3; % Workhorse operation manual
+                            pt.radius=0.0895/2; % Workhorse operation manual
+                        otherwise
+                            warning('Unknown frequency and radius for ADCP type, assuming Monitor or Sentinel')
+                            pt.frequency=614.4e3; % Workhorse operation manual
+                            pt.radius=0.0984/2; % Workhorse operation manual
+                    end
+                case '001'
+                    switch obj.type
+                        case ADCP_Type.SentinelV | ADCP_Type.MonitorV
+                            pt.frequency=983.04e3; % Sentinel V operation manual
+                            pt.radius=nan;
+                        case ADCP_Type.Monitor | ADCP_Type.Sentinel | ADCP_Type.Mariner | ADCP_Type.RioGrande
+                            pt.frequency=1228.8e3; % Workhorse and RioGrande operation manual
+                            pt.radius=0.0699/2; % Workhorse and RioGrande operation manual
+                        otherwise
+                            warning('Unknown frequency and radius for ADCP type, assuming Monitor, Mariner, Sentinel or Rio Grande')
+                            pt.frequency=1228.8e3; % Workhorse and RioGrande operation manual
+                            pt.radius=0.0699/2; % Workhorse and RioGrande operation manual
+                    end
+                case '101' % 2457.6e3 had this number, but don't know which ADCP has such specs?
+                    pt.radius=nan;
+                    switch obj.type
+                        case ADCP_Type.StreamPro
+                            pt.frequency=2e6; % From StreamPro Manual
+                            pt.radius=nan;
+                        otherwise
+                            warning('Unknown frequency and radius for ADCP type, assuming StreamPro')
+                            pt.frequency=2e6; % From StreamPro Manual
+                            pt.radius=nan;
+                    end
+            end
         end
-        function rad=get.transducer_radius(obj)
-            % TODO: improve this for different types of ADCPs
-            sysid=obj.raw.sysconf(:,1:3);
-            rad=nan;
-            rad(strcmp(sysid,'000'))=nan;
-            rad(strcmp(sysid,'100'))=nan;
-            rad(strcmp(sysid,'010'))=.0895/2;
-            rad(strcmp(sysid,'110'))=.0895/2;
-            rad(strcmp(sysid,'001'))=.0699/2;
-            rad(strcmp(sysid,'101'))=nan;
+        
+        function val=get.current_factor(obj) % From workhorse operation manual
+            if ~obj.is_workhorse
+                warning('Assuming ADCP is a Workhorse')
+            end
+            switch obj.transducer.frequency
+                case 76.8e3
+                    val=43838;
+                case {153.6e3,307.2e3, 614.4e3, 1228.8e3, 2457.6e3}
+                    val=11451;
+                otherwise
+                    warning('Do not know current factor for given ADCP type')
+                    val=nan;
+            end
+        end
+        function val=get.voltage_factor(obj) % From workhorse operation manual
+            if ~obj.is_workhorse
+                warning('Assuming ADCP is a Workhorse')
+            end
+            switch obj.transducer.frequency
+                case 76.8e3
+                    val=2092719;
+                case {153.6e3, 307.2e3}
+                    val=592157;
+                case 614.4e3
+                    val=380667;
+                case {1228.8e3, 2457.6e3}
+                    val=253765;
+                otherwise
+                    warning('Unknown voltage factor')
+                    val=nan;
+            end
+        end
+        function val=get.current(obj)
+            val=reshape(double(obj.raw.ADC(:,1))*obj.current_factor/1e6,1,[]);
+        end
+        function val=get.voltage(obj)
+            val=reshape(double(obj.raw.ADC(:,2))*obj.voltage_factor/1e6,1,[]);
+        end
+        function val=get.power(obj)
+            val=obj.voltage.*obj.current;
+        end
+        function val=get.attitude_temperature(obj)
+            if ~obj.is_workhorse
+                warning('Assuming ADCP is a workhorse')
+            end
+            DC_COEF = 9.82697464e1;                                                    % Temperature coefficients
+            FIRST_COEF = -5.86074151382e-3;
+            SECOND_COEF = 1.60433886495e-7;
+            THIRD_COEF = -2.32924716883e-12;
+            t_cnts = reshape(double(obj.raw.ADC(:,6))*256,1,[]);                 % Temperature Counts (ADC value)
+            val = obj.temperature_offset + ((THIRD_COEF.*t_cnts + SECOND_COEF).*t_cnts +...
+                FIRST_COEF).*t_cnts + DC_COEF;                                         % real-time temperature of the transducer (C)
+        end
+        function val=get.intensity_scale(obj)
+            val=127.3./(obj.attitude_temperature+273); % From WinRiver manual
+        end
+        function val=get.echo(obj)
+            val=double(obj.raw.ECHO).*obj.intensity_scale;
+        end
+        function val=get.backscatter_constant(obj)
+            if ~is_workhorse(obj)
+                warning('Assuming ADCP is a workhorse')
+            end
+            switch obj.transducer.frequency
+                case 76.8e3
+                    val=-159.1;
+                case 307.2e3
+                    switch obj.type
+                        case ADCP_Type.Sentinel
+                            val=-143.5;
+                        case ADCP_Type.Monitor
+                            val=-143;
+                        otherwise
+                            warning('Assuming ADCP is a Monitor')
+                            val=-143;
+                    end
+                case 614.4e3
+                    if obj.type~=ADCP_Type.RioGrande
+                        warning('Assuming ADCP is a RioGrande')
+                    end
+                    val=-139.3;
+                case 1228.8e3
+                    val=-129.1;
+                otherwise
+                    warning('Unknown backscatter constant for current ADCP Type')
+                    val=nan;
+            end
+        end
+        function val=get.backscatter(obj)
+            pt=obj.transducer;
+            R=obj.depth_cell_slant_range+obj.cellsize/2/cosd(obj.beam_angle); % slant range to last quarter of cell
+            two_alpha_R = 2*pt.attenuation*R;                    % compute 2alphaR
+            LDBM=10*log10(obj.lengthxmitpulse);
+            PDBW=10*log10(obj.power);                        
+            val = obj.backscatter_constant + 10*log10((obj.attitude_temperature+273.16).*R.^2.*pt.near_field_correction(R).^2) - LDBM - PDBW + two_alpha_R + 10*log10(10.^(obj.echo/10)-10.^(obj.intensity_scale.*obj.noise_level/10));       
+            val(obj.bad)=nan;
         end
         
         %%% Ordinary methods
+        function tf=is_workhorse(obj)
+            if any(obj.type== [ADCP_Type.LongRanger1500, ADCP_Type.LongRanger3000, ADCP_Type.QuarterMaster1500,...
+                    ADCP_Type.QuarterMaster1500ModBeams, ADCP_Type.QuarterMaster3000, ADCP_Type.QuarterMaster6000,...
+                    ADCP_Type.Sentinel, ADCP_Type.Mariner, ADCP_Type.Monitor])
+                tf=true;
+            else
+                tf=false;
+            end
+        end
         function bad=bad(obj,filter)
             % Mask for profiled data
             %

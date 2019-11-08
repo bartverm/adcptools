@@ -10,13 +10,14 @@ classdef VMADCP < ADCP
 %   raw - adcp structure read by readADCP.m
 %   filters - filters for profiled data. Defaults to SideLobeFilter
 %   timezone - timezone of the data
+%   type - type of ADCP being used
 %   xy_cor_system - geographic coordinate system to be used
 %   adcp_elevation - elevation of the ADCP
 %
 %   VMADCP read-only properties:
 %   *Instrument characteristics*
-%   frequency - operating frequency of the instrument
-%   transducer_radius - radius of the transducer
+%   transducer - object describing transducer characteristics
+%   is_workhorse - return whether ADCP is a Workhorse ADCP
 %
 %   *Sizing*
 %   fileid - ID of file ensemble was read from
@@ -48,6 +49,17 @@ classdef VMADCP < ADCP
 %   depth_cell_slant_range - slant range to depth cell
 %   bt_vertical_range - vertical range to observed bed 
 %   slant_range_to_bed - slant range to observed bed
+%
+%   *Backscatter*
+%   current - transmit current of transducer (A)
+%   current_factor - factor for current computation from ADC channel
+%   voltage - transmit voltage of transducer (V)
+%   voltage_factor - factor for voltage computation from ADC channel
+%   power - transmit power of transducer (W)
+%   attitude_temperature - temperature of transducer (Celsius)
+%   intensity_scale - intensity scale factor (dB/m)
+%   echo - Raw echo intennstiy (dB)
+%   backscatter - Volumne backscatter strength (dB)
 %
 %   VMADCP methods
 %   bad - filter in use                           

@@ -8,6 +8,7 @@ classdef PistonTransducer < handle
     %   frequency - frequency of the transducer in Hz (default is 614.4e3)
     %   depth - depth of transducer in m (default is 1)
     %   water - acoustics.Water object describing properties of water
+    %   beam_width - 3dB beam width in radians 
     %
     % acoustics.PistonTransducer dependent properties (read only):
     %   wavelength - wavelength in m
@@ -19,26 +20,28 @@ classdef PistonTransducer < handle
     %   speedsound - speed ouf sound in water in m/s
     %
     % acoustics.PistonTransducer methods:
-    %   directivity - Computes the directivity of the emitted sound
-    %   dir_response - Compute the direction response of the transducer
+    %   directivity - Directivity of the emitted sound (neper)
+    %   dir_response - Directional response (dB) of the transducer 
     %   near_field_correction - Compute the near field correction factor
     %   side_lobes - Compute angle of transmitted side lobes
-    %   zeros - Compute angle where no sound it transmitted
+    %   zeros - Compute angle (radians) where no sound it transmitted
+    %   plot - Plot the directional response of the transducer
+    %   plot_3d - Make a 3D plot of the directional response
     
     properties
         % radius - Radius of the transducer in m
         %   This should be a positive, double, scalar value. Default:
         %   0.0505
-        radius(1,1) double {mustBePositive} = 0.0505 
+        radius(1,1) double = 0.0505 
         
         % frequency - Frequency of the emitted sound in Hz
         %   This should be a positive, double, scalar value. Default:
         %   614.4e3
-        frequency(1,1) double {mustBePositive} = 614.4e3 
+        frequency(1,1) double = 614.4e3 
         
         % depth - Depth of the transducer in m
         %   This should be a positive, double, scalar value. Default: 1
-        depth(1,1) double {mustBePositive} =1
+        depth(1,1) double =1
         
         % water - Properties of water
         %   This is a scalar object of class acoustics.Water. Holds common
@@ -54,7 +57,8 @@ classdef PistonTransducer < handle
         angularfreq % The angular frequency of the sound produced by the transducer in rad/s.
         attenuation % Sound attenuation in water in dB/m
         attenuation_e % Sound attenuation in 1/m (neper)
-        speedsound % Speed of sound in the given water m/s       
+        speedsound % Speed of sound in the given water m/s
+        beam_width % -3dB beam width
     end
     properties(Dependent, Access=private)
        f1,f2,A1,A2,A3,P2,P3
@@ -85,6 +89,7 @@ classdef PistonTransducer < handle
             %   input PHI.
             assert(isnumeric(phi),'Phi should be numerical')
             Dr=10*log10(obj.directivity(phi).^2);
+            Dr(phi==0)=0;
         end       
         function psi=near_field_correction(obj,range)
             % Returns the near field correction factor for the transducer
@@ -120,6 +125,42 @@ classdef PistonTransducer < handle
                 ang(n==ci)=fminbnd(@(x) -(obj.directivity(x).^2),obj.zeros(ci),obj.zeros(ci+1),optimset('TolX',1e-6));
             end
         end
+        function plot(obj)
+            x=linspace(-pi/2,pi/2,2000);
+            hold_stat=get(gca,'NextPlot');
+            plot(x/pi*180, obj.dir_response(x))
+            hold on
+            plot(obj.beam_width*[-1 1]*.5/pi*180, [-3 -3],'r')
+            text(obj.beam_width/pi*180,-3,['Beam width: ', num2str(obj.beam_width/pi*180),'^\circ'])
+            set(gca,'NextPlot',hold_stat,'Ylim', [-70 0])
+            xlabel('Angle (^\circ)')
+            ylabel('Directional response (dB)')
+        end
+        function plot_3d(obj)
+            nphi=1000;
+            ntht=200;
+            db_cutoff=70;
+            db_step=10;
+            n_lobes=10;
+            n_cols=floor(db_cutoff/db_step);
+            z=obj.zeros(1:n_lobes);
+            phi=linspace(-z(end), z(end),nphi);
+            phi=sort([phi, -z(1:end-1), z(1:end-1)]);
+            tht=linspace(0,2*pi,ntht);
+            [PHI,THETA]=meshgrid(phi,tht);
+            DIR=max(obj.dir_response(PHI)+db_cutoff, 0);
+            [X,Y,Z]=sph2cart(THETA,pi/2-PHI,DIR);
+            surf(X,Y,Z,DIR-db_cutoff)
+            shading interp
+            lightangle(0,45)
+            lighting gouraud
+            axis off
+            colormap(parula(n_cols))
+            set(gca,'clim',[-db_step*n_cols 0],'projection','perspective')
+            hc=colorbar('SouthOutside');
+            xlabel(hc,'Directional Response (dB)')
+            set(hc,'xtick',-db_step*n_cols:db_step:0)
+       end
     end
     methods        
         %% Property get methods for public, dependent properties
@@ -146,6 +187,9 @@ classdef PistonTransducer < handle
         end
         function value=get.attenuation_e(obj)
             value=obj.attenuation/8.68;                                    % Medwin and clay, pg104, eq 3.4.8b
+        end
+        function val=get.beam_width(obj)
+            val=2*abs(fzero(@(x) obj.dir_response(x)+3,0));
         end
         %% Property get methods for protected or private properties
         % Boric acid components in Sea Water
