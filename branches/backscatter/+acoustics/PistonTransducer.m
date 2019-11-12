@@ -30,25 +30,25 @@ classdef PistonTransducer < handle
     
     properties
         % radius - Radius of the transducer in m
-        %   This should be a positive, double, scalar value. Default:
-        %   0.0505
-        radius(1,1) double = 0.0505 
+        %   This should be a positive, double, Default: 0.0505
+        %
+        radius double = 0.0505 
         
         % frequency - Frequency of the emitted sound in Hz
         %   This should be a positive, double, scalar value. Default:
         %   614.4e3
-        frequency(1,1) double = 614.4e3 
+        frequency double = 614.4e3 
         
         % depth - Depth of the transducer in m
-        %   This should be a positive, double, scalar value. Default: 1
-        depth(1,1) double =1
+        %   This should be a positive, double, scalar value. Default: 0
+        depth double = 0
         
         % water - Properties of water
         %   This is a scalar object of class acoustics.Water. Holds common
         %   properties of water
         %
         %   see also: acoustics.Water
-        water(1,1) acoustics.Water = acoustics.Water() 
+        water(1,1) acoustics.Water
     end
     properties(Dependent, GetAccess=public, SetAccess=private)
         wavelength %The wave length of the sound produced by the transducer in m.
@@ -100,7 +100,7 @@ classdef PistonTransducer < handle
             %  the RANGE from the transducer. Output PSI will have the same
             %  size as input RANGE
             assert(isnumeric(range),'Range should be numerical')
-            z=range/obj.nearfield;
+            z=range./obj.nearfield;
             psi=(1+1.32*z+(2.5*z).^3.2)./(1.32*z+(2.5*z).^3.2);
         end
         function ang=zeros(obj,n)
@@ -110,7 +110,7 @@ classdef PistonTransducer < handle
             % angle of the n-th zero from the axis of the acosutic beam
             % in radians
             assert(isnumeric(n) && all(uint32(n(:))==n(:)) && all(n(:)>0) && all(n(:)<21),'n must be an integer between 1 and 20')
-            ang=asin(obj.besjzeros(n)/obj.wavenumber/obj.radius);
+            ang=asin(obj.besjzeros(n)./obj.wavenumber./obj.radius);
         end
         function ang=side_lobes(obj,n)
             % Computes the angles at which side lobes are transmitted
@@ -181,9 +181,9 @@ classdef PistonTransducer < handle
         end
         function value=get.attenuation(obj)
            freq=obj.frequency/1000;
-           value=(obj.A1*obj.P1*obj.f1*freq^2./(freq^2+obj.f1.^2)+...
-                  obj.A2*obj.P2*obj.f2*freq^2./(freq^2+obj.f2.^2)+...
-                  obj.A3*obj.P3*freq^2)/1000;                     % dB/m, Medwin and clay, pg 109, eq 3.4.29
+           value=(obj.A1.*obj.P1.*obj.f1.*freq.^2./(freq.^2+obj.f1.^2)+...
+                  obj.A2.*obj.P2.*obj.f2.*freq.^2./(freq.^2+obj.f2.^2)+...
+                  obj.A3.*obj.P3.*freq.^2)/1000;                     % dB/m, Medwin and clay, pg 109, eq 3.4.29
         end
         function value=get.attenuation_e(obj)
             value=obj.attenuation/8.68;                                    % Medwin and clay, pg104, eq 3.4.8b
@@ -198,7 +198,7 @@ classdef PistonTransducer < handle
         end
         function value=get.f1(obj)
             S=obj.water.salinity/1000;
-            value=2.8*(S/35).^.5.*10.^(4-1245/(273+...
+            value=2.8*(S/35).^.5.*10.^(4-1245./(273+...
                 obj.water.temperature));                                         % kHz, Medwin and clay, pg 110, eq 3.4.30
         end
         % Magnesium Sulfate components in Sea Water

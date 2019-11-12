@@ -20,7 +20,7 @@ classdef Sv2SSC < handle
 %   sv_for_calibration - averaged backscatter strength for calibration
 %   plot - plot the backscatter strength vs mass concentration
 %
-%   see also: ADCP, acoustics, Sv2SSC_Power, Sv2SSC_Sassi
+%   see also: ADCP, acoustics, Sv2SSC_Power, Sv2SSC_ConstantGSD
     properties
         % acoustics.Sv2SSC/adcp property
         %

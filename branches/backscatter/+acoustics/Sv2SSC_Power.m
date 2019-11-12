@@ -21,7 +21,7 @@ classdef Sv2SSC_Power < acoustics.Sv2SSC
 %   plot - plot the backscatter strength vs mass concentration
 %   calibrate_a_b - calibrate the power law constants
 %
-%   see also: ADCP, acoustics, Sv2SSC_Power, Sv2SSC_Sassi
+%   see also: ADCP, acoustics, Sv2SSC_Power, Sv2SSC_ConstantGSD
     methods
         function [a,b,stda, stdb]=calibrate_a_b(obj)
         % Calibrates constants of power law method

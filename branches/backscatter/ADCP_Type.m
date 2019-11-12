@@ -1,4 +1,5 @@
 classdef ADCP_Type
+% Enumeration defining different ADCP models
     enumeration
         Unknown
         Sentinel

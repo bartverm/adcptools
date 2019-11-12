@@ -13,6 +13,12 @@ classdef ADCP < handle
     %   type - type of ADCP being used
     %
     %   ADCP read-only properties:
+    %   *Ambient properties*
+    %   temperature - ambient temperature (degrees Celsius)
+    %   salinity - salinity (psu)
+    %   pressure - pressure (Pa)
+    %   water - acoustics.Water object describing water characteristics
+    %
     %   *Instrument characteristics*
     %   transducer - object describing transducer characteristics
     %   is_workhorse - return whether ADCP is a Workhorse ADCP
@@ -55,6 +61,7 @@ classdef ADCP < handle
     %   attitude_temperature - temperature of transducer (Celsius)
     %   intensity_scale - intensity scale factor (dB/m)
     %   echo - Raw echo intennstiy (dB)
+    %   backscatter_constant - Instrument constant (dB)
     %   backscatter - Volumne backscatter strength (dB)
     %
     %   ADCP methods
@@ -282,6 +289,34 @@ classdef ADCP < handle
         % see also: ADCP
         depth_cell_slant_range
         
+        % ADCP/temperature
+        %
+        %  temperature of the instrument (Celsius)
+        %
+        % see also: ADCP
+        temperature
+        
+        % ADCP/salinity
+        %
+        %  salinity (psu)
+        %
+        % see also: ADCP
+        salinity
+        
+        % ADCP/pressure
+        %
+        % pressure (Pa)
+        %
+        % see also: ADCP
+        pressure
+        
+        % ADCP/water
+        %
+        %   acoustics.Water object specifying the Water characteristics
+        %
+        % see also: ADCP, acoustics.Water
+        water
+        
         % ADCP/tranducer read only property
         %
         % returns an acoustics.PistonTransducer object
@@ -435,6 +470,20 @@ classdef ADCP < handle
         function c=get.cellsize(obj)
             c=double(obj.raw.binsize(obj.fileid))/100;
         end
+        function val=get.temperature(obj)
+            val=double(obj.raw.temperature)/100;
+        end
+        function val=get.salinity(obj)
+            val=double(obj.raw.salinity);
+        end
+        function val=get.pressure(obj)
+            val=double(obj.raw.pressure)*10;
+        end
+        function val=get.water(obj)
+            val=acoustics.Water;
+            val.temperature=obj.temperature;
+            val.salinity=obj.salinity*1000;
+        end
         function t=get.time(obj)
             t=reshape(datetime(obj.raw.timeV,'TimeZone',obj.timezone),1,[]);
         end
@@ -462,6 +511,8 @@ classdef ADCP < handle
             
             % Piston transducer ADCPs
             pt=acoustics.PistonTransducer;
+            pt.water=obj.water;
+            pt.depth=obj.pressure./9.81./pt.water.density;
             sysid=obj.raw.sysconf(:,1:3);
             switch sysid
                 case '000' % Only Long Ranger ADCPs
@@ -627,7 +678,7 @@ classdef ADCP < handle
         function val=get.backscatter(obj)
             pt=obj.transducer;
             R=obj.depth_cell_slant_range+obj.cellsize/2/cosd(obj.beam_angle); % slant range to last quarter of cell
-            two_alpha_R = 2*pt.attenuation*R;                    % compute 2alphaR
+            two_alpha_R = 2.*pt.attenuation.*R;                    % compute 2alphaR
             LDBM=10*log10(obj.lengthxmitpulse);
             PDBW=10*log10(obj.power);                        
             val = obj.backscatter_constant + 10*log10((obj.attitude_temperature+273.16).*R.^2.*pt.near_field_correction(R).^2) - LDBM - PDBW + two_alpha_R + 10*log10(10.^(obj.echo/10)-10.^(obj.intensity_scale.*obj.noise_level/10));       
