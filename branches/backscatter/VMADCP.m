@@ -229,10 +229,20 @@ classdef VMADCP < ADCP
                 vel=obj.water_velocity(CoordinateSystem.Earth);
             end
             plot_velocity@ADCP(obj,vel)
+            add_bed_and_surface(obj,gcf)
+        end
+        function plot_backscatter(obj)
+            plot_backscatter@ADCP(obj)
+            add_bed_and_surface(obj,gcf)
+        end
+        function add_bed_and_surface(obj,hf)
+            if nargin<2
+                hf=gcf;
+            end
             bed_pos=obj.bed_offset;
             bed_pos=squeeze(bed_pos(:,:,:,3));
             bed_pos=nanmean(bed_pos,2);
-            c=get(gcf,'Children');
+            c=get(hf,'Children');
             for cg=c'
                 if isa(cg,'matlab.graphics.axis.Axes')
                     set(cg,'NextPlot','add')

@@ -81,12 +81,13 @@ classdef ADCP < handle
     %   invert_xform - invert transformation matrices
     %
     % see also:VMADCP
-    properties
+    properties(SetObservable, AbortSet)
         % ADCP/raw
         %
-        %   raw adcp structure as read with readADCP.m
+        %   raw adcp structure as read with readADCP.m. Setting this
+        %   property will reset the transducer and water properties.
         %
-        % see also: ADCP
+        % see also: ADCP, transducer, water
         raw(1,1) struct;
         
         % ADCP/filters
@@ -129,6 +130,27 @@ classdef ADCP < handle
         %
         % see also: ADCP
         noise_level(1,1) double = -40
+        
+        % ADCP/tranducer
+        %
+        % returns an acoustics.PistonTransducer object. This object can be
+        % modified, and will be used in computations. To reset object to
+        % its initial values use the reset_transducer method. Setting the
+        % raw property, or the water property will reset the tranducer
+        % property
+        %
+        % see also: ADCP, acoustics.PistonTransducer
+        transducer(:,1) acoustics.PistonTransducer = acoustics.PistonTransducer
+        
+        % ADCP/water
+        %
+        %   acoustics.Water object specifying the Water characteristics.
+        %   use reset_water method to reset the water property to the
+        %   values read in the raw adcp data. Changing the raw property
+        %   will also reset the water property.
+        %
+        % see also: ADCP, acoustics.Water
+        water(1,1) acoustics.Water = acoustics.Water;
     end
     properties(Dependent, SetAccess=private)
         % ADCP/fileid read only property
@@ -310,20 +332,6 @@ classdef ADCP < handle
         % see also: ADCP
         pressure
         
-        % ADCP/water
-        %
-        %   acoustics.Water object specifying the Water characteristics
-        %
-        % see also: ADCP, acoustics.Water
-        water
-        
-        % ADCP/tranducer read only property
-        %
-        % returns an acoustics.PistonTransducer object
-        %
-        % see also: ADCP, acoustics.PistonTransducer
-        transducer
-        
         % ADCP/current read only property
         %
         % current on transducer (A)
@@ -401,6 +409,10 @@ classdef ADCP < handle
     methods
         %%% Constructor method %%%
         function obj=ADCP(varargin)
+            addlistener(obj,'raw','PostSet',@obj.reset_transducer); % recompute tranducer properties when raw data are changed
+            addlistener(obj,'raw','PostSet',@obj.reset_water); % recompute water properties when raw data are changed
+            addlistener(obj,'water','PostSet',@obj.reset_transducer); % recompute tranducer properties when water object is changed
+            addlistener(obj,'type','PostSet',@obj.reset_transducer); % recompute tranducer properties
             if nargin > 0
                 obj.raw=varargin{1};
             end
@@ -479,11 +491,6 @@ classdef ADCP < handle
         function val=get.pressure(obj)
             val=double(obj.raw.pressure)*10;
         end
-        function val=get.water(obj)
-            val=acoustics.Water;
-            val.temperature=obj.temperature;
-            val.salinity=obj.salinity*1000;
-        end
         function t=get.time(obj)
             t=reshape(datetime(obj.raw.timeV,'TimeZone',obj.timezone),1,[]);
         end
@@ -498,19 +505,121 @@ classdef ADCP < handle
             bangle=obj.beam_angle;
             rng=(obj.distmidfirstcell+reshape(0:obj.ncells-1,[],1)*obj.cellsize)./cosd(bangle);
         end
-        function pt=get.transducer(obj)
+
+        function val=get.voltage_factor(obj) % From workhorse operation manual
+            if ~obj.is_workhorse
+                warning('Assuming ADCP is a Workhorse')
+            end
+            switch obj.transducer.frequency
+                case 76.8e3
+                    val=2092719;
+                case {153.6e3, 307.2e3}
+                    val=592157;
+                case 614.4e3
+                    val=380667;
+                case {1228.8e3, 2457.6e3}
+                    val=253765;
+                otherwise
+                    warning('Unknown voltage factor')
+                    val=nan;
+            end
+        end
+        function val=get.current(obj)
+            val=reshape(double(obj.raw.ADC(:,1))*obj.current_factor/1e6,1,[]);
+        end
+        function val=get.voltage(obj)
+            val=reshape(double(obj.raw.ADC(:,2))*obj.voltage_factor/1e6,1,[]);
+        end
+        function val=get.power(obj)
+            val=obj.voltage.*obj.current;
+        end
+        function val=get.attitude_temperature(obj)
+            if ~obj.is_workhorse
+                warning('Assuming ADCP is a workhorse')
+            end
+            DC_COEF = 9.82697464e1;                                                    % Temperature coefficients
+            FIRST_COEF = -5.86074151382e-3;
+            SECOND_COEF = 1.60433886495e-7;
+            THIRD_COEF = -2.32924716883e-12;
+            t_cnts = reshape(double(obj.raw.ADC(:,6))*256,1,[]);                 % Temperature Counts (ADC value)
+            val = obj.temperature_offset + ((THIRD_COEF.*t_cnts + SECOND_COEF).*t_cnts +...
+                FIRST_COEF).*t_cnts + DC_COEF;                                         % real-time temperature of the transducer (C)
+        end
+        function val=get.intensity_scale(obj)
+            val=127.3./(obj.attitude_temperature+273); % From WinRiver manual
+        end
+        function val=get.echo(obj)
+            val=double(obj.raw.ECHO).*obj.intensity_scale;
+        end
+        function val=get.backscatter_constant(obj)
+            if ~is_workhorse(obj)
+                warning('Assuming ADCP is a workhorse')
+            end
+            switch obj.transducer.frequency
+                case 76.8e3
+                    val=-159.1;
+                case 307.2e3
+                    switch obj.type
+                        case ADCP_Type.Sentinel
+                            val=-143.5;
+                        case ADCP_Type.Monitor
+                            val=-143;
+                        otherwise
+                            warning('Assuming ADCP is a Monitor')
+                            val=-143;
+                    end
+                case 614.4e3
+                    if obj.type~=ADCP_Type.RioGrande
+                        warning('Assuming ADCP is a RioGrande')
+                    end
+                    val=-139.3;
+                case 1228.8e3
+                    val=-129.1;
+                otherwise
+                    warning('Unknown backscatter constant for current ADCP Type')
+                    val=nan;
+            end
+        end
+        function val=get.backscatter(obj)
+            pt=obj.transducer;
+            R=obj.depth_cell_slant_range+obj.cellsize/2/cosd(obj.beam_angle); % slant range to last quarter of cell
+            two_alpha_R = 2.*pt.attenuation.*R;                    % compute 2alphaR
+            LDBM=10*log10(obj.lengthxmitpulse);
+            PDBW=10*log10(obj.power);                        
+            val = obj.backscatter_constant + 10*log10((obj.attitude_temperature+273.16).*R.^2.*pt.near_field_correction(R).^2) - LDBM - PDBW + two_alpha_R + 10*log10(10.^(obj.echo/10)-10.^(obj.intensity_scale.*obj.noise_level/10));       
+            val(obj.bad)=nan;
+        end
+        
+        %%% Ordinary methods
+        function reset_water(obj, varargin)
+            val=obj.water;
+            val.temperature=obj.temperature;
+            val.salinity=obj.salinity*1000;
+        end
+        function reset_transducer(obj, varargin)
+        % Reset tranducer properties
+        %
+        %   reset_tranducer(obj)
+        %
+        % see also: ADCP
+            
+            pt=obj.transducer;
             %TODO: compute SentinelV and MonitorV radii back from
             %beam_width and frequency (see equation in Deines 1999)
             % Handle phased array ADCPs
             if obj.type==ADCP_Type.RiverRay
-                pt=acoustics.PhasedArrayTransducer;
+                if ~isa(pt,'acoustics.PhasedArrayTransducer')
+                    pt=acoustics.PhasedArrayTransducer;
+                end
                 pt.frequency=614.4e3; % from RiverRay manual
                 pt.radius=0.076/2; % from RiverRay manual
                 return
             end
             
             % Piston transducer ADCPs
-            pt=acoustics.PistonTransducer;
+            if ~isa(pt,'acoustics.PistonTransducer')
+                pt=acoustisc.PistonTransducer;
+            end
             pt.water=obj.water;
             pt.depth=obj.pressure./9.81./pt.water.density;
             sysid=obj.raw.sysconf(:,1:3);
@@ -601,91 +710,7 @@ classdef ADCP < handle
                     val=nan;
             end
         end
-        function val=get.voltage_factor(obj) % From workhorse operation manual
-            if ~obj.is_workhorse
-                warning('Assuming ADCP is a Workhorse')
-            end
-            switch obj.transducer.frequency
-                case 76.8e3
-                    val=2092719;
-                case {153.6e3, 307.2e3}
-                    val=592157;
-                case 614.4e3
-                    val=380667;
-                case {1228.8e3, 2457.6e3}
-                    val=253765;
-                otherwise
-                    warning('Unknown voltage factor')
-                    val=nan;
-            end
-        end
-        function val=get.current(obj)
-            val=reshape(double(obj.raw.ADC(:,1))*obj.current_factor/1e6,1,[]);
-        end
-        function val=get.voltage(obj)
-            val=reshape(double(obj.raw.ADC(:,2))*obj.voltage_factor/1e6,1,[]);
-        end
-        function val=get.power(obj)
-            val=obj.voltage.*obj.current;
-        end
-        function val=get.attitude_temperature(obj)
-            if ~obj.is_workhorse
-                warning('Assuming ADCP is a workhorse')
-            end
-            DC_COEF = 9.82697464e1;                                                    % Temperature coefficients
-            FIRST_COEF = -5.86074151382e-3;
-            SECOND_COEF = 1.60433886495e-7;
-            THIRD_COEF = -2.32924716883e-12;
-            t_cnts = reshape(double(obj.raw.ADC(:,6))*256,1,[]);                 % Temperature Counts (ADC value)
-            val = obj.temperature_offset + ((THIRD_COEF.*t_cnts + SECOND_COEF).*t_cnts +...
-                FIRST_COEF).*t_cnts + DC_COEF;                                         % real-time temperature of the transducer (C)
-        end
-        function val=get.intensity_scale(obj)
-            val=127.3./(obj.attitude_temperature+273); % From WinRiver manual
-        end
-        function val=get.echo(obj)
-            val=double(obj.raw.ECHO).*obj.intensity_scale;
-        end
-        function val=get.backscatter_constant(obj)
-            if ~is_workhorse(obj)
-                warning('Assuming ADCP is a workhorse')
-            end
-            switch obj.transducer.frequency
-                case 76.8e3
-                    val=-159.1;
-                case 307.2e3
-                    switch obj.type
-                        case ADCP_Type.Sentinel
-                            val=-143.5;
-                        case ADCP_Type.Monitor
-                            val=-143;
-                        otherwise
-                            warning('Assuming ADCP is a Monitor')
-                            val=-143;
-                    end
-                case 614.4e3
-                    if obj.type~=ADCP_Type.RioGrande
-                        warning('Assuming ADCP is a RioGrande')
-                    end
-                    val=-139.3;
-                case 1228.8e3
-                    val=-129.1;
-                otherwise
-                    warning('Unknown backscatter constant for current ADCP Type')
-                    val=nan;
-            end
-        end
-        function val=get.backscatter(obj)
-            pt=obj.transducer;
-            R=obj.depth_cell_slant_range+obj.cellsize/2/cosd(obj.beam_angle); % slant range to last quarter of cell
-            two_alpha_R = 2.*pt.attenuation.*R;                    % compute 2alphaR
-            LDBM=10*log10(obj.lengthxmitpulse);
-            PDBW=10*log10(obj.power);                        
-            val = obj.backscatter_constant + 10*log10((obj.attitude_temperature+273.16).*R.^2.*pt.near_field_correction(R).^2) - LDBM - PDBW + two_alpha_R + 10*log10(10.^(obj.echo/10)-10.^(obj.intensity_scale.*obj.noise_level/10));       
-            val(obj.bad)=nan;
-        end
         
-        %%% Ordinary methods
         function tf=is_workhorse(obj)
             if any(obj.type== [ADCP_Type.LongRanger1500, ADCP_Type.LongRanger3000, ADCP_Type.QuarterMaster1500,...
                     ADCP_Type.QuarterMaster1500ModBeams, ADCP_Type.QuarterMaster3000, ADCP_Type.QuarterMaster6000,...
@@ -798,6 +823,34 @@ classdef ADCP < handle
             xlabel('time (s)')
             linkaxes(axh,'xy')
         end
+        function plot_backscatter(obj)
+            % plot the backscatter profiles
+            %
+            %   plot_velocity(obj) plot the backscatter profiles
+            %   system
+            %
+            %   see also: ADCP
+            figure
+            sv_pos=obj.depth_cell_offset;
+            sv_pos=nanmean(sv_pos(:,:,:,3),3);
+            sv=obj.backscatter;
+            t=obj.time;
+            t=seconds(t-t(1));
+            nb=size(sv,3);
+            axh=nan(nb,1);
+            for cb=1:nb
+                axh(cb)=subplot(nb,1,cb);
+                pcolor(t,sv_pos,sv(:,:,cb));
+                clim=nanmean(sv(:,:,cb),'all')+[-2 2]*nanstd(sv(:,:,cb),0,'all');
+                hc=colorbar;
+                ylabel(hc,'Backscatter (dB)')
+                shading flat
+                set(gca,'clim',clim)
+                title(['Beam ',num2str(cb)])
+            end
+            xlabel('time (s)')
+            linkaxes(axh,'xy')
+        end
         function plot_filters(obj)
             obj.filters.plot(obj);
         end
@@ -805,6 +858,7 @@ classdef ADCP < handle
             obj.plot_orientations;
             obj.plot_filters;
             obj.plot_velocity;
+            obj.plot_backscatter;
         end
         function pos=depth_cell_offset(obj,dst)
             % Computes the xyz offset to the profiled depth cells

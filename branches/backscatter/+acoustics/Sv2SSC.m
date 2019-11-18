@@ -45,7 +45,7 @@ classdef Sv2SSC < handle
         averaging_period (1,1) duration = duration(0,3,0)
     end
     methods(Abstract)
-        mass_concentration(obj)
+        mass_concentration(obj,adcp)
     end
     methods
         function obj=Sv2SSC(varargin)

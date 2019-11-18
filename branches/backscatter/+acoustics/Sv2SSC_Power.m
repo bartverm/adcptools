@@ -39,20 +39,21 @@ classdef Sv2SSC_Power < acoustics.Sv2SSC
             b=pars(2);
             stdb=stdpars(2);
         end
-        function ssc=mass_concentration(obj,sv)
+        function ssc=mass_concentration(obj,inadcp)
         % Computes the mass concentration given backscatter strength
         %
         %   ssc=mass_concentration(obj) computes the suspended sediment
         %   concentration in g/L using the backscatter strength for the
         %   ADCP objects.
         %
-        %   ssc=mass_concentration(obj,sv) specify the backscatter strength
-        %   to be used for sediment concentration computation
+        %   ssc=mass_concentration(obj,sv) specify the adcp object to
+        %   compute the backscatter for.
         %
         %   see also: Sv2SSC_Power, Sv2SSC, acoustics, ADCP
-            if nargin < 2
-                sv=obj.adcp.backscatter();
+            if nargin<2
+                inadcp=obj.adcp;
             end
+            sv=inadcp.backscatter();
             [a,b]=obj.calibrate_a_b();
             ssc=1e3*10.^(a*sv+b); % output kg/m3
         end

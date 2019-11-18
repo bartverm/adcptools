@@ -5,6 +5,7 @@
 \usepackage{graphicx}
 \usepackage{siunitx}
 \usepackage{hyperref}
+\usepackage{natbib}
 
 \definecolor{codegreen}{rgb}{0,0.6,0}
 \definecolor{codegray}{rgb}{0.5,0.5,0.5}
@@ -52,7 +53,7 @@ The backscatter strength can be computed from the raw echo the instrument receiv
 \end{align}
 
 The challenge is to find a relation between the backscatter strength, attenuation, and sediment concentration. Several methods have been proposed to establish such relation, and most involve some kind of calibration using water samples from which mass concentration and sometimes also other sediment characteristics can be estimated.
-In this document we will consider two methods. The first, a simpler method, is the so-called power-law method (Hoitink and Hoekstra, 2005) and the second, more elaborate method, is the so-called constant grain size distribution methods (Sassi et al., 2012).
+In this document we will consider two methods. The first, a simpler method, is the so-called power-law method \citep{hoitink2005} and the second, more elaborate method, is the so-called constant grain size distribution methods \citep{sassi2012}.
 \subsection{How to}
 \label{sec:general_howto}
 \subsubsection{Backscatter strength}
@@ -142,7 +143,7 @@ Eventually backscatter strength can be converted to mass concentration with the 
 \section{The constant grain size distribution method}
 
 \subsection{Theory}
-The method proposed by Sassi et al., 2012 assumes a constant grain size distribution over the measuring range, which means that the specific attenuation and specific backscatter strength are constant over the measuring range. This means that this method should be particularly applicable in regions where no major grain size distribution changes are expected over the measured range are expected.
+The method proposed by \citet{sassi2012} assumes a constant grain size distribution over the measuring range, which means that the specific attenuation and specific backscatter strength are constant over the measuring range. This means that this method should be particularly applicable in regions where no major grain size distribution changes are expected over the measured range are expected.
 
 The method consists of calibrating two parameters:
 \begin{itemize}
@@ -154,7 +155,7 @@ To estimate the second parameter $\xi_s$ another sample can be collected at a la
 
 
 \subsubsection{Part 1: estimate $b$}
-With the uncorrected backscatter $S_{v,alpha_s=0}$ (see section~\ref{sec:general_theory} and sediment concentration measurements near the transducer the first calibration step can be performed in which we try to estimate the parameter $b$ from equation 14 of Sassi et al.(2012):
+With the uncorrected backscatter $S_{v,alpha_s=0}$ (see section~\ref{sec:general_theory} and sediment concentration measurements near the transducer the first calibration step can be performed in which we try to estimate the parameter $b$ from equation 14 of \citet{sassi2012}:
 \begin{align}
   K(R_\text{ref})=a\beta(\tilde{R}_\text{ref})^b
 \end{align}
@@ -162,16 +163,16 @@ where $R_\text{ref}$ is the range where the water samples were collected, $K=\be
 Once we obtained this estimate we preceed with an estimate of the specific attenuation
 
 \subsubsection{Part 2: estimate $\xi_s$}
-The last step of the calibration will yield $\xi_s$ using equation 15 from Sassi et al. (2012):
+The last step of the calibration will yield $\xi_s$ using equation 15 from \citet{sassi2012}:
 \begin{align}
   \gamma_e=\dfrac{\ln(10)}{5}\xi_s=\dfrac{K(R_1)-\dfrac{\beta(R_2)}{M_s(R_2)}}{\int_{R_1}^{R_2}\beta(r)\;\text{d}r}
 \end{align}
-For this step we will need to samples. The first can correspond with the sample used during the first calibration step, The second should preferably be near the end of the ADCP measuring range. This last step can be done with different combinations of samples to obtain $\xi_s$ varying over depth. It is recommended to use several samples to estimate $\xi_s$ and select a representative estimate. Sassi et al. (2012) used the mode of all estimates in the dataset.
+For this step we will need two samples. The first can be a sample used during the first calibration step, The second should preferably be near the end of the ADCP measuring range. This last step can be done with different combinations of samples to obtain $\xi_s$ varying over depth. It is recommended to use several samples to estimate $\xi_s$ and select a representative estimate. \citet{sassi2012} used the mode of all estimates in the dataset.
 
 
 \subsubsection{Estimate sediment concentration}
 The last step is to use the calibration to compute sediment concentration profiles for the measured ADCP data.
-This is done by using equation 13 from Sassi et al. (2012):
+This is done by using equation 13 from \citet{sassi2012}:
 \begin{align}
   M_s(R)=\dfrac{\beta(R)}{K(R_\text{ref})-\gamma_e\int_{R_\text{ref}}^R\beta(r)\;\text{d}r}
 \end{align}
@@ -217,6 +218,21 @@ This is done by using equation 13 from Sassi et al. (2012):
 %\end{itemize}
 %
 \subsection{How to}
+To perform the constant grain size distribution calibration the class \lstinline!acoustics.Sv2SSC_ConstantGSD! can be used. In addition to specifying the \lstinline!samples! and \lstinline!adcp! properties, this calibration also requires to set two additional properties. The first is the \lstinline!reference_idx! and the second is the \lstinline!attenuation_idx!. These properties specify the samples that will be used as reference samples (to estimate $b$) and the once to be use for the specific attenuation estimates (to estimate $\xi_s$). The can e.g. be specified based on the distance:
+\begin{lstlisting}
+dist=[S.samples.distance]; % get the vertical distance from the tranducer to the samples
+S.reference_idx=find(dist<5.5); % select the close ones as reference samples
+S.attenuation_idx=find(dist>5.5); % and the other ones as attenuation samples
+\end{lstlisting}
+Now the two parameters can be estimated using the \lstinline!calibrate_b_gamma! method:
+\begin{lstlisting}
+[b, stdb, gamma_e, xi_e]=S.calibrate_b_gamma();
+\end{lstlisting}
+The \lstinline!b! parameter is a single value based on the reference samples. \lstinline!stdb! holds the standard deviation of $b$. \lstinline!gamma_e! holds the estimated $\gamma$ values for the attenuation samples. It will have one value per sample. Since the spread in these values can be rather large, it is good to manually inspect these values and choose a suitable value to work with. In \citet{sassi2012} the mode of these values was chosen. The \lstinline!xi_e! output holds the $\xi_s$ values, that are closely related to the $\gamma$ values \citep[see equation 12, ][]{sassi2012}. 
+
+The last step in the calibration is to obtain the sediment concentrations. this is done using the \lstinline!mass_concentration! method as explained before. For options in the used of this method see the help of the method.
+
+
 %The computations will be performed in the following order:
 %\begin{enumerate}
 %  \item Compute $\rho_s$, if volume and mass concentration are available for sample (optional)
@@ -281,4 +297,54 @@ This is done by using equation 13 from Sassi et al. (2012):
 %
 %
 \section{In depth acoustics}
+Next to the calibration methods to obtain Suspended sediment concentrations there are a number of additional acoustic computations that are supported in \lstinline!adcptools!. The most important ones are perfromed in the \lstinline!acoustics.PistonTransducer!, the \lstinline!acoustics.Water! class and the \lstinline!acoustics.GrainSizeDistribution! class.
+\subsection{Water}
+Since we are dealing with sound propagation in water, it is important to estimate the acoustic properties of water. The class currently supports the estimate of the density $\rho$, dynamic $\mu$ and kinematic $\nu$ viscosity and the speed of sound $c$. The first three properties depend on temperature and salinity, and the last one (the speed of sound) also depends on the depth. The class \lstinline!acoustics.Water! supports all these computations. 
+
+You can set the following properties of the \lstinline!acoustics.Water! class:
+\begin{itemize}
+  \item \lstinline!temperature!: Temperature in degrees Celsius
+  \item \lstinline!salinity!: Salinity in parts per million (ca. psu/1000)
+  \item \lstinline!pH!: pH of water
+\end{itemize}
+All of these properties can have any size, as long as the dimensions of the arrays can be combined in an elementwise manner.
+
+The following properties can be obtained from the object:
+\begin{itemize}
+  \item \lstinline!density!: density of water in \si{\kilo\gram\per\cubic\meter} \citep[equation 8, ][]{sharqawy2010}
+  \item \lstinline!dyn_viscosity!: dynamic viscosity of water \si{\kilo\gram\per\m\per\s} \citep[equations 22 and 23, ][]{sharqawy2010}
+  \item \lstinline!kin_viscosity!: kinematic viscosity of water \si{\m\squared\per\s} (from the two above)
+  \item \lstinline!speed_sound!: speed of sound \si{\m\per\s} \citep[equation 3.3.3, ][]{medwin1998}
+\end{itemize}
+\subsection{Transducer}
+Different types of transducers exist. ADCPs generally use piston transducers, although recently also phased array transducers are being used. The last type of tranducers is currently not supported. Computations related to piston transducers are implemented in the \lstinline!acoustics.pistonTransducer! class. Properties that can be set on this class are:
+\begin{itemize}
+  \item \lstinline!radius!: Radius of the transducer in \si{\m}
+  \item \lstinline!freqeuncy!: Frequency of the transducer in \si{\hertz}
+  \item \lstinline!depth!: Depth of the transducer in \si{\m}
+  \item \lstinline!water!: \lstinline!acoustics.Water! object specifying water properties 
+\end{itemize}
+Also here, the properties can be of any size (except the water properties, which is scalar, but the properties of water can be of any size), as long as elementwise operations can be done on them.
+
+The following methods are defined:
+\begin{itemize}
+  \item \lstinline!wavelength! - wavelength in m
+  \item \lstinline!wavenumber! - angular wave number of the sound waves in 1/m
+  \item \lstinline!nearfield! - range of near field in m
+  \item \lstinline!angularfreq! - angular frequency of the sound waves in rad/s
+  \item \lstinline!attenuation! - sound attenuation caused by water in dB/m
+  \item \lstinline!attenuation_e! - sound attenuation caused by water in 1/m (neper)
+  \item \lstinline!speedsound! - speed ouf sound in water in m/s
+  \item \lstinline!directivity! - Directivity of the emitted sound (neper)
+  \item \lstinline!dir_response! Directional response (dB) of the transducer
+  \item \lstinline!near_field_correction! - Compute the near field correction factor
+  \item \lstinline!side_lobes! - Compute angle of transmitted side lobes
+  \item \lstinline!zeros! - Compute angle (radians) where no sound it transmitted
+  \item \lstinline!plot! - Plot the directional response of the transducer
+  \item \lstinline!plot_3d! - Make a 3D plot of the directional response
+\end{itemize}
+\bibliographystyle{lit}
+\bibliography{lit}
+
+
 \end{document}

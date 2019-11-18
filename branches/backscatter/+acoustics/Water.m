@@ -18,8 +18,10 @@ classdef Water < handle
     %       density_static - Compute density of water
     %       dyn_viscosity_static - Compute dynamic viscosity of water
     %       kin_viscosity_static - Compute kinematic viscosity of water
+    %
+    % see also: acoustics
     
-    properties
+    properties(SetObservable, AbortSet)
         temperature double {mustBeFinite}=20 % Temperature of water in Celsius, default is 20
         salinity double {mustBeNonnegative}=200  % Salinity of water in ppm (parts per million), default is 200
         pH double {mustBeFinite}=7 % pH of water
