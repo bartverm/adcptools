@@ -71,6 +71,14 @@ classdef PistonTransducer < handle
             60.46946 63.61136];                                             % Zeros of bessel function j1 (from Abramowitz and Stegun table 9.5)
     end
     methods(Access=public)
+        function obj=PistonTransducer(varargin)
+            obj.water=acoustics.Water;
+            for ca=1:nargin
+                if isa(varargin{ca},'acoustics.Water')
+                    obj.water=varargin{ca};
+                end
+            end
+        end
         function Di=directivity(obj,phi)
             % Directivity of the transducer 
             % 

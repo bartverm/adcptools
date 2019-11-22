@@ -140,7 +140,7 @@ classdef ADCP < handle
         % property
         %
         % see also: ADCP, acoustics.PistonTransducer
-        transducer(:,1) acoustics.PistonTransducer = acoustics.PistonTransducer
+        transducer(:,1) acoustics.PistonTransducer 
         
         % ADCP/water
         %
@@ -150,7 +150,7 @@ classdef ADCP < handle
         %   will also reset the water property.
         %
         % see also: ADCP, acoustics.Water
-        water(1,1) acoustics.Water = acoustics.Water;
+        water(1,1) acoustics.Water;
     end
     properties(Dependent, SetAccess=private)
         % ADCP/fileid read only property
@@ -409,12 +409,29 @@ classdef ADCP < handle
     methods
         %%% Constructor method %%%
         function obj=ADCP(varargin)
+            obj.type=ADCP_Type.Unknown;
+            obj.water=acoustics.Water;
+            obj.filters=Filter;
+            obj.transducer=acoustics.PistonTransducer;
+            for ca=1:nargin
+                if isa(varargin{ca},'ADCP_Type')
+                    obj.type=varargin{ca};
+                end
+            end
             addlistener(obj,'raw','PostSet',@obj.reset_transducer); % recompute tranducer properties when raw data are changed
             addlistener(obj,'raw','PostSet',@obj.reset_water); % recompute water properties when raw data are changed
             addlistener(obj,'water','PostSet',@obj.reset_transducer); % recompute tranducer properties when water object is changed
             addlistener(obj,'type','PostSet',@obj.reset_transducer); % recompute tranducer properties
-            if nargin > 0
-                obj.raw=varargin{1};
+            for ca=1:nargin            
+                if isa(varargin{ca},'Filter')
+                    obj.filters=[obj.filters; varargin{ca}];
+                elseif isa(varargin{ca},'acoustics.Water')
+                    obj.water=varargin{ca};
+                elseif isa(varargin{ca},'acoustics.PistonTransducer')
+                    obj.transducer=varargin{ca};
+                elseif isstruct(varargin{ca})
+                    obj.raw=varargin{1};
+                end
             end
         end
         
@@ -489,7 +506,10 @@ classdef ADCP < handle
             val=double(obj.raw.salinity);
         end
         function val=get.pressure(obj)
-            val=double(obj.raw.pressure)*10;
+            funderflow=obj.raw.pressure>3e9;
+            val=double(obj.raw.pressure);
+            val(funderflow)=val(funderflow)-double(intmax('uint32'));
+            val=val*10;
         end
         function t=get.time(obj)
             t=reshape(datetime(obj.raw.timeV,'TimeZone',obj.timezone),1,[]);
@@ -503,7 +523,7 @@ classdef ADCP < handle
         end
         function rng=get.depth_cell_slant_range(obj)
             bangle=obj.beam_angle;
-            rng=(obj.distmidfirstcell+reshape(0:obj.ncells-1,[],1)*obj.cellsize)./cosd(bangle);
+            rng=(obj.distmidfirstcell+reshape(0:max(obj.ncells)-1,[],1).*obj.cellsize)./cosd(bangle);
         end
 
         function val=get.voltage_factor(obj) % From workhorse operation manual
@@ -621,8 +641,8 @@ classdef ADCP < handle
                 pt=acoustisc.PistonTransducer;
             end
             pt.water=obj.water;
-            pt.depth=obj.pressure./9.81./pt.water.density;
-            sysid=obj.raw.sysconf(:,1:3);
+            pt.depth=max(obj.pressure./9.81./pt.water.density,0);
+            sysid=obj.raw.sysconf(1,1:3);
             switch sysid
                 case '000' % Only Long Ranger ADCPs
                     pt.radius=0.203/2; % From operation Manual Long Ranger (drawing 6021, 6055)
@@ -671,10 +691,10 @@ classdef ADCP < handle
                     end
                 case '001'
                     switch obj.type
-                        case ADCP_Type.SentinelV | ADCP_Type.MonitorV
+                        case {ADCP_Type.SentinelV, ADCP_Type.MonitorV}
                             pt.frequency=983.04e3; % Sentinel V operation manual
                             pt.radius=nan;
-                        case ADCP_Type.Monitor | ADCP_Type.Sentinel | ADCP_Type.Mariner | ADCP_Type.RioGrande
+                        case {ADCP_Type.Monitor , ADCP_Type.Sentinel, ADCP_Type.Mariner, ADCP_Type.RioGrande}
                             pt.frequency=1228.8e3; % Workhorse and RioGrande operation manual
                             pt.radius=0.0699/2; % Workhorse and RioGrande operation manual
                         otherwise
@@ -789,14 +809,14 @@ classdef ADCP < handle
             ylabel('Head (degr)')
             linkaxes(axh,'x')
         end
-        function plot_velocity(obj,vel)
+        function hfout=plot_velocity(obj,vel)
             % plot the velocity profiles
             %
             %   plot_velocity(obj) plot the velocities in Earth coordinate
             %   system
             %
             %   see also: ADCP
-            figure
+            hf=figure;
             vel_pos=obj.depth_cell_offset;
             vel_pos=nanmean(vel_pos(:,:,:,3),3);
             if nargin < 2
@@ -822,15 +842,18 @@ classdef ADCP < handle
             shading flat
             xlabel('time (s)')
             linkaxes(axh,'xy')
+            if nargout>0
+                hfout=hf;
+            end
         end
-        function plot_backscatter(obj)
+        function hfout=plot_backscatter(obj)
             % plot the backscatter profiles
             %
             %   plot_velocity(obj) plot the backscatter profiles
             %   system
             %
             %   see also: ADCP
-            figure
+            hf=figure;
             sv_pos=obj.depth_cell_offset;
             sv_pos=nanmean(sv_pos(:,:,:,3),3);
             sv=obj.backscatter;
@@ -850,6 +873,9 @@ classdef ADCP < handle
             end
             xlabel('time (s)')
             linkaxes(axh,'xy')
+            if nargout>0
+                hfout=hf;
+            end
         end
         function plot_filters(obj)
             obj.filters.plot(obj);

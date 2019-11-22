@@ -97,6 +97,16 @@ classdef VMADCP < ADCP
     %   see also: VMADCP
         xy_cor_system (1,1) ProjectedCoordinateSystem = UTMCoordinateSystem;
     
+    % VMADCP/ll_provider 
+    %
+    %   Latitude, Longitude provider. Array of LatLonProvider objects. The
+    %   first provider that has valid LatLon data is used. Default is
+    %   [LatLonVisea; LatLonNfiles]
+    %
+    %   see also: VMADCP, LatLonProvider
+        ll_provider (:,1) LatLonProvider = [LatLonVisea, LatLonNfilesGGA]
+
+    
     % VMADCP/adcp_elevation
     %
     %   specifies the elevation of the ADCP during the measurement. This
@@ -123,7 +133,19 @@ classdef VMADCP < ADCP
         %%% Constructor method %%%
         function obj=VMADCP(varargin)
             obj=obj@ADCP(varargin{:});
-            obj.filters=SideLobeFilter;
+            obj.xy_cor_system=UTMCoordinateSystem;
+            obj.ll_provider=[LatLonVisea; LatLonNfilesGGA];
+            if numel(obj.filters)==1 && isa(obj.filters,'Filter')
+                obj.filters=SideLobeFilter;
+            end
+            for ca=1:nargin
+                if isa(varargin{ca},'ProjectedCoordinateSystem')
+                    obj.xy_cor_system=varargin{ca};
+                elseif isa(varargin{ca},'LatLonProvider')
+                    obj.ll_provider=varargin{ca};
+                end
+            end
+
         end
         
         %%% Set and Get methods %%%
@@ -173,11 +195,8 @@ classdef VMADCP < ADCP
                 btvel=helpers.matmult(tm, btvel);
             end
         end
-        function [lat, lon]=lat_lon(obj,ll_provider)
-            if nargin<2
-                ll_provider=LatLonVisea;
-            end
-            [lat,lon]=ll_provider.lat_lon(obj.raw);
+        function [lat, lon]=lat_lon(obj)
+            [lat,lon]=obj.ll_provider.lat_lon(obj.raw);
         end
         function [x, y]=projected(obj)
             [lat, lon]=obj.lat_lon;
@@ -206,6 +225,7 @@ classdef VMADCP < ADCP
             pos(:,:,:,3)=pos(:,:,:,3)+obj.adcp_elevation;
         end
         function plot_track(obj)
+            figure
             [x,y]=obj.projected;
             plot(x,y,'.-');
             axis equal
@@ -213,6 +233,7 @@ classdef VMADCP < ADCP
             ylabel([obj.xy_cor_system.description,' y (m)']);
         end
         function plot_bed_position(obj)
+            figure
             pos=obj.bed_position();
             pos=reshape(pos,[],3);
             scatter3(pos(:,1),pos(:,2),pos(:,3),10,pos(:,3),'filled');
@@ -228,28 +249,40 @@ classdef VMADCP < ADCP
             if nargin < 2
                 vel=obj.water_velocity(CoordinateSystem.Earth);
             end
-            plot_velocity@ADCP(obj,vel)
-            add_bed_and_surface(obj,gcf)
+            hf=plot_velocity@ADCP(obj,vel);
+            add_bed_and_surface(obj,hf)
         end
         function plot_backscatter(obj)
-            plot_backscatter@ADCP(obj)
-            add_bed_and_surface(obj,gcf)
+            hf=plot_backscatter@ADCP(obj);
+            add_bed_and_surface(obj,hf,false)
         end
-        function add_bed_and_surface(obj,hf)
+        function plot_all(obj)
+            plot_all@ADCP(obj)
+            obj.plot_track
+            obj.plot_bed_position
+        end
+        function add_bed_and_surface(obj,hf,av_beams)
             if nargin<2
                 hf=gcf;
             end
+            if nargin < 3
+                av_beams=true;
+            end
             bed_pos=obj.bed_offset;
             bed_pos=squeeze(bed_pos(:,:,:,3));
-            bed_pos=nanmean(bed_pos,2);
+            if av_beams
+                bed_pos=repmat(nanmean(bed_pos,2), 1,size(bed_pos,2));
+            end
             c=get(hf,'Children');
+            cb=size(bed_pos,2)+1;
             for cg=c'
                 if isa(cg,'matlab.graphics.axis.Axes')
+                    cb=cb-1;
                     set(cg,'NextPlot','add')
                     t=obj.time;
                     t=seconds(t-t(1));
-                    plot(cg,t,bed_pos,'k','Linewidth',2)
-                    set(cg,'ylim',[min(bed_pos) 0])
+                    plot(cg,t,bed_pos(:,cb),'k','Linewidth',2)
+                    set(cg,'ylim',[min(bed_pos(:)) 0])
                 end
             end
         end
