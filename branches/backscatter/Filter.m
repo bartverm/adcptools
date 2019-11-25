@@ -29,7 +29,6 @@ classdef Filter < matlab.mixin.Heterogeneous
             end
         end
         function plot(obj,adcp)
-            
             figure
             nb=max(adcp.nbeams);
             no=numel(obj);

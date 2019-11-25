@@ -11,7 +11,9 @@ classdef VMADCP < ADCP
 %   filters - filters for profiled data. Defaults to SideLobeFilter
 %   timezone - timezone of the data
 %   type - type of ADCP being used
-%   xy_cor_system - geographic coordinate system to be used
+%   xy_cor_system - projected coordinate system to be used
+%   ll_provider - configure where to get geographic coordinates
+%   shipvel_provider - configure how to obtain ship velocity
 %   adcp_elevation - elevation of the ADCP
 %
 %   VMADCP read-only properties:
@@ -68,8 +70,8 @@ classdef VMADCP < ADCP
 %   depth_cell_position - xyz positions of depth cells in projected coords.
 %   bed_offset - xyz offset to the bed
 %   bed_position - xyz positions of the bed
-%   lat_lon - lat lon positions of ADCP
-%   projected - xy projected coordinates of the ADCP
+%   ll - lat lon positions of ADCP
+%   xy - xy projected coordinates of the ADCP
 %   velocity - get velocity profile data
 %   water_velocity - get velocity profile data corrected for ship motions
 %   btvel - ship velocity detected with  bottom tracking
@@ -95,16 +97,28 @@ classdef VMADCP < ADCP
     %   from ProjectedCoordinateSystem.
     %
     %   see also: VMADCP
-        xy_cor_system (1,1) ProjectedCoordinateSystem = UTMCoordinateSystem;
+        xy_cor_system (1,1) ProjectedCoordinateSystem = UTMCoordinateSystem
     
     % VMADCP/ll_provider 
     %
     %   Latitude, Longitude provider. Array of LatLonProvider objects. The
     %   first provider that has valid LatLon data is used. Default is
-    %   [LatLonVisea; LatLonNfiles]
+    %   [LatLonVisea; LatLonNfiles; LatLonTfiles; LatLonGGA]
     %
     %   see also: VMADCP, LatLonProvider
-        ll_provider (:,1) LatLonProvider = [LatLonVisea, LatLonNfilesGGA]
+        ll_provider (:,1) LatLonProvider
+
+    % VMADCP/shipvel_provider 
+    %
+    %   Allows to set how ship velocity is estimated. This is a vector with
+    %   ship velocity providers. If ship velocity cannot be obtained from
+    %   the first provider, is obtained from the second, and so forth. The
+    %   order of the objects in the vector sets the order of preference.
+    %   Objects are of class ShipVelocityProvider.
+    %   Default is [ShipVelocityFromBT; ShipVelocityFromGPS]
+    %
+    %   see also: VMADCP, LatLonProvider
+        shipvel_provider (:,1) ShipVelocityProvider
 
     
     % VMADCP/adcp_elevation
@@ -134,7 +148,8 @@ classdef VMADCP < ADCP
         function obj=VMADCP(varargin)
             obj=obj@ADCP(varargin{:});
             obj.xy_cor_system=UTMCoordinateSystem;
-            obj.ll_provider=[LatLonVisea; LatLonNfilesGGA];
+            obj.ll_provider=[LatLonVisea; LatLonNfilesGGA; LatLonTfiles; LatLonGGA];
+            obj.shipvel_provider=[ShipVelocityFromBT; ShipVelocityFromGPS];
             if numel(obj.filters)==1 && isa(obj.filters,'Filter')
                 obj.filters=SideLobeFilter;
             end
@@ -159,6 +174,10 @@ classdef VMADCP < ADCP
         end
         
         %%% Ordinary methods %%%
+        function vel=ship_velocity(obj,dst)
+            vel=obj.shipvel_provider.ship_velocity(obj,dst);
+        end
+        
         function vel=water_velocity(obj,dst)
         % VMADCP/water_velocity returns corrected water velocity
         %
@@ -172,7 +191,7 @@ classdef VMADCP < ADCP
             if nargin < 2
                 dst=obj.coordinate_system;
             end
-            vel=obj.velocity(dst)-obj.btvel(dst);
+            vel=obj.velocity(dst)+obj.ship_velocity(dst);
         end
         
         function btvel=btvel(obj,dst)
@@ -195,11 +214,11 @@ classdef VMADCP < ADCP
                 btvel=helpers.matmult(tm, btvel);
             end
         end
-        function [lat, lon]=lat_lon(obj)
-            [lat,lon]=obj.ll_provider.lat_lon(obj.raw);
+        function [lat, lon]=ll(obj)
+            [lat,lon]=obj.ll_provider.lat_lon(obj);
         end
-        function [x, y]=projected(obj)
-            [lat, lon]=obj.lat_lon;
+        function [x, y]=xy(obj)
+            [lat, lon]=obj.ll;
             [x, y]= obj.xy_cor_system.xy(lat,lon);
         end
         function pos=bed_offset(obj,dst)
@@ -212,21 +231,21 @@ classdef VMADCP < ADCP
         end
         function pos=bed_position(obj)
             pos=obj.bed_offset(CoordinateSystem.Earth);
-            [x,y]=obj.projected();
+            [x,y]=obj.xy();
             pos(:,:,:,1)=pos(:,:,:,1)+x;
             pos(:,:,:,2)=pos(:,:,:,2)+y;
             pos(:,:,:,3)=pos(:,:,:,3)+obj.adcp_elevation;
         end
         function pos=depth_cell_position(obj)
             pos=obj.depth_cell_offset(CoordinateSystem.Earth);
-            [x,y]=obj.projected();
+            [x,y]=obj.xy();
             pos(:,:,:,1)=pos(:,:,:,1)+x;
             pos(:,:,:,2)=pos(:,:,:,2)+y;
             pos(:,:,:,3)=pos(:,:,:,3)+obj.adcp_elevation;
         end
         function plot_track(obj)
             figure
-            [x,y]=obj.projected;
+            [x,y]=obj.xy;
             plot(x,y,'.-');
             axis equal
             xlabel([obj.xy_cor_system.description,' x (m)']);
