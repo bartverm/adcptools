@@ -126,16 +126,7 @@ pitch=atan(tan(pitch).*cos(roll));                                         %Calc
 % end
 
 %% Find beam angle
-switch inadcp.sysconf(9:10)
-    case '00'
-    bangle=15/180*pi;
-    case '10'
-    bangle=20/180*pi;
-    case '11'
-    bangle=30/180*pi;
-    case '01'
-    error('mapADCP:UnknownBangle','Unknown beam-angle, unable to continue');
-end
+bangle=get_beam_angle(inadcp)/180*pi;
 
 %% Determine range to the bottom along each beam
 D=double(inadcp.btrange)';                                                 % Transform the range into doubles

@@ -95,23 +95,7 @@ clear P                                                                    % cle
 
 %% Determine beam angle
 if isnan(bangle) 
-    if IsHADCP
-        bangle=max(double(inadcp.HADCPbeamangle)/180*pi);
-        if bangle==0
-            warning('mapADCP:UnknownBangle','Unknown beam-angle, Please provide one!')
-        end
-    else
-        switch inadcp.sysconf(9:10)
-            case '00'
-            bangle=15/180*pi;
-            case '10'
-            bangle=20/180*pi;
-            case '11'
-            bangle=30/180*pi;
-            case '01'
-                error('mapADCP:UnknownBangle','Unknown beam-angle, Please provide one');
-        end
-    end
+    bangle=get_beam_angle(inadcp)/180*pi;
 end
 
 %% Change angles to radians and remove invalid angles
