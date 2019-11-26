@@ -21,5 +21,5 @@ gpsvel(:,[1 2])=-[dxdt,dydt];
 if any(strcmpi(destcor,{'b','s','i'}))
     adcp2=adcp;
     adcp2.btvel=gpsvel;
-    [~, gpsvel]=corADCP(adcp2,destcor,'forceOrigin','e','UseExtHeading',true,'Beam3Misalign',misal);
+    [~, gpsvel]=corADCP(adcp2,destcor,'forceOrigin','e','UseExtHeading',true,'Beam3Misalign',misal,'usetilts',true);
 end

@@ -1,0 +1,161 @@
+[RDI WinRiver Configuaration File]
+Version=1.03.000
+[Subsection]
+Use All Ensembles=YES
+First Ensemble=0
+Last Ensemble=131071
+[Offsets]
+ADCP Transducer Depth [m]=0
+Magnetic Variation [deg]=1.1
+Heading Offset [deg]=45
+One Cycle K=0
+One Cycle Offset=0
+Two Cycle K=0
+Two Cycle Offset=0
+[Processing]
+Speed of Sound Correction=0
+Salinity [ppt]=0
+Fixed Speed Of Sound [m/s]=1500
+Mark Below Botom Bad=YES
+Backscatter Type=0
+Intensity Scale [dB/cts]=0.43
+Absorption [dB/m]=0.139
+Projection Angle [deg]=112.5743
+Cross Area Type=2
+Use 3 Beam Solution For BT=YES
+Use 3 Beam Solution For WT=NO
+BT Error Velocity Threshold [m/s]=0.1
+WT Error Velocity Threshold [m/s]=1.5
+BT Up Velocity Threshold [m/s]=10
+WT Up Velocity Threshold [m/s]=10
+Fish Intensity Threshold [counts]=50
+Near Zone Distance=2.1
+[Discharge]
+Top Discharge Estimate=0
+Bottom Discharge Estimate=0
+Power Curve Coef=0.1667
+Cut Top Bins=0
+Cut Bins Above Sidelobe=0
+River Left Edge Type=0
+Left Edge Slope Coeff=0.5
+River Right Edge Type=0
+Right Edge Slope Coeff=0.5
+Shore Pings Avg=10
+[Edge Estimates]
+Begin Shore Distance=0
+Begin Left Bank=NO
+End Shore Distance=0
+[Depth Sounder]
+Use Depth Sounder In Processing=NO
+Depth Sounder Transducer Depth [m]=0.3
+Depth Sounder Transducer Offset [m]=0
+Depth Sounder Correct Speed of Sound=YES
+Depth Sounder Scale Factor=1
+[GPS]
+GPS Time Delay [s]=0
+[External Heading]
+External Heading Offset=0
+[Recording]
+Filename Prefix=trans_25aug
+Output Directory=D:\USERDATA\fieldMahakam\ADCP_transect\muaramuntai25Aug\
+GPS Recording=YES
+DS Recording=NO
+EH Recording=NO
+Maximum File Size [MB]=0
+Comment #1=
+Comment #2=
+Next Transect Number=0
+[Commands]
+WS50
+WN80
+EX10111
+TP000000
+WE2000
+WF44
+WM12
+WO6,4
+WP1
+WV170
+BX400
+BM5
+BP1
+[Wizard Commands]
+BX250
+WF50
+WM1
+WN100
+WS25
+WV170
+TP000009
+[Wizard Info]
+ADCP Type=5
+Use Radio Modem=NO
+Use GPS=YES
+Use Depth Sounder=NO
+Use External Heading=NO
+Max Water Depth=20
+Max Water Speed=1.5
+Max Boat Speed=1.5
+Material=1
+Water Mode=0
+Beam Angle [deg]=20
+[Charts]
+East Velocity Minimum=-1.5
+East Velocity Maximum=1.5
+North Velocity Minimum=-1.5
+North Velocity Maximum=1.5
+Up Velocity Minimum=-0.3
+Up Velocity Maximum=0.3
+Error Velocity Minimum=-0.3
+Error Velocity Maximum=0.3
+Velocity Magnitude Minimum=0
+Velocity Magnitude Maximum=1.5
+Velocity Direction Minimum=0
+Velocity Direction Maximum=360
+Projected Velocity Minimum=-1.5
+Projected Velocity Maximum=1.5
+Depth Minimum=0
+Depth Maximum=40
+East Displacement Minimum=-190.118523174
+East Displacement Maximum=506.040641237
+North Displacement Minimum=-380.675545367
+North Displacement Maximum=419.297248206
+Intensity Minimum=40
+Intensity Maximum=255
+Backscatter Minimum=70
+Backscatter Maximum=100
+Correlation Minimum=0
+Correlation Maximum=128
+Discharge Minimum=-5
+Discharge Maximum=5
+Heading Minimum=0
+Heading Maximum=360
+Pitch Roll Minimum=-10
+Pitch Roll Maximum=10
+Water Speed Minimum=0
+Water Speed Maximum=1.5
+Boat Speed Minimum=0
+Boat Speed Maximum=1.5
+[Fixed Commands]
+CR1
+CF11110
+BA30
+BC220
+BE100
+BP1
+BR2
+ES0
+EX10111
+TE00000000
+TP000020
+WA50
+WE1500
+WF50
+WM1
+WN50
+WP1
+WS50
+WV170
+WZ005
+&R20
+
