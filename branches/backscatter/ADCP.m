@@ -3,8 +3,13 @@ classdef ADCP < handle
     %
     %   obj=ADCP() Constructs default object
     %
-    %   obj=ADCP(raw) Allows to assign the adcp structure to be used to the raw
-    %   property
+    %   obj=ADCP(...) You can pass different objects to the class on
+    %   initialization. Depending on the class of the object it will be
+    %   assigned to a property:
+    %   - Filter objects are appended to the filters property
+    %   - acoustics.Water is assigned to the water property
+    %   - acoustics.PistonTransducer is assigned to the transducer property
+    %   - struct objects are assigned to the raw property 
     %
     %   ADCP properties:
     %   raw - adcp structure read by readADCP.m
@@ -612,6 +617,13 @@ classdef ADCP < handle
         
         %%% Ordinary methods
         function reset_water(obj, varargin)
+        % Reset the water property with information from the raw data
+        %
+        %   reset_water(obj) assigns temperature and salinity properties of
+        %   the acoustics.Water object in the water property based on 
+        %   values stored in the raw data
+        %
+        %   see also: ADCP, water
             val=obj.water;
             val.temperature=obj.temperature;
             val.salinity=obj.salinity*1000;
@@ -619,9 +631,11 @@ classdef ADCP < handle
         function reset_transducer(obj, varargin)
         % Reset tranducer properties
         %
-        %   reset_tranducer(obj)
+        %   reset_tranducer(obj) assigns the frequency and radius
+        %   properties of the acoustics.Transducer object stored in the
+        %   transducer property
         %
-        % see also: ADCP
+        % see also: ADCP, transducer
             
             pt=obj.transducer;
             %TODO: compute SentinelV and MonitorV radii back from

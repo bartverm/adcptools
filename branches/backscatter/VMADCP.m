@@ -3,11 +3,20 @@ classdef VMADCP < ADCP
 %
 %   obj=VMADCP() Constructs default object
 %
-%   obj=VMADCP(raw) Allows to assign the adcp structure to be used to the 
-%   raw property
+%   obj=VMADCP(...) You can pass different objects to the class on
+%   initialization. Depending on the class of the object it will be
+%   assigned to a property:
+%   - Filter objects are appended to the filters property
+%   - acoustics.Water is assigned to the water property
+%   - acoustics.PistonTransducer is assigned to the transducer property
+%   - struct objects are assigned to the raw property
+%   - ProjectedCoordinateSystem object to the xy_cor_system property
+%   - LatLonProvider to the ll_provider property
+%   - ShipVelocityProvider to the shipvel_provider property
+%   
 %
 %   VMADCP properties:
-%   raw - adcp structure read by readADCP.m
+%   raw - adcp structure read by readADCP.m/readDeployment.m
 %   filters - filters for profiled data. Defaults to SideLobeFilter
 %   timezone - timezone of the data
 %   type - type of ADCP being used
@@ -158,6 +167,8 @@ classdef VMADCP < ADCP
                     obj.xy_cor_system=varargin{ca};
                 elseif isa(varargin{ca},'LatLonProvider')
                     obj.ll_provider=varargin{ca};
+                elseif isa(varargin{ca},'ShipVelocityProvider')
+                    obj.shipvel_provider=varargin{ca};
                 end
             end
 

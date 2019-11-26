@@ -92,7 +92,11 @@ long=reshape(long/180*pi,[],1);
 lat=reshape(lat/180*pi,[],1);
 a=6378.137;
 finv=298.257223563; f=1/finv;
-if mean(lat(goodff))>0, N0=0; else N0=10000; end
+if mean(lat(goodff))>0
+    N0=0;
+else
+    N0=10000; 
+end
 k0=0.9996;
 E0=500;
 n=f/(2-f);
@@ -112,5 +116,5 @@ UTMx=reshape(UTMx, size_in);
 UTMy=reshape(UTMy, size_in);
 % end
 
-end % function latlon2utm
+end % function geo2utm
 

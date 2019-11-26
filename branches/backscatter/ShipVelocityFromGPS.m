@@ -1,4 +1,15 @@
 classdef ShipVelocityFromGPS < ShipVelocityProvider
+% Computes ship velocity using GPS positions
+%
+%   Velocities are computed using GPS positions and the time the positions
+%   where measured. Differentials of time and space are estimated using
+%   central differences. Only horizontal ship velocity is computed.
+%   Vertical ship velocity is set to zero.
+%
+%   ShipVelocityFromGPS methods:
+%   ship_velocity - Ship velocity in m/s
+%
+%   see also: VMADCP, ProjectedCoordinateSystem, ShipVelocityProvider
     methods(Access=protected)
         function vel=get_ship_velocity(~,adcp,dst)
             [x, y] = adcp.xy;
