@@ -92,7 +92,7 @@ function [VEL,btvel]=corADCP(inadcp, DestCor, varargin)
 %                      David Vermaas
 %
 
-%    Copyright 2008-2010 Bart Vermeulen, Maximiliano Sassi, Ton Hoitink, David Vermaas
+%    Copyright 2019 Bart Vermeulen, Maximiliano Sassi, Ton Hoitink, David Vermaas
 %
 %    This file is part of ADCPTools.
 %
@@ -110,41 +110,26 @@ function [VEL,btvel]=corADCP(inadcp, DestCor, varargin)
 %    along with ADCPTools.  If not, see <http://www.gnu.org/licenses/>.
 
 
-%         Last edit:  21-10-2010, derivation of heading from external 
-%                     HeadBias made double
-%         Last edit:  17-08-2010, calculation of pitch from raw tilts moved
-%                     such that it's calculated before 180 degrees is added
-%                     to the roll for upward looking case, added
-%                     documentation for two and threebeam-solution
-
-%         Last edit:  17-05-2010, 180 degrees are added also for HADCP,
-%                     inverse matrix for beam to instrument is calculated
-%                     by taking the transposed
-
-%         Last edit:   10-07-2009 some minor corrections and cosmetics
-
-%         Last edit:   08-07-2009
-%         Last edit:   07-04-2008
 
 %% Parsing input
 P=inputParser;
 P.addRequired('inadcp',@isstruct)
 P.addRequired('DestCor',@(x) ischar(x) && numel(x)==1)
-P.addParamValue('EnsRange',[1 1],@(x) isnumeric(x) && numel(x)==2 && x(2)>=x(1) && x(1)>0)
-P.addParamValue('isHADCP',false,@islogical)
-P.addParamValue('CalMatrix',zeros(4,4),@(x) isnumeric(x) && isequal(size(x),[4,4]))
-P.addParamValue('OwnMatrix',zeros(4,4),@(x) isnumeric(x) && isequal(size(x),[4,4]))
-P.addParamValue('BeamAngle',0,@(x) isnumeric(x) && x>0)
-P.addParamValue('isUpward',false,@islogical)
-P.addParamValue('useTilts',true,@islogical)
-P.addParamValue('HeadAlign',0,@isnumeric)
-P.addParamValue('HeadBias',0,@isnumeric)
-P.addParamValue('ThreeBeams',true,@islogical)
-P.addParamValue('UseExtHeading',false,@islogical)
-P.addParamValue('Beam3Misalign',0,@(x) isnumeric(x) && numel(x)==1)
-P.addParamValue('isBT',true,@islogical) % true when bottom track is present
-P.addParamValue('forceOrigin',[],@(x) isempty(x) || (ischar(x) && isscalar(x) && any(strcmpi(x,{'b','i','s','e'}))) )
-P.addParamValue('twoBsol',0,@(x) isnumeric(x) && numel(x) == 1 && x>=0 && x<=4 && mod(x,1)==0)
+P.addParameter('EnsRange',[1 1],@(x) isnumeric(x) && numel(x)==2 && x(2)>=x(1) && x(1)>0)
+P.addParameter('isHADCP',false,@islogical)
+P.addParameter('CalMatrix',zeros(4,4),@(x) isnumeric(x) && isequal(size(x),[4,4]))
+P.addParameter('OwnMatrix',zeros(4,4),@(x) isnumeric(x) && isequal(size(x),[4,4]))
+P.addParameter('BeamAngle',0,@(x) isnumeric(x) && x>0)
+P.addParameter('isUpward',false,@islogical)
+P.addParameter('useTilts',true,@islogical)
+P.addParameter('HeadAlign',0,@isnumeric)
+P.addParameter('HeadBias',0,@isnumeric)
+P.addParameter('ThreeBeams',true,@islogical)
+P.addParameter('UseExtHeading',false,@islogical)
+P.addParameter('Beam3Misalign',0,@(x) isnumeric(x) && numel(x)==1)
+P.addParameter('isBT',true,@islogical) % true when bottom track is present
+P.addParameter('forceOrigin',[],@(x) isempty(x) || (ischar(x) && isscalar(x) && any(strcmpi(x,{'b','i','s','e'}))) )
+P.addParameter('twoBsol',0,@(x) isnumeric(x) && numel(x) == 1 && x>=0 && x<=4 && mod(x,1)==0)
 P.FunctionName='coradcp';
 P.parse(inadcp,DestCor,varargin{:})
 
@@ -187,7 +172,7 @@ Rangefilter=EnsRange(1):EnsRange(2);
 
 %%  Check if water and BT velocity are converted to double already
 if (~isfloat(inadcp.VEL))||(~isHADCP && isBT && ~isfloat(inadcp.btvel))
-    error('Velocities should be converted to double first');
+    [inadcp.VEL, inadcp.btvel]=filterADCP(inadcp,'');
 end
 
 %% Determine type of transformation and generate matrices
@@ -365,12 +350,11 @@ else
     btvel = nan;
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%                         End of the function                             %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%%          FUNCTION TO COMPUTE TRANSFORMATION MATRIX
 function biM=beam2instr(P,conv,alpha,isHADCP,isInv,twoBsol)
+% Compute beam to instrument transformation matrix
+%
+% TODO: make this a public function, usefull also for other operations
+
 if any(strcmp(P.UsingDefaults,'CalMatrix')) %If no calibration matrix is given
     if alpha==0
         error('Could not find the beam angle in the raw data file! \n Please supply the angle through the property ''BeamAngle''');
@@ -448,8 +432,12 @@ else %%% otherwise P is the calibration matrix
     biM=P.Results.CalMatrix;
 end
 
-%%          FUNCTION TO COMPUTE ROTATION MATRIX
+
 function htM=HeadTilt(heading, pitch, roll,addRoll, useTilts, nens,isInv)
+% Computes the tilting rotation matrix
+%
+% TODO: make this function public, also usefull for other functions
+
 % all angles shoud be given in centi-degrees (0.01)
 if useTilts
     pitch=double(pitch)/100/180*pi;
@@ -473,31 +461,14 @@ htM = [ch.*cr+sh.*sp.*sr,  sh.*cp,          ch.*sr-sh.*sp.*cr,  zeros(1,1,nens);
        zeros(1,1,nens),    zeros(1,1,nens), zeros(1,1,nens),    ones(1,1,nens)];
 if isInv, htM=permute(htM,[2,1,3]);end
 
-%%          FUNCTION TO MULTIPLY MATRICES ALONG 3rd DIMENSION
 function MM=MatMult(A,B)
-% Multiply matrices along third dimension
-nrows=size(A,1);
-ncols=size(B,2);
+% Matrix multiplication function, now calls helpers,matmult function
+    MM=helpers.matmult(A,B,1,2);
 
-indim=size(A,2);
-if indim~=size(B,1)
-    error('MatMult:InDim','Inner matrix dimensions should agree')
-end
-n3=max(size(A,3),size(B,3));
-if (size(A,3)~=size(B,3)) && size(A,3)~=1 && size(B,3)~=1
-    error('MatMult:Wrong3dim','Third dimension size must be equal or \n at least one variable must have third dimension size equal to one')
-end
-MM=zeros(nrows,ncols,n3);
-for cntrow=1:nrows
-    for cntcol=1:ncols
-        for cntdim=1:indim
-               MM(cntrow,cntcol,:)=MM(cntrow,cntcol,:)+A(cntrow,cntdim,:).*B(cntdim,cntcol,:);
-        end
-    end
-end
-
-%%          FUNCTION TO CHECK DIFFERENCES IN FIXED LEADER (from readadcp2)
 function issame=CheckFL(nValidFiles,dataout)
+% Check differences in fixed leader
+%
+% TODO: remove this function?
 
 issame=true;                                                               % Initialize result as true
 if nValidFiles<2                                                           % If less than two files
