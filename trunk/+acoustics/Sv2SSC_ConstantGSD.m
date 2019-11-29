@@ -79,10 +79,10 @@ classdef Sv2SSC_ConstantGSD < acoustics.Sv2SSC
             [gamma_e,k_ref,int_beta]=deal(nan(numel(obj.attenuation_idx),1));
             for cs=1:numel(obj.attenuation_idx)
                 ensid=ensemble_idx{obj.attenuation_idx(cs)};
-                k_ref(cs)=nanmean(beta_all(1,ensid,:),[2,3]).^b;
-                beta_cur=nanmean(beta_all(:,ensid,:),[2,3]);
-                srange_cur=nanmean(srange(:,ensid,:),[2,3]);
-                cell_idx_cur=mode(cell_idx{obj.attenuation_idx(cs)},[2,3]);
+                k_ref(cs)=nanmean(nanmean(beta_all(1,ensid,:),2),3).^b;
+                beta_cur=nanmean(nanmean(beta_all(:,ensid,:),2),3);
+                srange_cur=nanmean(nanmean(srange(:,ensid,:),2),3);
+                cell_idx_cur=mode(reshape(cell_idx{obj.attenuation_idx(cs)},1,[]));
                 int_beta(cs)=sum((beta_cur(1:cell_idx_cur-1)+beta_cur(2:cell_idx_cur)).*diff(srange_cur(1:cell_idx_cur))/2); % trapezoidal integration
                 gamma_e(cs)=(k_ref(cs)-beta_cal(cs)/ms_cal(cs))./int_beta(cs);
             end
