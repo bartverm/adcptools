@@ -33,7 +33,8 @@ classdef Sv2SSC_Power < acoustics.Sv2SSC
         %   see also: Sv2SSC_Power, ADCP, acoustics
             sv_cal=reshape(obj.sv_for_calibration(),[],1);
             ssc=reshape(log10([obj.samples.mass_concentration]/1000),[],1); % mass concentration in mg/L
-            [pars, stdpars]=lscov([sv_cal ones(size(sv_cal))],ssc);
+            fgood=isfinite(sv_cal) & isfinite(ssc);
+            [pars, stdpars]=lscov([sv_cal(fgood) ones(size(sv_cal(fgood)))],ssc(fgood));
             a=pars(1);
             stda=stdpars(1);
             b=pars(2);
