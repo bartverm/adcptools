@@ -40,44 +40,44 @@
 \maketitle
 \tableofcontents
 \section{Introduction}
-In this document first a theoretical overview is given of different methods to compute sediment concentration from backscatter strength of ADCPs. Subsequently, a step-by-step guide explains how to perform the calibration using the adcptools.
+In this document first a theoretical overview is given of different methods to compute sediment concentration from backscatter backscatter of ADCPs. Subsequently, a step-by-step guide explains how to perform the calibration using the adcptools.
 
 \section{Calibration methods in general}
 \subsection{Theory}
 \label{sec:general_theory}
-To obtain sediment concentration from the strength of the echo received by the ADCP, we first want to estimate the backscatter strength, i.e. the strength with which sediment reflects incoming sound, since the backscatter strength directly relates to sediment concentration. 
+To obtain sediment concentration from the intensity of the echo received by the ADCP, we first want to estimate the backscatter intensity, i.e. the intensity with which sediment reflects incoming sound, since the backscatter intensity directly relates to sediment concentration. 
 
-The backscatter strength can be computed from the raw echo the instrument receives. The strength of this echo is determined by the strength of sound emitted, the spatial spreading, background noise, the directional sensitivity of the transducer, the interference of sound near the transducer, the attenuation of sound by water and sediment and the strength with which the sound is reflected by particles in a volume, the so-called volume backscatter strength.  All of these factors can be determined a-priori, except for the sediment attenuation and backscatter strength, since we do not yet know the sediment concentration. Because of this, we start by estimating the backscatter strength under the assumption that sediment is not inducing any sound attenuation:
+The backscatter intensity can be computed from the raw echo the instrument receives. The intensity of this echo is determined by the intensity of sound emitted, the spatial spreading, background noise, the directional sensitivity of the transducer, the interference of sound near the transducer, the attenuation of sound by water and sediment and the intensity with which the sound is reflected by particles in a volume, the so-called volume backscatter strength.  All of these factors can be determined a-priori, except for the sediment attenuation, since we do not yet know the sediment concentration. Because of this, we start by estimating the backscatter intensity under the assumption that sediment is not inducing any sound attenuation:
 \begin{align}
   S_{v,\alpha_s=0}= C + 10\log_{10}\dfrac{(T+273.16)R^2 \psi^2}{LP_\text{T}}  + 2\alpha_\text{w}R + 10\log10\left(10^{\frac{K_\text{c}E}{10}}-10^{\frac{K_\text{c}E_\text{r}}{10}}\right)
 \end{align}
 
-The challenge is to find a relation between the backscatter strength, attenuation, and sediment concentration. Several methods have been proposed to establish such relation, and most involve some kind of calibration using water samples from which mass concentration and sometimes also other sediment characteristics can be estimated.
-In this document we will consider two methods. The first, a simpler method, is the so-called power-law method \citep{hoitink2005} and the second, more elaborate method, is the so-called constant grain size distribution methods \citep{sassi2012}.
+The challenge is to find a relation between the backscatter intensity, attenuation, and sediment concentration. Several methods have been proposed to establish such relation, and most involve some kind of calibration using water samples from which mass concentration and sometimes also other sediment characteristics can be estimated.
+In this document we will consider two methods. The first, a simpler method, is the so-called power-law method \citep{hoitink2005} and the second, more elaborate method, is the so-called constant grain size distribution method \citep{sassi2012}.
 \subsection{How to}
 \label{sec:general_howto}
-\subsubsection{Backscatter strength}
-For all calibration methods it is necessary to estimate the uncorrected backscatter strength. In \lstinline!adcptools! this computation is implemented in the \lstinline!ADCP! class. This class requires a structure read by \lstinline!readDeployment! to be constructed, so we start by reading in the necessary data:
+\subsubsection{Backscatter intensity}
+For all calibration methods it is necessary to estimate the uncorrected backscatter intensity. In \lstinline!adcptools! this computation is implemented in the \lstinline!ADCP! class. This class requires a structure read by \lstinline!readDeployment! to be constructed, so we start by reading in the necessary data:
 \begin{lstlisting}
 path='./raw_data/'; % point this to where your data are located
 depname='survey'; % deployment name of the data to read
 dat=readDeployment(depname,path); % load the data
 \end{lstlisting}
 
-Once the data were loaded an \lstinline!ADCP! object can be constructed:
+Once the data were loaded an \lstinline!ADCP! object can be constructed\footnote{In case of a vessel mounted deployment you may consider using the \lstinline!VMADCP! class instead, for added functionaly specific for vessel mounted deployments (e.g. ship velocity computations, depth computations, GPS data processing). This will not affect acoustic computations.}:
 \begin{lstlisting}
 A=ADCP(dat); % Construct ADCP object
 \end{lstlisting}
-In case of a vessel mounted deployment you may consider using the \lstinline!VMADCP! class instead, for added functionaly specific for vessel mounted deployments.
 
-The \lstinline!ADCP! class is able to compute the uncorrected backscatter strength, but before doing so it is important to check, and possibly change a number of properties of the object.
+
+The \lstinline!ADCP! class is able to compute the uncorrected backscatter intensity, but before doing so it is important to check, and possibly change a number of properties of the object.
 The raw PD0 data that has been read does not always allow to determine the kind of ADCP the data was collected with. The type of ADCP is important to correctly estimate all instrument constants for Equation~\ref{eq:powerlaw}. The type of ADCP can be set with the \lstinline!type! property of the \lstinline!ADCP! object. The value is an enumeration of class \lstinline!ADCP_Type!: 
 \begin{lstlisting}
 A.type=ADCP_Type.Monitor; % set correct type of ADCP, change to your own settings
 \end{lstlisting}
 A list of ADCP types is obtained by typing \lstinline!ADCP_Type.! and then pressing the TAB button.
 
-Then it is important to check the water properties, needed for the acoustics computations. These can be checked by getting the \lstinline!acoustics.Water! object contained in the \lstinline!water! proprety. The salinity and temperature should meet expectations:
+Then it is important to check the water properties, needed for the acoustics computations. These can be checked by getting the \lstinline!acoustics.Water! object contained in the \lstinline!water! property. The salinity\footnote{Salinity is specified in ppm, roughly PSU*1000} and temperature should meet conditions during data collection: 
 \begin{lstlisting}
 plot(A.water.salinity)
 figure
@@ -87,22 +87,22 @@ These properties are read from the ADCP raw data.
 
 Finally it is important to check the transducer characteristics. These are obtained with the \lstinline!transducer! property. Make sure, \lstinline!depth!, \lstinline!radius! and \lstinline!frequency! are correct.
 
-Now it is possible to obtain the uncorrected backscatter strength $S_{v,alpha_s=0}$:
+Now it is possible to obtain the uncorrected backscatter intensity $S_{v,alpha_s=0}$:
 \begin{lstlisting}
-sv1=A.backscatter(:,:,1); % backscatter strength as measured in the first acoustic beam
-imagesc(sv1) % plot the backscatter strength
+sv1=A.backscatter(:,:,1); % backscatter intensity as measured in the first acoustic beam
+imagesc(sv1) % plot the backscatter intensity
 \end{lstlisting}
 
-The backscatter strength involves the computation of many instrument properties. All relevant properties can be found in the help of the \lstinline!ADCP! class, under the header \lstinline!Backscatter!.
+The backscatter intensity involves the computation of many instrument properties. All relevant properties can be found in the help of the \lstinline!ADCP! class, under the header \lstinline!Backscatter!.
 
 \subsubsection{Water samples and calibration objects}
-For all calibration it is necessary to specify water samples and ADCP data, and all calibration are expected to produce suspended sediment mass concentration. Also, for all calibrations it will be necessary to match ADCP and water samples data. All this functionality is implemented in the \lstinline!acoustics.Sv2SSC! abstract base class. This means that the class cannot be used directly, but all different calibrations will derive from this base class, and share its properties and methods.
+For all calibration it is necessary to specify water samples and ADCP data, and all calibration are expected to produce suspended sediment mass concentration. Also, for all calibrations it will be necessary to match ADCP and water samples data. All this functionality is implemented in the \lstinline!acoustics.Sv2SSC! abstract base class \footnote{An abstract base class is a class that implements some basic functionality, common for all subclasses. The term abstract refers to the fact that the class can not be used directly, since it requires additional implementation to function properly (see the methods defined as Abstract in the code, these lack implementation). Implementation of Abstract methods is done in so-called concrete subclasses that can actually be used. For this reason an abstract base class can also be seen as a sort of template or interface}. This means that the class cannot be used directly, but all different calibrations will derive from this base class, and share its properties and methods.
 
 Water samples are defined with the \lstinline!acoustics.WaterSample! class. For each water sample collected, an object is made. E.g. if we collected 10 water samples we will create an array of 10 objects:
 \begin{lstlisting}
 samples(10)=acoustics.WaterSample; % Construct 10 water samples
 \end{lstlisting}
-Now for each of the samples it is possible to define the properties. The most important are the \lstinline!time!, needed to match with ADCP time. Note that if the time zone differes between ADCP and Water Samples, the time zone must be specified in the \lstinline!time! property (see help on how to do that) and in the \lstinline!timezone! property of the ADCP. Then the \lstinline!distance! property defines the vertical distance between transducer and water sample. \lstinline!mass_conentration! defines the mass concentration. It is also possible to assign a grain size distribution with the \lstinline!distribution! property. Check the help of the property to see how to define that. 
+Now for each of the samples it is possible to define the properties. The most important are the \lstinline!time!, needed to match with ADCP time. Note that if the time zone differes between ADCP and Water Samples, the time zone must be specified in the \lstinline!time! property (see help on how to do that) and in the \lstinline!timezone! property of the ADCP. Then the \lstinline!distance! property defines the vertical distance between transducer and water sample. \lstinline!mass_conentration! defines the mass concentration. It is also possible to assign a grain size distribution with the \lstinline!distribution! property. Check the help of the property to see how to define that. This allow to estimate backscatter and attenuation based on the grain size distribution. This is usually less reliable than the results from the calibration. 
 
 Once the water samples are defined, they can be assigne to a calibration object:
 \begin{lstlisting}
@@ -114,12 +114,12 @@ We also assigned the ADCP object. The last property that must be defined is the 
 \begin{lstlisting}
 S.duration=duration(0,3,0); % Set the averaging duration to 3 minutes
 \end{lstlisting}
-The methods defined in the \lstinline!acoustics.Sv2SSC! class can now be used to get the right backscatter strength matching with the samples with \lstinline!sv_for_calibration! method. This returns an averaged backscatter strength for every water sample collected. A \lstinline!plot! method, allows to easily inspect whether the mass concentrations and the backscatter strengths show a reasonable relation:
+The methods defined in the \lstinline!acoustics.Sv2SSC! class can now be used to get the right backscatter intensity matching with the samples with \lstinline!sv_for_calibration! method. This returns an averaged backscatter intensity for every water sample collected. A \lstinline!plot! method, allows to easily inspect whether the mass concentrations and the backscatter intensitys show a reasonable relation:
 \begin{lstlisting}
-plot(S) % plot the backscatter strength vs. the mass concentration for the given water samples
+plot(S) % plot the backscatter intensity vs. the mass concentration for the given water samples
 \end{lstlisting}
 
-Finally the class defines the method \lstinline!mass_concentration! that can be used to estimated mass concentration from ADCP backscatter. This function is implemented differently for each method, but the use is the same. If no argument is passed, the concentration is determined for the backscatter of the ADCP object used for calibration. Alternatively an array of backscatter strengths can be passed to the method and the corresponding mass concentrations are returned:
+Finally the class defines the method \lstinline!mass_concentration! that can be used to estimated mass concentration from ADCP backscatter. This function is implemented differently for each method, but the use is the same. If no argument is passed, the concentration is determined for the backscatter of the ADCP object used for calibration. Alternatively an array of backscatter intensitys can be passed to the method and the corresponding mass concentrations are returned:
 \begin{lstlisting}
 ssc=S.mass_concentration; % get the mass concentration for the ADCP used in the calibration
 imagesc(ssc(:,:,1)) % plot the sediment concentration based on the first acoustic beam
@@ -128,7 +128,7 @@ imagesc(ssc(:,:,1)) % plot the sediment concentration based on the first acousti
 Each calibration will define its own properties and method specific for that calibration. Detailes are given below.
 \section{The power law method}
 \subsection{Theory}
-The power law method assumes a relation between suspended sediment concentration $M$ and the backscatter strength $S_v$:
+The power law method assumes a relation between suspended sediment concentration $M$ and the backscatter intensity $S_v$:
 \begin{equation}
   \frac{M}{M_0}=10^{aS_{v,\alpha_s=0}+b}
   \label{eq:powerlaw}
@@ -138,12 +138,12 @@ with $M_0$ equal to \SI{1}{\milli\g\per\liter}. The values for $a$ and $b$ are o
 \subsection{How to}
 The class to perform the power law calibration is the \lstinline!acoustisc.Sv2SSC_Power! class. The class can be constructed as explained in section~\ref{sec:general_howto}. The class defines additional methods specific to this calibration method. The \lstinline!calibrate_a_b! method performs the regression as explained above and outputs the parameters $a$ and $b$. It can also return the standard deviation of the two estimated parameters (see help of the class). 
 
-Eventually backscatter strength can be converted to mass concentration with the \lstinline!mass_concentration! method as explained in section~\ref{sec:general_howto}
+Eventually backscatter intensity can be converted to mass concentration with the \lstinline!mass_concentration! method as explained in section~\ref{sec:general_howto}
 
 \section{The constant grain size distribution method}
 
 \subsection{Theory}
-The method proposed by \citet{sassi2012} assumes a constant grain size distribution over the measuring range, which means that the specific attenuation and specific backscatter strength are constant over the measuring range. This means that this method should be particularly applicable in regions where no major grain size distribution changes are expected over the measured range are expected.
+The method proposed by \citet{sassi2012} assumes a constant grain size distribution over the measuring range, which means that the specific attenuation and specific backscatter intensity are constant over the measuring range. This means that this method should be particularly applicable in regions where no major grain size distribution changes are expected over the measured range.
 
 The method consists of calibrating two parameters:
 \begin{itemize}
@@ -238,7 +238,7 @@ The last step in the calibration is to obtain the sediment concentrations. this 
 %  \item Compute $\rho_s$, if volume and mass concentration are available for sample (optional)
 %  \item Calibrate $K_c$ and $C$ if GSD is available for samples collected near the transducer (optional)
 %  \item Calibrate $b$ and $\xi_s$ from mass concentration samples
-%  \item Compute mass concentration profiles for volume backscatter strength
+%  \item Compute mass concentration profiles for volume backscatter intensity
 %\end{enumerate}
 %
 %\subsection{Calibration of $\rho_s$ (optional)}
@@ -248,7 +248,7 @@ The last step in the calibration is to obtain the sediment concentrations. this 
 %\end{equation}
 %Specifying the \lstinline!volume_concentration! and \lstinline!mass_concentration! properties of the \lstinline!acoustics.WaterSample! class will automatically compute the density given in the \lstinline!sediment_density! property.
 %\subsection{Calibration of $K_c$ and $C$ (optional)}
-%The basis for this calibration is that we can compute the volume backscatter strength $S_v$ both from the GSD and sediment concentration and from the ADCP backscatter. Than we can estimate $K_c$ and $C$ as unknowns.
+%The basis for this calibration is that we can compute the volume backscatter intensity $S_v$ both from the GSD and sediment concentration and from the ADCP backscatter. Than we can estimate $K_c$ and $C$ as unknowns.
 %The first step is to estimate the $k_s^2$. This is based on the mean backscatter cross-section $\langle\sigma_{bs}\rangle$ that is computed from the form function and the GSD:
 %\begin{align*}
 %  S_v=&10\log_{10}(k_s^2M_s)\\
@@ -289,7 +289,7 @@ The last step in the calibration is to obtain the sediment concentrations. this 
 %Now that the $k_s^2$ is computed the $S_v$ is easily obtained having the sediment concentration.
 %
 %\subsection{Calibration}
-%For the calibration we will need to first estimate the backscatter strength under the assumption that there is no sediment attenuation $S_{v,\alpha_s=0}$:
+%For the calibration we will need to first estimate the backscatter intensity under the assumption that there is no sediment attenuation $S_{v,\alpha_s=0}$:
 %\begin{align}
 %  S_{v,\alpha_s=0}= C + 10\log_{10}\dfrac{(T+273.16)R^2 \psi^2}{PL_\text{T}}  + 2\alpha_\text{w}R + 10\log10\left(10^{\frac{K_\text{c}E}{10}}-10^{\frac{K_\text{c}E_\text{r}}{10}}\right)
 %\end{align}
