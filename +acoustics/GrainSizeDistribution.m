@@ -282,7 +282,7 @@ classdef GrainSizeDistribution < handle
             end
             dens=reshape(dens,1,[]);
             func=@(x) x.^2.*acoustics.GrainSizeDistribution.norm_scatter_xsection_static(wave_number*x);
-            zet=3/4./dens.obj.gsd_int(func,true)./obj.moment(3,true);
+            zet=3/4./dens.*obj.gsd_int(func,true)./obj.moment(3,true);
         end
         function check_diameter_fraction(obj)
             % acoustics.GrainSizeDistribution/check_diameter_fraction 
