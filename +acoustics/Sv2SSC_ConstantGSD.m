@@ -105,7 +105,7 @@ classdef Sv2SSC_ConstantGSD < acoustics.Sv2SSC
         %   see also: Sv2SSC_ConstantGSD, acoustics
         
             if nargin < 4
-                [b_tmp,gamma_e_tmp]=obj.calibrate_b_gamma();
+                [b_tmp,~,gamma_e_tmp]=obj.calibrate_b_gamma();
                 gamma_e=nanmedian(gamma_e_tmp);
                 if nargin < 3
                     b=b_tmp;
