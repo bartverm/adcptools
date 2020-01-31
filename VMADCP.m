@@ -62,6 +62,7 @@ classdef VMADCP < ADCP
 %   slant_range_to_bed - slant range to observed bed
 %
 %   *Backscatter*
+%   bandwidth - bandwidth used for measurements (0=wide, 1=narrow)
 %   current - transmit current of transducer (A)
 %   current_factor - factor for current computation from ADC channel
 %   voltage - transmit voltage of transducer (V)

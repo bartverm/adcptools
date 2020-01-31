@@ -54,6 +54,10 @@ for cf=1:nFiles
     fid=fopen(filenames{cf},'r'); % open file
     assert(fid~=-1,'readViseaExtern:FileNotOpen',['Could not open file:',filenames{cf}]); % check file has opened successfully
     head=fgetl(fid); % read header line
+    if head==-1 % if head could not be read, fail quitly
+        fclose(fid); 
+        continue
+    end
     assert(strcmp(head(1:42),'[YYYY/MM/DD, HH:MM:SS.SSS] ENSEMBLE NUMBER'),'readViseaExtern:BadHead',['Could not read Visea exter file: ',filenames{cf}]) % Check the header looks familiar
     head(1:43)=[]; % Remove fixed part of header
     head(end)=[]; % Remove newline character
