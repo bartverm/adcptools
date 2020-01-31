@@ -141,7 +141,7 @@ for cntfiles=1:nValidFiles
 end
 if ~CheckFL(nValidFiles)                                                   % If configuration in fixed leader changes
     warning('readADCP:ConfigChange',...                                   % Generate warning
-        'The configuration seems to change between files. \n Using readadcp2 on files with different configuration is not recommended, but will still work') 
+        'The configuration seems to change between files. \n Using readADCP on files with different configuration is not recommended, but will still work') 
 end
 %% Preallocate and read data
 

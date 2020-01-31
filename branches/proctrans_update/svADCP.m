@@ -145,4 +145,4 @@ two_alpha_R = 2*alpha*repmat(B,nbins,1)./repmat(cosd(bangle),nbins,1) +...
 
 %% Step 7: calculate profiles of backscatter coefficient
 ECHO = double(inadcp.ECHO(:,EnsIndex,:));                                  % echo intensity (counts)
-SV = C + 10*log10((Tx+273.16).*R.^2.*pt.near_field_correction(R).^2) - LDBM - PDBW + two_alpha_R + 10*log10(10.^(Kc.*ECHO/10)-10.^(Kc.*Er/10));
+SV = C + 10*log10((Tx+273.16).*R.^2.*pt.near_field_correction(R).^2) - LDBM - PDBW + two_alpha_R + 10*log10(10.^(Kc.*(ECHO-Er)/10)-1);

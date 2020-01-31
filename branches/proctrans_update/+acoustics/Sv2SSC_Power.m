@@ -33,29 +33,37 @@ classdef Sv2SSC_Power < acoustics.Sv2SSC
         %   see also: Sv2SSC_Power, ADCP, acoustics
             sv_cal=reshape(obj.sv_for_calibration(),[],1);
             ssc=reshape(log10([obj.samples.mass_concentration]/1000),[],1); % mass concentration in mg/L
-            [pars, stdpars]=lscov([sv_cal ones(size(sv_cal))],ssc);
+            fgood=isfinite(sv_cal) & isfinite(ssc);
+            [pars, stdpars]=lscov([sv_cal(fgood) ones(size(sv_cal(fgood)))],ssc(fgood));
             a=pars(1);
             stda=stdpars(1);
             b=pars(2);
             stdb=stdpars(2);
         end
-        function ssc=mass_concentration(obj,inadcp)
+        function ssc=mass_concentration(obj,adcp_or_sv)
         % Computes the mass concentration given backscatter strength
         %
         %   ssc=mass_concentration(obj) computes the suspended sediment
         %   concentration in g/L using the backscatter strength for the
         %   ADCP objects.
         %
-        %   ssc=mass_concentration(obj,sv) specify the adcp object to
+        %   ssc=mass_concentration(obj,adcp) specify the adcp object to
         %   compute the backscatter for.
+        %
+        %   ssc=mass_concentration(obj,sv) specify the volume backscatter
+        %   strength to compute the sediment concentration for.
         %
         %   see also: Sv2SSC_Power, Sv2SSC, acoustics, ADCP
             if nargin<2
-                inadcp=obj.adcp;
+                adcp_or_sv=obj.adcp;
             end
-            sv=inadcp.backscatter();
+            if isa(adcp_or_sv,'ADCP')
+                sv=adcp_or_sv.backscatter();
+            else
+                sv=adcp_or_sv;
+            end
             [a,b]=obj.calibrate_a_b();
-            ssc=1e3*10.^(a*sv+b); % output kg/m3
+            ssc=1e3*10.^(a*sv+b); % output kg/m3            
         end
         function plot(obj)
         % Plot the calibration

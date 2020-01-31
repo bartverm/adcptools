@@ -58,6 +58,7 @@ classdef ADCP < handle
     %   depth_cell_slant_range - slant range to depth cell
     %
     %   *Backscatter*
+    %   bandwidth - bandwidth used for measurements (0=wide, 1=narrow)
     %   current - transmit current of transducer (A)
     %   current_factor - factor for current computation from ADC channel
     %   voltage - transmit voltage of transducer (V)
@@ -336,7 +337,14 @@ classdef ADCP < handle
         %
         % see also: ADCP
         pressure
-        
+
+        % ADCP/bandwidth read only property
+        %
+        % bandwidth used (0=wide, 1=narrow)
+        %
+        % see also: ADCP
+        bandwidth
+
         % ADCP/current read only property
         %
         % current on transducer (A)
@@ -509,6 +517,9 @@ classdef ADCP < handle
         end
         function val=get.salinity(obj)
             val=double(obj.raw.salinity);
+        end
+        function val=get.bandwidth(obj)
+            val=double(obj.raw.bandwidth(obj.fileid));
         end
         function val=get.pressure(obj)
             funderflow=obj.raw.pressure>3e9;
@@ -689,7 +700,7 @@ classdef ADCP < handle
                     end
                 case '110'
                     switch obj.type
-                        case {ADCP_Type.SentinelV,ADCP_Type.MonitorV}
+                        case {ADCP_Type.SentinelV}
                             pt.frequency=491.52e3; % Sentinel V operation manual
                             pt.radius=nan;
                         case {ADCP_Type.Monitor,ADCP_Type.Sentinel}
