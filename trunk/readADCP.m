@@ -93,6 +93,7 @@ for cntfile=1:nfiles                                                       % Loo
         headpos=searchHead(fid,fpos);                                      %Search for header
         if headpos==-1, break, end                                         %If no header was found, exit the loop
         if ~isvalens(fid,headpos)                                          %If ensemble is not valid
+           warning('readADCP:CorruptEnsemble',['Invalid ensemble: ',num2str(enscnt+1)]) %Generate warning
            fpos=headpos+1;                                                 %Point fpos to position after last header
            continue                                                        %Restart loop
         end
@@ -447,7 +448,6 @@ if checksum==bin2dec(sumbytes(max((length(sumbytes)-15),1):end))                
     valens=true;
 else
     valens=false;
-    warning('readADCP:CorruptEnsemble',['Invalid ensemble: ',num2str(enscnt+1)]) %Generate warning
 end
 
 function headpos=searchHead(fid,fpos)

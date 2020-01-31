@@ -111,23 +111,23 @@ for cf=1:numel(filenames)
             out.soundAbsorbtion(csect)=dat{6};
             dat=textscan(fid,'%f %f %f %f %f %f %f %f %f %f %f %f %f',nrows);
             if isfield(out,'veldepth') && nrows > size(out.veldepth,1)
-                pad=ones(nrows-size(out.veldepth,1),size(out.veldepth,2));
-                out.veldepth=cat(1,out.veldepth,pad*nan);
-                out.velmag=cat(1,out.velmag,pad*nan);
-                out.veldir=cat(1,out.veldir,pad*nan);
-                out.pgood=cat(1,out.pgood,pad*nan);
-                out.Q=cat(1,out.Q,pad*nan);
-                pad=repmat(pad,[1 1 4]);
-                out.vel=cat(1,out.vel,pad*nan);
-                out.echo=cat(1,out.echo,pad*nan);
+                pad=nan(nrows-size(out.veldepth,1),size(out.veldepth,2));
+                out.veldepth=cat(1,out.veldepth,pad);
+                out.velmag=cat(1,out.velmag,pad);
+                out.veldir=cat(1,out.veldir,pad);
+                out.pgood=cat(1,out.pgood,pad);
+                out.Q=cat(1,out.Q,pad);
+                pad=nan([size(pad) 4]);
+                out.vel=cat(1,out.vel,pad);
+                out.echo=cat(1,out.echo,pad);
             end % isfield out
-            out.veldepth(:,csect)=dat{1};
-            out.velmag(:,csect)=dat{2};
-            out.veldir(:,csect)=dat{3};
-            out.vel(:,csect,:)=cat(3,dat{4},dat{5},dat{6},dat{7});
-            out.echo(:,csect,:)=cat(3,dat{8},dat{9},dat{10},dat{11});
-            out.pgood(:,csect)=dat{12};
-            out.Q(:,csect)=dat{13};
+            out.veldepth(1:nrows,csect)=dat{1};
+            out.velmag(1:nrows,csect)=dat{2};
+            out.veldir(1:nrows,csect)=dat{3};
+            out.vel(1:nrows,csect,:)=cat(3,dat{4},dat{5},dat{6},dat{7});
+            out.echo(1:nrows,csect,:)=cat(3,dat{8},dat{9},dat{10},dat{11});
+            out.pgood(1:nrows,csect)=dat{12};
+            out.Q(1:nrows,csect)=dat{13};
             csect=csect+1;
         end % while ~feof 
     end % if cnt == 7

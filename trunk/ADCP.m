@@ -58,6 +58,7 @@ classdef ADCP < handle
     %   depth_cell_slant_range - slant range to depth cell
     %
     %   *Backscatter*
+    %   bandwidth - bandwidth used for measurements (0=wide, 1=narrow)
     %   current - transmit current of transducer (A)
     %   current_factor - factor for current computation from ADC channel
     %   voltage - transmit voltage of transducer (V)
@@ -336,7 +337,14 @@ classdef ADCP < handle
         %
         % see also: ADCP
         pressure
-        
+
+        % ADCP/bandwidth read only property
+        %
+        % bandwidth used (0=wide, 1=narrow)
+        %
+        % see also: ADCP
+        bandwidth
+
         % ADCP/current read only property
         %
         % current on transducer (A)
@@ -510,6 +518,9 @@ classdef ADCP < handle
         function val=get.salinity(obj)
             val=double(obj.raw.salinity);
         end
+        function val=get.bandwidth(obj)
+            val=double(obj.raw.bandwidth(obj.fileid));
+        end
         function val=get.pressure(obj)
             funderflow=obj.raw.pressure>3e9;
             val=double(obj.raw.pressure);
@@ -577,32 +588,23 @@ classdef ADCP < handle
             val=double(obj.raw.ECHO).*obj.intensity_scale;
         end
         function val=get.backscatter_constant(obj)
-            if ~is_workhorse(obj)
-                warning('Assuming ADCP is a workhorse')
-            end
-            switch obj.transducer.frequency
-                case 76.8e3
-                    val=-159.1;
-                case 307.2e3
-                    switch obj.type
-                        case ADCP_Type.Sentinel
-                            val=-143.5;
-                        case ADCP_Type.Monitor
-                            val=-143;
-                        otherwise
-                            warning('Assuming ADCP is a Monitor')
-                            val=-143;
-                    end
-                case 614.4e3
-                    if obj.type~=ADCP_Type.RioGrande
-                        warning('Assuming ADCP is a RioGrande')
-                    end
-                    val=-139.3;
-                case 1228.8e3
-                    val=-129.1;
-                otherwise
-                    warning('Unknown backscatter constant for current ADCP Type')
-                    val=nan;
+            ltype=obj.type;
+            switch ltype
+                case ADCP_Type.Unknown
+                    warning('Assuming ADCP is a workhorse')
+                    ltype=ADCP_Type.Workhorse;
+                case ADCP_Type.ChannelMaster
+                case ADCP_Type.ExplorerPhasedArray
+                case ADCP_Type.ExplorerPiston
+                case ADCP_Type.LongRanger
+                case ADCP_Type.OceanSurveyor
+                case ADCP_Type.Pioneer
+                case ADCP_Type.SentinelV
+                case ADCP_Type.RioGrande
+                case ADCP_Type.RioPro
+                case ADCP_Type.RiverPro
+                case ADCP_Type.RiverRay
+                case ADCP_Type.Workhorse
             end
         end
         function val=get.backscatter(obj)
@@ -689,7 +691,7 @@ classdef ADCP < handle
                     end
                 case '110'
                     switch obj.type
-                        case {ADCP_Type.SentinelV,ADCP_Type.MonitorV}
+                        case {ADCP_Type.SentinelV}
                             pt.frequency=491.52e3; % Sentinel V operation manual
                             pt.radius=nan;
                         case {ADCP_Type.Monitor,ADCP_Type.Sentinel}
