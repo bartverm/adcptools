@@ -588,23 +588,32 @@ classdef ADCP < handle
             val=double(obj.raw.ECHO).*obj.intensity_scale;
         end
         function val=get.backscatter_constant(obj)
-            ltype=obj.type;
-            switch ltype
-                case ADCP_Type.Unknown
-                    warning('Assuming ADCP is a workhorse')
-                    ltype=ADCP_Type.Workhorse;
-                case ADCP_Type.ChannelMaster
-                case ADCP_Type.ExplorerPhasedArray
-                case ADCP_Type.ExplorerPiston
-                case ADCP_Type.LongRanger
-                case ADCP_Type.OceanSurveyor
-                case ADCP_Type.Pioneer
-                case ADCP_Type.SentinelV
-                case ADCP_Type.RioGrande
-                case ADCP_Type.RioPro
-                case ADCP_Type.RiverPro
-                case ADCP_Type.RiverRay
-                case ADCP_Type.Workhorse
+            if ~is_workhorse(obj)
+                warning('Assuming ADCP is a workhorse')
+            end
+            switch obj.transducer.frequency
+                case 76.8e3
+                    val=-159.1;
+                case 307.2e3
+                    switch obj.type
+                        case ADCP_Type.Sentinel
+                            val=-143.5;
+                        case ADCP_Type.Monitor
+                            val=-143;
+                        otherwise
+                            warning('Assuming ADCP is a Monitor')
+                            val=-143;
+                    end
+                case 614.4e3
+                    if obj.type~=ADCP_Type.RioGrande
+                        warning('Assuming ADCP is a RioGrande')
+                    end
+                    val=-139.3;
+                case 1228.8e3
+                    val=-129.1;
+                otherwise
+                    warning('Unknown backscatter constant for current ADCP Type')
+                    val=nan;
             end
         end
         function val=get.backscatter(obj)
