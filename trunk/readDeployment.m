@@ -8,7 +8,7 @@ function [outADCP]=readDeployment(DepName,varargin)
 %
 % See also readADCP
 
-%    Copyright 2009,2014 Bart Vermeulen
+%    Copyright 2009-2020 Bart Vermeulen
 %
 %    This file is part of ADCPTools.
 %
@@ -27,7 +27,6 @@ function [outADCP]=readDeployment(DepName,varargin)
 
 
 %% parse input 
-
 %path
 if nargin>1 % if path is given
     path=varargin{1}; % get it
@@ -90,6 +89,13 @@ vfiles=match_and_cat('.*[0-9]{3,3}extern\.dat$'); % search for transect files
 if ~isempty(vfiles)
     disp('Reading VISEA extern files...')
     outADCP.VISEA_Extern=readViseaExtern(outADCP,vfiles);
+end
+
+%% Read VISEA log files
+logfiles=match_and_cat('.*\d{3}(GPS|com\d{1,2}).log');
+if ~isempty(logfiles)
+    disp('Reading VISEA log files...')
+    outADCP.VISEA_log=readViseaLogFiles(outADCP,[path,DepName,'*.log']);
 end
 
 %% Function to match regular expression in file names and concatenate the path to the result
