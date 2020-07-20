@@ -223,12 +223,6 @@ classdef ADCP < handle
         % see also: ADCP
         heading
         
-        % ADCP/head_align
-        %
-        % Heading alignment in degrees
-        %
-        % see also: ADCP
-        head_align
         
         % ADCP/convexity read only property
         %
@@ -949,7 +943,6 @@ classdef ADCP < handle
             S=CoordinateSystem.Ship;
             E=CoordinateSystem.Earth;
             exp_cfilt=true(1,obj.nensembles);
-            
             bangle=obj.beam_angle;
             conv=obj.convexity;
             croll=obj.roll;
