@@ -228,9 +228,10 @@ classdef VMADCP < ADCP
         end
         function [lat, lon]=ll(obj)
             [lat,lon]=obj.ll_provider.lat_lon(obj);
+
         end
         function [x, y]=xy(obj)
-            [lat, lon]=obj.ll;
+            [lat, lon]=obj.ll();
             [x, y]= obj.xy_cor_system.xy(lat,lon);
         end
         function pos=bed_offset(obj,dst)

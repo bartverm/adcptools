@@ -11,8 +11,6 @@ classdef Bathymetry < handle
                 cvar=varargin{count_var};
                 if isa(cvar,'WaterLevel')
                     obj.water_level=cvar;
-                else
-                    error(['Cannot handle input of type ', class])
                 end
             end
         end
