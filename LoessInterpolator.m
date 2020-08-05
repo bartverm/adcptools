@@ -3,13 +3,9 @@ classdef LoessInterpolator < Interpolator
         span(1,1) double {mustBePositive, mustBeFinite} = 0.1;
         robust_iterations(1,1) double {mustBeNonnegative, mustBeInteger}=0;
         n_threads(1,1) double {mustBePositive, mustBeFinite, mustBeInteger}=maxNumCompThreads;
-        order(1,1) double {mustBePositive, mustBeFinite,mustBeInteger}=1;
+        order(1,1) double {mustBePositive, mustBeFinite,mustBeInteger,mustBeLessThan(order,3)}=1;
     end
     methods
-        function set.order(obj,val)
-            validateattributes(val,{},{'<',3},'set.order','val',2)
-            obj.order=val;
-        end
         function val=interpolate(obj,query_position)
             validateattributes(query_position,{'numeric'},{'2d','real'},'interpolate','query_position',2)
             assert(size(query_position,1)==obj.n_dims,['query_position must have ',num2str(obj.n_dims),' dimensions'])
