@@ -1,10 +1,75 @@
 classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
+% Generates a SigmaZetaMesh based on VMADCP data
+%
+%   obj=SigmaZetaFromaVMADCP() constructs a default object
+%
+%   obj=SigmaZetaFromVMADCP(...) allows to pass properties to construct the
+%   object with. Based on the class the following properties are defined:
+%   VMADCP - vmadcp property
+%   EnsembleFilter - filter property
+%   Bathymetry - bathymetry property
+%   XSection - xs property
+%
+%   SigmaZetaFromVMADCP properties:
+%   vmadcp - VMADCP object to construct mesh with
+%   filter - To exclude data in the mesh construction
+%   bathymetry - Defines the bathymetry
+%   deltan - horizontal (along the cross-section) mesh resolution
+%   deltaz - vertical mesh resolution 
+%   xs - Defines the cross-section
+%
+%   SigmaZetaFromVMADCP methods:
+%   get_mesh - construct the mesh
+%
+%   see also: SigmaZetaMesh, VMADCP
     properties
+% SigmaZetaMeshFromVMADCP/vmadcp
+%
+%   scalar VMADCP object holding the adcp data
+%
+%   see also:SigmaZetaFromVMADCP, VMADCP
         vmadcp (1,1) VMADCP
+        
+% SigmaZetaMeshFromVMADCP/filter
+%
+%   scalar EnsembleFilter object to exclude ADCP data in the mesh
+%   generation
+%
+%   see also:SigmaZetaFromVMADCP, EnsembleFilter
         filter (1,1) EnsembleFilter
+        
+% SigmaZetaMeshFromVMADCP/bathymetry
+%
+%   scalar Bathymetry object defining the bed elevation. Default value is
+%   BathymetryScatteredPoints(vmadcp) which creates a bathymetry based on the
+%   ADCP data.
+%
+%   see also:SigmaZetaFromVMADCP, Bathymetry
         bathymetry (1,1) Bathymetry = BathymetryScatteredPoints
-        deltan (1,1) double = 5
-        deltaz (1,1) double = 1
+        
+% SigmaZetaMeshFromVMADCP/deltan
+%
+%   scalar, positive double defining the horizontal (along the
+%   cross-section) resolution of the mesh. Default is 5.
+%
+%   see also:SigmaZetaFromVMADCP
+        deltan (1,1) double {mustBeFinite, mustBePositive}= 5
+        
+% SigmaZetaMeshFromVMADCP/
+%
+%   scalar, positive double defining the vertical resolution of the mesh
+%   in m. Default is 1.
+%
+%   see also:SigmaZetaFromVMADCP
+        deltaz (1,1) double {mustBeFinite, mustBePositive}= 1
+        
+% SigmaZetaMeshFromVMADCP/xs
+%
+%   Scalar XSection object defining the cross-section. By default this is
+%   XSection(vmadcp) which constructs a cross-section based on the vmadcp
+%   track data.
+%
+%   see also:SigmaZetaFromVMADCP, XSection
         xs (1,1) XSection
     end
     methods
@@ -46,6 +111,15 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
             end
         end
         function mesh=get_mesh(obj)
+% Construct the SigmaZetaMesh
+%
+%   mesh = get_mesh(obj) construct a SigmaZetaMesh. The generated mesh
+%   spans from the minimum to the maximum n coordinate in the horizontal
+%   and vertically between a minimum sigma coordinate, where adcp side-lobe
+%   interference is expected (determined based on the adcp beam angle) and
+%   the highest depth cell in the data.
+%
+%   see also: SigmaZetaMeshFromVMADCP, SigmaZetaMesh, VMADCP
             mesh=SigmaZetaMesh;
             mesh.xs=obj.xs;
             % get velocity position and project on track
@@ -95,7 +169,6 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
             % create vertical position of cells
             minz_left=minz(1:end-1);
             minz_right=minz(2:end);
-%             ncells=sum(nz);
             deltaz_mid=(maxz-minz_mid)./nz;
             deltaz_left=(maxz-minz_left)./nz;
             deltaz_right=(maxz-minz_right)./nz;

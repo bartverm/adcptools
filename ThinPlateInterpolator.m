@@ -1,4 +1,4 @@
-classdef ThinPlateInterpolator < util.Interpolator
+classdef ThinPlateInterpolator < Interpolator
    properties
        
    end
@@ -11,14 +11,14 @@ classdef ThinPlateInterpolator < util.Interpolator
            if ~status
                error(['ThinPlateInterpolator requires the Curve Fitting Toolbox.\n License error:',errmsg]);
            end
-           obj=obj@util.Interpolator(varargin{:});
-           addlistener(obj,'position','PostSet',@obj.reset_tp)
+           obj=obj@Interpolator(varargin{:});
+           addlistener(obj,'known','PostSet',@obj.reset_tp);
        end
        function val=interpolate(obj,query_position)
            validateattributes(query_position,{'numeric'},{'2d','real'},'interpolate','query_position',2)
            if isempty(obj.tp)
                disp('constructing spline...')
-               obj.tp=tpaps(obj.position',obj.value');
+               obj.tp=tpaps(obj.known(1:end-1,:), obj.known(3,:));
            end
            val=fnval(obj.tp,query_position')';
        end

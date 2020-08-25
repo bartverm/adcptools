@@ -1,9 +1,68 @@
 classdef VelocitySolver < handle
+    % Base class to solve ADCP repeat transect velocity data
+    %
+    %   Subclasses should implement the get_velocity method. This method
+    %   produces an array of velocities in each of the mesh cells.
+    %
+    %   obj=VelocitySolver(...) allows to set properties upon construction.
+    %   Depending on the class objects are assigned to a specific property:
+    %   VMADCP - assigned to the adcp property
+    %   Mesh - assigned to the mesh property
+    %   Bathymetry - assigned to the bathymetry property
+    %   XSection - assigned to the xs property
+    %   Filter - assigned to the filter property
+    %
+    %  VelocitySolver properties:
+    %   adcp - VMADCP object with the adcp data
+    %   mesh - Mesh object defining a mesh
+    %   bathy - Defines the bathymetry
+    %   xs - Defines the cross-section
+    %   filter - Selects ADCP data to be excluded from the computations
+    %
+    %   VelocitySolver methods:
+    %   get_velocity - returns velocities for each mesh cell (Abstract)
+    %
+    %   see also: VMADCP, Mesh, Bathymetry, XSection, Filter,
+    %   TimeBasedVelocitySolver
     properties
+        % VelocitySolver/adcp
+        %
+        %   Scalar VMADCP object holding the adcp data to compute the velocity
+        %
+        %   see also: VelocitySolver, VMADCP
         adcp (1,1) VMADCP
+        
+        % VelocitySolver/mesh
+        %
+        %   Scalar Mesh object defining the mesh on which the data is to be solved.
+        %   Default value is SigmaZetaMesh
+        %
+        %   see also: VelocitySolver, Mesh
         mesh (1,1) Mesh = SigmaZetaMesh;
+        
+        % VelocitySolver/bathy
+        %
+        %   Scalar bathymetry object that defines the location of the bed. Default
+        %   is BathymetryFromScatteredPoints(adcp), which constructs a bathymetry
+        %   based on the VMADCP data in adcp.
+        %
+        %   see also: VelocitySolver, BathymetryScatteredPoints
         bathy (1,1) Bathymetry = BathymetryScatteredPoints;
+        
+        % VelocitySolver/xs
+        %
+        %   Scalar XSection object defining the origin and direction of the
+        %   cross-section. Default value is XSection(adcp) which construct a
+        %   cross-section based on the track of the VMADCP data in adcp
+        %
+        %   see also: VelocitySolver, XSection
         xs (1,1) XSection
+        
+        % VelocitySolver/filter
+        %
+        %   Vector with filters to exclude data from the velocity processing.
+        %
+        %   see also: VelocitySolver, Filter
         filter (:,1) Filter
     end
     methods
