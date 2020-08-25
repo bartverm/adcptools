@@ -6,7 +6,8 @@ classdef Filter < matlab.mixin.Heterogeneous
 %   the bad_int function. 
 %   This class inherits from mixin.Heterogenous, which allows to create
 %   arrays with subclasses of Filter. This allows to combine several
-%   different filters when processing ADCP data.
+%   different filters when processing ADCP data. Calling the 'bad' method
+%   on the object array, will return the cells 
 %
 %   Filter methods (Sealed):
 %   bad - returns logical array marking bad cells

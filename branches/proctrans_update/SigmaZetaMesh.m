@@ -1,10 +1,100 @@
 classdef SigmaZetaMesh < Mesh
-    properties
-        % cross section
+% Defines a sigma-z mesh
+%   
+%   The SigmaZetaMesh should be generated with a SigmaZetaMeshGenerator.
+%
+%   The mesh consists of verticals. Each vertical has a certain number of
+%   cells. In each vertical the cells follow the bed. The name Sigma-Zeta
+%   refers to the fact that this mesh is a hyrbid between a z-mesh and a
+%   sigma-mesh. It tries to combine the best of both worlds: it follows
+%   nicely the bed just like a sigma mesh would, but the vertical spacing
+%   of the cells is constant, just like a z-mesh would. This means that
+%   each cell will hold approximately the same number of adcp velocity
+%   estimates.
+%
+%   Each mesh cell consists of six edges, called:
+%           *         ---> top-middle
+%         /   \
+%       /       \
+%     /          *    ---> top-right
+%   *             |   ---> top-left 
+%   |       *     |   ---> bottom-middle
+%   |     /   \   |
+%   |   /       \ |
+%   | /           *   ---> bottom-right
+%   *                 ---> bottom-left
+%
+%   Note that the left, middle and right edges are always vertically
+%   stacked and share the same n-coordinate.
+%
+%   Data can be stored either in a vector with a value for each cell or in
+%   a matrix which has a toplogy similar to the mesh. The indexing
+%   properties (see below) help map between these formats.
+%
+%   SigmaZetaMesh properties (read only):
+%   * General
+%   xs - defines the cross-section of the mesh
+%   water_level - the water level for the mesh
+%   ncells - number of cells in the mesh
+%   
+%   * Edge Position
+%   z_bottom_left - z-coordinate of the bottom-left edge
+%   z_top_left - z-coordinate of the top-left edge
+%   z_bottom_mid - z-coordinate of the bottom-middle edge
+%   z_top_mid - z-coordinate of the top-middle edge
+%   z_bottom_right - z-coordinate of the bottom-right edge
+%   z_top_right - z-coordinate of the top-right edge
+%   sig_bottom_left - sigma-coordinate of the bottom-left edge
+%   sig_top_left - sigma-coordinate of the top-left edge
+%   sig_bottom_mid - sigma-coordinate of the bottom-middle edge
+%   sig_top_mid - sigma-coordinate of the top-middle edge
+%   sig_bottom_right - sigma-coordinate of the bottom-right edge
+%   sig_top_right - sigma-coordinate of the top-right edge
+%   n_left - n-coordinate of the left edges
+%   n_middle - n-coordinate of the middle edges
+%   n_right - n-coordinate of the right edges
+%   x_left - x-coordinate of the left edges
+%   x_middle - x-coordinate of the middle edges
+%   x_right - x-coordinate of the right edges
+%   y_left - y-coordinate of the left edges
+%   y_middle - y-coordinate of the middle edges
+%   y_right - y-coordinate of the right edges
+%
+%   * Bed position
+%   zb_left - z-coordinate of bed at left edges
+%   zb_middle - z-coordinate of bed at middle edges
+%   zb_right - z-coordinate of bed at right edges
+%   zb_all - z-coordinate of bed at all edges from left to right
+%   n_all - n-coordinate of bed at all edges from left to right
+%   x_all - x-coordinate of bed at all edges from left to right
+%   y_all - y-coordinate of bed at all edges from left to right
+%
+%   * Patch coordinates (for use with patch plotting function)
+%   n_patch - n-coordinate of edges for use with patch function
+%   x_patch - x-coordinate of edges for use with patch function
+%   y_patch - y-coordinate of edges for use with patch function
+%   z_patch - z-coordinate of edges for use with patch function
+%
+%   * Indexing
+%   col_to_mat - map column based data to matrix layout 
+%   row_to_mat - map row based data to matrix layout
+%   mat_to_cell - map matrix to cell vector layout
+%   cell_to_mat - map cell vector layout to matrix layout
+%   row_to_cell - map row based data to cell layout
+%   col_to_cell - map column based data to cell layout
+%
+%   SigmaZetaMesh methods:
+%   index - returns mesh cell indices for given positions
+%   plot - plot the mesh optionally coloring with a given variable
+%   plot3 - plot the mesh optionally coloring with a given variable in 3D
+%
+%   see also: Mesh, VelocitySolver
+
+
+    properties (SetAccess=?SigmaZetaMeshGenerator)
         xs (1,1) XSection
         water_level (1,1) double 
         
-        % cell position
         z_bottom_left (:,1) double {mustBeFinite, mustBeReal}
         z_top_left (:,1) double {mustBeFinite, mustBeReal}
         z_bottom_mid (:,1) double {mustBeFinite, mustBeReal}
@@ -15,12 +105,10 @@ classdef SigmaZetaMesh < Mesh
         n_middle (1,:) double {mustBeFinite, mustBeReal}
         n_right (1,:) double {mustBeFinite, mustBeReal}
         
-        % bed position
         zb_left (1,:) double {mustBeFinite, mustBeReal}
         zb_middle (1,:) double {mustBeFinite, mustBeReal}
         zb_right (1,:) double {mustBeFinite, mustBeReal}
                
-        % indexing
         col_to_mat (:,:) double {mustBeInteger, mustBeFinite mustBeReal}
         row_to_mat (:,:) double {mustBeInteger, mustBeFinite mustBeReal}
         mat_to_cell (:,1) logical
@@ -36,7 +124,7 @@ classdef SigmaZetaMesh < Mesh
         y_middle
         y_right
         n_all
-        z_all
+        zb_all
         x_all
         y_all
         n_patch
@@ -88,7 +176,7 @@ classdef SigmaZetaMesh < Mesh
         function val=get.n_all(obj)
             val=[reshape([obj.n_left;obj.n_middle],1,[]) obj.n_right(end)];
         end
-        function val=get.z_all(obj)
+        function val=get.zb_all(obj)
             val=[reshape([obj.zb_left;obj.zb_middle],1,[]) obj.zb_right(end)];
         end
         function val=get.sig_bottom_left(obj)
@@ -131,6 +219,12 @@ classdef SigmaZetaMesh < Mesh
                  obj.z_bottom_left]';
         end
         function idx=index(obj,n,sigma)
+% Indices of mesh cells for given positions
+%
+%   idx = index(obj, n, sigma) returns the indices of the mesh cells that
+%   hold the points given in (n,sigma) coordinates
+%
+%  see also: SigmaZetaMesh 
             idx=nan(size(sigma));
             nl=obj.n_left(obj.col_to_cell);
             nm=obj.n_middle(obj.col_to_cell);
@@ -157,9 +251,17 @@ classdef SigmaZetaMesh < Mesh
             end
         end
         function plot(obj,var)
+% Plot the mesh optionally colored with a variable
+%
+%   plot(obj) plots the mesh with the bed and water surface
+%
+%   plot(obj,var) plot the mesh and color the cells with the varibale var
+%
+%   see also: SigmaZetaMesh, plot3
             hold_stat=get(gca,'NextPlot');
-            plot(obj.n_all,obj.z_all,'k','Linewidth',2)
+            plot(obj.n_all,obj.zb_all,'k','Linewidth',2)
             hold on
+            plot(obj.n_all([1 end]),obj.water_level.*[1 1],'b','Linewidth',2)
             plot_var=nan(obj.ncells,1);
             if nargin > 1
                 assert(numel(var)==obj.ncells, 'Variable to plot should have same number of elements as cells in the mesh');
@@ -169,9 +271,17 @@ classdef SigmaZetaMesh < Mesh
             set(gca,'NextPlot',hold_stat);
         end
         function plot3(obj,var)
+% Plot the mesh optionally colored with a variable in 3D
+%
+%   plot3(obj) plots the mesh with the bed and water surface
+%
+%   plot3(obj,var) plot the mesh and color the cells with the varibale var
+%
+%   see also: SigmaZetaMesh, plot
             hold_stat=get(gca,'NextPlot');
-            plot3(obj.x_all,obj.y_all,obj.z_all, 'k', 'Linewidth',2)
+            plot3(obj.x_all,obj.y_all,obj.zb_all, 'k', 'Linewidth',2)
             hold on
+            plot3(obj.x_all([1 end]),obj.y_all([1 end]),obj.water_level*[1 1], 'b', 'Linewidth',2)
             plot_var=nan(obj.ncells,1);
             if nargin > 1
                 assert(numel(var)==obj.ncells, 'Variable to plot should have same number of elements as cells in the mesh');

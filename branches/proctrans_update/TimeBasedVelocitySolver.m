@@ -1,7 +1,33 @@
 classdef TimeBasedVelocitySolver < VelocitySolver
-    properties
-
-    end
+    % Implements a time based velocity solver
+    %
+    %   This class solves the water velocity on the given mesh, by first
+    %   computing the velocity from the ADCP data in a conventional way, i.e.
+    %   by combining beam velocities based on the time they were measured.
+    %   Subsequently, velocities measured in the same cell are averaged to
+    %   produce the output velocity. The positions of the velocities are
+    %   matched in sigma coordinates.
+    %
+    %   obj=TimeBasedVelocitySolver(...) allows to set properties upon construction.
+    %   Depending on the class objects are assigned to a specific property:
+    %   VMADCP - assigned to the adcp property
+    %   Mesh - assigned to the mesh property
+    %   Bathymetry - assigned to the bathymetry property
+    %   XSection - assigned to the xs property
+    %   Filter - assigned to the filter property
+    %
+    %  TimeBasedVelocitySolver properties:
+    %   adcp - VMADCP object with the adcp data
+    %   mesh - Mesh object defining a mesh
+    %   bathy - Defines the bathymetry
+    %   xs - Defines the cross-section
+    %   filter - Selects ADCP data to be excluded from the computations
+    %
+    %   TimeBasedVelocitySolver methods:
+    %   get_velocity - returns velocities for each mesh cell
+    %
+    %   see also: VMADCP, Mesh, Bathymetry, XSection, Filter,
+    %   VelocitySolver
     methods
         function obj=TimeBasedVelocitySolver(varargin)
             obj=obj@VelocitySolver(varargin{:});
@@ -15,6 +41,15 @@ classdef TimeBasedVelocitySolver < VelocitySolver
             end
         end
         function vel=get_velocity(obj)
+            % Solves velocity combining beam velocities based on time
+            %
+            %   vel=get_velocity(obj) computes the velocity in the mesh cells by using
+            %   the velocity computed by combining the beam velocities measured at the
+            %   same time (this is done by the ADCP class). Velocities that where
+            %   measured within a mesh cell (this is determined by the Mesh class) are
+            %   averaged.
+            %
+            % see also: TimeBasedVelocitySolver, Mesh, VMADCP
             vpos=obj.adcp.depth_cell_position;
             filters=[obj.filter; obj.adcp.filters];
             vpos(filters.bad(obj.adcp))=nan;
@@ -28,7 +63,7 @@ classdef TimeBasedVelocitySolver < VelocitySolver
             vel_data = obj.adcp.water_velocity(CoordinateSystem.Earth);
             for cc = 1:obj.mesh.ncells
                 for comp=1:3
-                    vel(cc,comp) = nanmean(vel_data(idx==cc & fcomp==comp)); 
+                    vel(cc,comp) = nanmean(vel_data(idx==cc & fcomp==comp));
                 end
             end
         end

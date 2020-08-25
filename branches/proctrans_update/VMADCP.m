@@ -13,6 +13,7 @@ classdef VMADCP < ADCP
 %   - ProjectedCoordinateSystem object to the xy_cor_system property
 %   - LatLonProvider to the ll_provider property
 %   - ShipVelocityProvider to the shipvel_provider property
+%   - WaterLevel to the water_level property
 %   
 %
 %   VMADCP properties:
@@ -23,7 +24,8 @@ classdef VMADCP < ADCP
 %   xy_cor_system - projected coordinate system to be used
 %   ll_provider - configure where to get geographic coordinates
 %   shipvel_provider - configure how to obtain ship velocity
-%   adcp_elevation - elevation of the ADCP
+%   water_level - water level during measurement
+%   transducer_depth -depth of transducer
 %
 %   VMADCP read-only properties:
 %   *Instrument characteristics*
@@ -130,13 +132,22 @@ classdef VMADCP < ADCP
     %   see also: VMADCP, LatLonProvider
         shipvel_provider (:,1) ShipVelocityProvider
 
-    
-    % VMADCP/adcp_elevation
+    % VMADCP/water_level
     %
-    %   specifies the elevation of the ADCP during the measurement. This
-    %   can be used to correct for water level changes during data
-    %   collection
-        adcp_elevation (1,:) double {mustBeFinite} = 0;
+    %   Defines the water level during the measurement. It should be a
+    %   WaterLevel object. Default is ConstantWaterLevel(0).
+    %
+    %   see also: VMADCP, WaterLevel, ConstantWaterLevel
+        water_level (1,1) WaterLevel = ConstantWaterLevel(0)
+        
+    % VMADCP/transducer_depth
+    %
+    %   specifies the depth of the transducer during the measurement. Can
+    %   be either a scalar or a 1xN vector with N equal to the number of
+    %   ensembles
+    %
+    %   see also: VMADCP, water_level
+        transducer_depth (1,:) double {mustBeFinite} = 0;
     end
     properties(Dependent, SetAccess=private)
         % VMADCP/bt_vertical_range read only property.
@@ -158,6 +169,7 @@ classdef VMADCP < ADCP
         function obj=VMADCP(varargin)
             obj=obj@ADCP(varargin{:});
             obj.xy_cor_system=UTMCoordinateSystem;
+            obj.water_level=ConstantWaterLevel(0);
             obj.ll_provider=[LatLonVisea; LatLonNfilesGGA; LatLonTfiles; LatLonGGA];
             obj.shipvel_provider=[ShipVelocityFromBT; ShipVelocityFromGPS];
             if numel(obj.filters)==1 && isa(obj.filters,'Filter')
@@ -170,6 +182,8 @@ classdef VMADCP < ADCP
                     obj.ll_provider=varargin{ca};
                 elseif isa(varargin{ca},'ShipVelocityProvider')
                     obj.shipvel_provider=varargin{ca};
+                elseif isa(varargin{ca}, 'WaterLevel')
+                    obj.water_level=varargin{ca};
                 end
             end
 
@@ -247,14 +261,14 @@ classdef VMADCP < ADCP
             [x,y]=obj.xy();
             pos(:,:,:,1)=pos(:,:,:,1)+x;
             pos(:,:,:,2)=pos(:,:,:,2)+y;
-            pos(:,:,:,3)=pos(:,:,:,3)+obj.adcp_elevation;
+            pos(:,:,:,3)=pos(:,:,:,3)+obj.water_level.get_water_level(obj.time)-obj.transducer_depth;
         end
         function pos=depth_cell_position(obj)
             pos=obj.depth_cell_offset(CoordinateSystem.Earth);
             [x,y]=obj.xy();
             pos(:,:,:,1)=pos(:,:,:,1)+x;
             pos(:,:,:,2)=pos(:,:,:,2)+y;
-            pos(:,:,:,3)=pos(:,:,:,3)+obj.adcp_elevation;
+            pos(:,:,:,3)=pos(:,:,:,3)+obj.water_level.get_water_level(obj.time)-obj.transducer_depth;
         end
         function plot_track(obj)
             figure
