@@ -146,7 +146,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
             minz_mid=zmid*(1-minsigma);
                        
             % create indices
-            nz=max(0,ceil((maxz-minz_mid)/obj.deltaz));
+            nz=max(1,ceil((maxz-minz_mid)/obj.deltaz));
             max_num=max(nz);
             mesh.col_to_mat=repmat(1:size(nz,2),max_num,1);
             mesh.row_to_mat=repmat((1:max_num)',1,size(nz,2));
