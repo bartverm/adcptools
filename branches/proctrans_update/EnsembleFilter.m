@@ -1,8 +1,21 @@
 classdef EnsembleFilter < Filter
-    % Class to filter out ensembles
-    %
+% Class to filter out ensembles
+%   
+%   obj = EnsembleFilter() constructs a default EnsembleFilter object
+%
+%   obj = EnsembleFilter(ADCP) constructs an EnsembleFilter object with
+%   bad_ensembles set to false for all ensembles in ADCP
+%
+%   obj = EnsembleFilter(is_bad) constucts and EnsembleFilter object with
+%   bad_ensembles set to the values given in is_bad. is_bad is a logical
+%   row vector that indicates the ensembles that should be filtered out.
+%
+%   EnsembleFilter properties:
+%   bad_ensembles - marks the bad ensembles
+%
+%   see also: Filter, cross_section_selector
     properties
-        bad_ensembles (1,:) logical
+        bad_ensembles (1,:) logical = logical.empty(1,0)
     end
     methods
         function obj=EnsembleFilter(varargin)

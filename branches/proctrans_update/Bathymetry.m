@@ -21,5 +21,16 @@ classdef Bathymetry < handle
                 d=obj.obj.water_level.get_depth(obj.get_bed_elev(x,y));
             end
         end
+        function plot(obj,varargin)
+            obj(1).plot;
+            hold_stat=get(gca,'NextPlot');
+            hold on;
+            if ~isscalar(obj)
+                for ce=2:numel(obj)
+                    obj(ce).plot(varargin{:})
+                end
+            end
+            set(gca,'NextPlot',hold_stat);
+        end
     end
 end

@@ -48,9 +48,25 @@ classdef BathymetryScatteredPoints < Bathymetry
             obj.y=ypos(isfin);
             obj.z=zpos(isfin);
         end
+        function plot_residuals(obj)
+            z_interp=obj.get_bed_elev(obj.x,obj.y);
+            scatter(obj.x,obj.y,5,z_interp-obj.z,'filled')
+            axis equal
+        end
         function plot(obj)
-           scatter3(obj.x,obj.y,obj.z,1,obj.z,'filled') 
-           set(gca,'dataaspectratio',[20 20 1])
+           if ~isscalar(obj)
+               plot@Bathymetry(obj);
+               return
+           end
+           hold_stat=get(gca,'NextPlot');
+           plot3(obj.x,obj.y,obj.z,'k.') 
+           hold on
+           set(gca,'dataaspectratio',[5 5 1])
+           as=alphaShape(obj.x',obj.y',1);
+           as.Alpha=as.criticalAlpha('one-region');
+           tri = alphaTriangulation(as);
+           trimesh(tri,obj.x, obj.y, obj.get_bed_elev(obj.x,obj.y),'FaceColor','interp','EdgeColor','none')
+           set(gca,'NextPlot',hold_stat)
         end
     end
 end

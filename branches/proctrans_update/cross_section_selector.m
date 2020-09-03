@@ -1,23 +1,29 @@
-function csid=cross_section_selector(vmadcp)
+function [ef, xs]=cross_section_selector(vmadcp)
 % Interactively define cross sections for vessel mounted adcp data
 %
-%   csid = cross_section_selector(vmadcp) will allow to select
+%   [ef, xs] = cross_section_selector(vmadcp) will allow to select
 %   cross-sections to process adcp data by drawing polygons around the
-%   track. vmadcp must be a VMADCP object.
+%   track. vmadcp must be a VMADCP object. It will return a vector with
+%   EnsembleFilter objects and XSection objects defining the different
+%   cross-sections
 %
-%   see also: VMADCP
-    vmadcp.plot_track;
+%   see also: VMADCP, EnsembleFilter, XSection
+    vmadcp.plot_track('-','color',[.5 .5 .5]);
     title('Press Enter to end selection')
     [xa,ya]=vmadcp.xy;
     hold on
     uiwait(msgbox('Click on the figure to draw a polygon around the repeat transect track and press Enter to end'))
     get_next=true;
-    csid=[];
     inpol=false(size(xa));
     polygon=patch();
     polygon.FaceColor='none';
-    selection=plot(1,1,'ro');
-    leg=legend(selection,'Current selection');
+    tang_quiv=quiver(nanmean(xa),nanmean(ya),0,0,'color','r');
+    norm_quiv=quiver(nanmean(xa),nanmean(ya),0,0,'color','g');
+    selection=plot(1,1,'r.');
+    leg=legend([selection tang_quiv, norm_quiv],'Current selection', 'Tangential dir','Normal dir');
+    leg.AutoUpdate='off';
+    ef=EnsembleFilter.empty(1,0);
+    xs=XSection.empty(1,0);
     while (get_next)
         polygon.XData=[];
         polygon.YData=[];
@@ -28,7 +34,8 @@ function csid=cross_section_selector(vmadcp)
                 [xt,yt]=ginput(1);
             catch err
                 if strcmp(err.identifier,'MATLAB:ginput:FigureDeletionPause')
-                    uiwait(msgbox('You closed the figure, selection ends here!','Figure closed'))
+                    % when figure is close just end selecting and return
+                    % result so far
                     return
                 else
                     rethrow(err)
@@ -46,19 +53,27 @@ function csid=cross_section_selector(vmadcp)
         if ~any(inpol)
             uiwait(msgbox('The polygon did not contain any adcp positions!','Empty polygon!'))
         else
-            if strcmp('Yes',questdlg('Are you happy with this selction','Selection finished!','Yes','No','Yes'))
-                csid=[csid; zeros(1,numel(inpol))]; %#ok<AGROW>
-                csid(end,inpol)=1;
+            if strcmp('Yes',questdlg('Are you happy with this selction?','Selection finished!','Yes','No','Yes'))
+                ef=[ef EnsembleFilter(~inpol)]; %#ok<AGROW>
+                xs=[xs XSection(vmadcp,ef(end))]; %#ok<AGROW>
+                leg.AutoUpdate='on';
+                plot(xa(~ef(end).bad_ensembles),ya(~ef(end).bad_ensembles),'.')
+                leg.String{end}=['Cross section ',num2str(numel(ef))];
+                leg.AutoUpdate='off';
+                quivs=xs(end).plot();
+                if strcmp('Yes', questdlg('Should the direction of the cross-section be reversed?', 'Cross section generated','Yes','No','No'))
+                    xs(end).revert();
+                    delete(quivs)
+                    xs(end).plot();
+                end
             end
         end
         if strcmp('No',questdlg('Do you want to select another repeat transect?','Another one','Yes','No','Yes'))
             break
-        else
-            if any(inpol)
-                plot(xa(csid(end,:)==1),ya(csid(end,:)==1),'o')
-                leg.String{end}=['Cross section ',num2str(size(csid,1))];
-            end
         end
     end
-    close(gcf)
+    leg.AutoUpdate='on';
+    title('Cross sections')
+    delete(selection);
+    delete(polygon);
 end
