@@ -9,6 +9,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
 %   EnsembleFilter - filter property
 %   Bathymetry - bathymetry property
 %   XSection - xs property
+%   datetime - time property
 %
 %   SigmaZetaFromVMADCP properties:
 %   vmadcp - VMADCP object to construct mesh with
@@ -17,6 +18,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
 %   deltan - horizontal (along the cross-section) mesh resolution
 %   deltaz - vertical mesh resolution 
 %   xs - Defines the cross-section
+%   time - Defines the time for which mesh should be generated
 %
 %   SigmaZetaFromVMADCP methods:
 %   get_mesh - construct the mesh
@@ -71,6 +73,24 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
 %
 %   see also:SigmaZetaFromVMADCP, XSection
         xs (1,1) XSection
+        
+% SigmaZetaMeshFromVMADCP/time
+%
+%   Scalar datetime object defining the time at which the mesh should be
+%   generated. This determines the water level to be used. By default this
+%   is the current time. This works fine for some ConstantWaterLevel, but
+%   needs to be properly set for other types of WaterLevel.
+%
+%   see also: SigmaZetaFromVMADCP, WaterLevel, datetime
+        time (1,1) datetime
+    end
+    properties (Dependent, SetAccess = protected)
+% SigmaZetaMeshFromVMADCP/water_level
+%
+%   Read only property retrieving the water level at the given time.
+%
+%   see also: SigmaZetaFromVMADCP, datetime, WaterLevel
+        water_level
     end
     methods
         function obj=SigmaZetaMeshFromVMADCP(varargin)   
@@ -92,6 +112,8 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
                 elseif isa(cur_arg,'EnsembleFilter')
                     construct_filter=false;
                     obj.filter=cur_arg;
+                elseif isa(cur_arg,'datetime')
+                    obj.time=cur_arg;
                 else
                     warning(['Unhandled input of type: ',class(cur_arg)])
                     % warning here
@@ -110,6 +132,9 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
                 obj.filter=EnsembleFilter(obj.vmadcp);
             end
         end
+        function val=get.water_level(obj)
+            val=obj.vmadcp.water_level.get_water_level(obj.time);
+        end
         function mesh=get_mesh(obj)
 % Construct the SigmaZetaMesh
 %
@@ -125,29 +150,88 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
             % get velocity position and project on track
             vpos = obj.vmadcp.depth_cell_position;
             vpos(:,obj.filter.bad_ensembles,:,:) = nan;
-            [~, vpos_n] = obj.xs.xy2sn(vpos(:, :, :, 1), vpos(:, :, :, 2) );
+%             [~, vpos_n] = obj.xs.xy2sn(vpos(:, :, :, 1), vpos(:, :, :, 2) );
 
             % make n positions
-            nmin = nanmin(vpos_n, [], 'all');  % compute minimum n coordinate of depth cells
-            nmax = nanmax(vpos_n, [], 'all');  % compute maximum n coordinate of depth cells
+            bpos=obj.vmadcp.bed_position();
+            bpos(:,obj.filter.bad_ensembles,:,:)=nan;
+            [~,n]=obj.xs.xy2sn(bpos(:,:,:,1),bpos(:,:,:,2));
+            nmin = nanmin(n, [], 'all');  % compute minimum n coordinate of depth cells
+            nmax = nanmax(n, [], 'all');  % compute maximum n coordinate of depth cells
             nvec = nmin : obj.deltan : nmax + obj.deltan;  % compute n position of cell edges
-            nmid = (nvec(2 : end) + nvec(1 : end - 1) ) / 2; % compute n position of cell centers
-            [xvec, yvec] = obj.xs.sn2xy(nvec*0, nvec); % compute xy positions of cell edges
-            [xmid, ymid] = obj.xs.sn2xy(nmid*0, nmid); % compute xy positions of cell centers
             
             % interpolate bathymetry to n positions
+            [xvec, yvec] = obj.xs.sn2xy(nvec*0, nvec); % compute xy positions of cell edges
             zvec = obj.bathymetry.get_bed_elev(xvec, yvec);                       % interpolate bathymetry to cell edges
-            zmid = obj.bathymetry.get_bed_elev(xmid, ymid);                       % interpolate bathymetry to cell edges
-                       
+            mesh.nb_all=nvec;
+            mesh.zb_all=zvec;
+            
             % compute vertical limits of mesh
-            maxz=nanmax(vpos(:,:,:,3),[],'all');
             minsigma=1-cosd(nanmax(obj.vmadcp.beam_angle));
-            minz=zvec*(1-minsigma);
-            minz_mid=zmid*(1-minsigma);
+            maxz=nanmax(vpos(:,:,:,3),[],'all');
+
+            % Check for bathymetry crossing the waterlevel
+            wl=obj.water_level;
+            mesh.water_level=wl;
+            fwl=SigmaZetaMeshFromVMADCP.get_intersections(zvec,wl); % find intersections of bed with water level
+            if isempty(fwl)
+                error('SigmaZetaMeshFromVMADCP:get_mesh:WaterLevelBelowBed','Cannot create mesh since the water level is lower than the bed')
+            end
+            mesh.nw=reshape(nvec(fwl),2,[]);
+            fi= fwl~=1  & fwl~=(numel(nvec)) | ( fwl==1 & reshape(zvec(fwl), 2,[]) > wl ); % find cells for which n-position of wl needs fixing. This is never the last point (so fwl+1 is fine below)
+            fwl=fwl(fi);
+            mesh.nw(fi)=nvec(fwl) + (nvec(fwl+1) - nvec(fwl)) ./...
+                                        (zvec(fwl+1) - zvec(fwl)) .*...
+                                        (wl - zvec(fwl));
+            
+            % Check for lowest mesh elevation crossing max mesh level
+            z_bot_mesh=zvec*(1-minsigma)+minsigma*wl;
+            fbnds=SigmaZetaMeshFromVMADCP.get_intersections(z_bot_mesh,maxz); % find intersections between minimum measurement level and maximum mesh level
+            if isempty(fbnds)
+                error('SigmaZetaMeshFromVMADCP:get_mesh:MaxZBelowBed','Cannot create mesh since the maximum mesh level is lower than the minimum measurement level')
+            end
+            
+            % fix degenerate cells crossing maximum mesh level
+            n_left=reshape(nvec(1:end-1),1,[]); % create n-coordinate of left side
+            n_right=reshape(nvec(2:end),1,[]); % create n-coordinate of right side
+            lf=fbnds(1,fbnds(1,:) ~= 1 | (fbnds(1,:) == 1 &  z_bot_mesh(fbnds(1,:))>maxz)); %find cells that need fixing on the left side
+            n_left(lf)= n_left(lf) + (n_left(lf+1) - n_left(lf)) ./...
+                                     (z_bot_mesh(lf+1) - z_bot_mesh(lf)) .*...
+                                     (maxz-z_bot_mesh(lf)); % fix n_coordinate to match intersection point
+            rf=fbnds(2,fbnds(2,:) <= numel(n_right) | (fbnds(1,:) == numel(n_right) & z_bot_mesh(fbnds(2,:))>maxz)); %find cells that need fixing on the right side
+            n_right(rf)= n_right(rf-1) + (n_right(rf) - n_right(rf-1)) ./...
+                                        (z_bot_mesh(rf) - z_bot_mesh(rf-1)) .*...
+                                        (maxz-z_bot_mesh(rf)); % fix n_coordinate to match intersection point
+            
+            % compute bed levels at cell boundaries
+            zb_left=zvec(1:end-1);
+            zb_right=zvec(2:end);
+            zb_left(lf) = (maxz - wl*minsigma)/(1-minsigma);
+            zb_right(rf) = (maxz - wl*minsigma)/(1-minsigma);
+                                    
+            % Remove cells that are entirely above maximum mesh level
+            frem=z_bot_mesh>maxz; % find boundaries where bottom is above maximum level
+            frem=frem(1:end-1) & frem(2:end); % find cells where both left and right boundaries are above maxz
+            n_left(frem)=[]; 
+            n_right(frem)=[];
+            zb_left(frem)=[];
+            zb_right(frem)=[];
+            
+            % find bed elevation at the center of verticals
+            nmid=(n_left+n_right)/2;
+            [xmid, ymid] = obj.xs.sn2xy(nmid*0, nmid); % compute xy positions of cell centers            
+            zmid = obj.bathymetry.get_bed_elev(xmid, ymid);                       % interpolate bathymetry to cell edges
+            minz_mid=zmid*(1-minsigma)+minsigma*wl;
+            [nb_all, idx_unq]=unique([mesh.nb_all, reshape(mesh.nw,1,[]), n_left, n_right, nmid]); % include on the bed line all points used on the bed. only unique, sorted points are inlcuded
+            zb_all=[mesh.zb_all, reshape(mesh.nw,1,[])*0+wl, zb_left, zb_right, zmid];
+            zb_all=zb_all(idx_unq);
+            mesh.nb_all=nb_all;
+            mesh.zb_all=zb_all;
+            
                        
             % create indices
-            nz=max(1,ceil((maxz-minz_mid)/obj.deltaz));
-            max_num=max(nz);
+            nz=max(1,ceil((maxz-minz_mid)/obj.deltaz)); % compute number of cells in each vertical
+            max_num=max(nz); % get maximum number of cells in a vertical
             mesh.col_to_mat=repmat(1:size(nz,2),max_num,1);
             mesh.row_to_mat=repmat((1:max_num)',1,size(nz,2));
             mesh.mat_to_cell=reshape(mesh.row_to_mat<=nz,[],1);
@@ -158,17 +242,17 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
 
             % store n-coordinates cells
             mesh.n_middle=reshape(nmid,1,[]);
-            mesh.n_left=reshape(nvec(1:end-1),1,[]);
-            mesh.n_right=reshape(nvec(2:end),1,[]);
+            mesh.n_left=reshape(n_left,1,[]);
+            mesh.n_right=reshape(n_right,1,[]);
 
             % store bed levels
             mesh.zb_middle=zmid;
-            mesh.zb_left=zvec(1:end-1);
-            mesh.zb_right=zvec(2:end);
+            mesh.zb_left=zb_left;
+            mesh.zb_right=zb_right;
 
             % create vertical position of cells
-            minz_left=minz(1:end-1);
-            minz_right=minz(2:end);
+            minz_left=zb_left*(1-minsigma)+minsigma*wl;
+            minz_right=zb_right*(1-minsigma)+minsigma*wl;
             deltaz_mid=(maxz-minz_mid)./nz;
             deltaz_left=(maxz-minz_left)./nz;
             deltaz_right=(maxz-minz_right)./nz;
@@ -185,6 +269,28 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
             mesh.z_bottom_right=mesh.z_bottom_right(mesh.mat_to_cell);
             mesh.z_top_right=mesh.z_top_right(mesh.mat_to_cell);
             
+        end
+    end
+    methods(Access=protected, Static)
+        function f=get_intersections(vec,lev)
+            if vec(1) < lev
+                fstart=1;
+            else
+                
+                fstart=[];
+            end
+            if vec(end)<lev
+                fend=numel(vec);
+            else
+                fend=[];
+            end
+            fstart=[fstart find(diff(vec > lev) == -1)];
+            if isempty(fstart)
+                f=double.empty(2,0);
+                return
+            end
+            fend=[find(diff(vec > lev) == 1) fend];
+            f=[fstart; fend];
         end
     end
 end

@@ -27,11 +27,11 @@ classdef LoessInterpolator < Interpolator
 %
 %   scalar double (0 > span <= 1) defining the fraction of points to be
 %   used for the local regression. The larger this number the smoother the
-%   result, but the slower the computation. Default value is 0.1, i.e. 10%
+%   result, but the slower the computation. Default value is 0.01, i.e. 1%
 %   of the input points are included in the local regression
 %
 % see also: LoessInterpolator
-        span(1,1) double {mustBePositive, mustBeFinite} = 0.1;
+        span(1,1) double {mustBePositive, mustBeFinite} = 0.01;
 
 % LoessInterpolator/robust_iterations
 %

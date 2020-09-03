@@ -21,6 +21,7 @@ classdef XSection < handle
     %   sn2xy - transform sn coordinates of points and vectors to xy coordinates
     %   plot - plots the tangential and orthogonal vectors at the origin
     %   set_from_vmadcp - sets the origin and direction based on the vmadcp track
+    %   revert - revert the direction of the cross-section
     %
     %   see also: VMADCP, EnsembleFilter
     properties
@@ -41,6 +42,13 @@ classdef XSection < handle
         %
         % see also: XSection, origin, direction_orthogonal
         direction (2,1) double {mustBeFinite,XSection.mustBeUnitVector} = [1; 0];
+        
+        % Xsection/scale
+        %
+        % scale of the cross-section in m, Default is 10.
+        %
+        % see also: XSection, plot
+        scale (1,1) double {mustBeFinite, mustBePositive} = 10
     end
     properties(Dependent)
         %XSection/direction_orthogonal (read only)
@@ -150,7 +158,7 @@ classdef XSection < handle
             end
         end
         
-        function varargout=plot(obj,scale)
+        function varargout=plot(obj, scale)
             % Plot orthogonal and tangential vector at cross-section origin
             %
             %   plot(obj) plot the unit vectors orthogonal and tangential to the
@@ -161,15 +169,13 @@ classdef XSection < handle
             %   h = plot(...) returns the handle to the quivers
             %
             %   see also: XSection
-            scalearg={'autoscale','off'};
             if nargin < 2
-                scale=1;
-                scalearg{2}='on';
+                scale=obj.scale;
             end
             hold_stat=get(gca,'nextplot');
-            h(1)=quiver(obj.origin(1),obj.origin(2),obj.direction(1)*scale,obj.direction(2)*scale,'linewidth',2,'color','r',scalearg{:});
+            h(1)=quiver(obj.origin(1),obj.origin(2),obj.direction(1)*scale,obj.direction(2)*scale,'linewidth',2,'color','r','AutoScale', 'off');
             hold on
-            h(2)=quiver(obj.origin(1),obj.origin(2),obj.direction_orthogonal(1)*scale,obj.direction_orthogonal(2)*scale,'linewidth',2,'color','g',scalearg{:});
+            h(2)=quiver(obj.origin(1),obj.origin(2),obj.direction_orthogonal(1)*scale,obj.direction_orthogonal(2)*scale,'linewidth',2,'color','g','AutoScale', 'off');
             asp=get(gca,'dataaspectratio');
             set(gca,'dataaspectratio',[max(asp(1:2))*[1 1] asp(3)])
             set(gca,'nextplot',hold_stat)
@@ -178,18 +184,20 @@ classdef XSection < handle
             end
         end
         function set_from_vmadcp(obj,V,filter)
-% Set the direction and origin of the cross-section based on the adcp track
-%
-%   set_from_vmadcp(obj,V) sets the direction of the by calculating the 
-%   largest eigenvector of the covariance matrix of the positions. The 
-%   origin is determined by setting first the origin to the mean of the 
-%   cross-section. Than the track is rotated to s,n coordinates and the 
-%   origin is set to the mid-point of the n-range.
-%
-%   set_from_vmadcp(obj,V,filter) allows to specify an EnsembleFilter to 
-%   exclude parts of the track
-%
-%   see also: XSection, EnsembleFilter, VMADCP
+            % Set the direction and origin of the cross-section based on the adcp track
+            %
+            %   set_from_vmadcp(obj,V) sets the direction of the by calculating the
+            %   largest eigenvector of the covariance matrix of the positions. The
+            %   origin is determined by setting first the origin to the mean of the
+            %   cross-section. Than the track is rotated to s,n coordinates and the
+            %   origin is set to the mid-point of the n-range. The standard
+            %   deviation of the n-coordinates is used as estimate of the
+            %   scale
+            %
+            %   set_from_vmadcp(obj,V,filter) allows to specify an EnsembleFilter to
+            %   exclude parts of the track
+            %
+            %   see also: XSection, EnsembleFilter, VMADCP
             [x,y]=V.xy;
             if nargin > 2 && ~isempty(filter)
                 assert(isa(filter,'EnsembleFilter'),'filter should be of class EnsembleFilter')
@@ -204,7 +212,16 @@ classdef XSection < handle
             obj.origin=[nanmean(x); nanmean(y)];
             [~ , n]=obj.xy2sn(x, y);
             n_orig=(nanmax(n)+nanmin(n))/2;
+            obj.scale=nanstd(n);
             [obj.origin(1), obj.origin(2)]=obj.sn2xy(0, n_orig);
+        end
+        function revert(obj)
+            % Reverts direction of the cross-section
+            %
+            %   obj.revert() reverts the direction of the cross-section
+            %
+            %   see also: XSection
+            obj.direction=-obj.direction;
         end
     end
     methods (Static, Access=protected)

@@ -241,14 +241,35 @@ classdef VMADCP < ADCP
             end
         end
         function [lat, lon]=ll(obj)
+            % Returns latitude and longitude sailed by the vessel
+            %
+            %   [lat,lon] = ll(obj) returns tha latitude and longitude sailed by the
+            %   vessel.
+            %
+            %   see also: VMADCP, ll_provider
             [lat,lon]=obj.ll_provider.lat_lon(obj);
-
         end
         function [x, y]=xy(obj)
+            % Returns the projected coordinates sailed by the vessel
+            %
+            %   [x, y] = xy(obj) Return the x and y components in  the projected 
+            %   coordinate system set by xy_cor_system.
+            %
+            %   see also: VMADCP, xy_cor_system, ll
             [lat, lon]=obj.ll();
             [x, y]= obj.xy_cor_system.xy(lat,lon);
         end
+        
         function pos=bed_offset(obj,dst)
+            % Get the offset from the ADCP to the observed bed in m
+            %
+            %   pos = bed_offset(obj) returns the x,y and z components of the vector
+            %   pointing from the ADCP to the detected bed. 
+            %
+            %   pos = bed_offset(obj, dst) allows to additionaly specify the coordinate
+            %   system to get the offsets in as a CoordinateSystem object.
+            %
+            %   see also: VMADCP, CoordinateSystem, slant_range_to_bed, bed_position
             if nargin < 2 
                 dst=CoordinateSystem.Earth;
             end
@@ -257,6 +278,12 @@ classdef VMADCP < ADCP
             pos=tm.*obj.slant_range_to_bed;
         end
         function pos=bed_position(obj)
+        % Position of the bed in geographic coordinates
+        %
+        %   pos = bed_position(obj) returns the x,y and z coordinates of the bed as
+        %   detected by the bottom tracking of the ADCP.
+        %
+        % see also: VMADCP, bed_offset
             pos=obj.bed_offset(CoordinateSystem.Earth);
             [x,y]=obj.xy();
             pos(:,:,:,1)=pos(:,:,:,1)+x;
@@ -264,25 +291,43 @@ classdef VMADCP < ADCP
             pos(:,:,:,3)=pos(:,:,:,3)+obj.water_level.get_water_level(obj.time)-obj.transducer_depth;
         end
         function pos=depth_cell_position(obj)
+            % Get the geographic position of the depth cells
+            %
+            %   pos = depth_cell_position(obj) returns the x, y and z coordinates of
+            %   the depth cells of the ADCP.
+            %
+            %   see also: VMADCP, depth_cell_offset
             pos=obj.depth_cell_offset(CoordinateSystem.Earth);
             [x,y]=obj.xy();
             pos(:,:,:,1)=pos(:,:,:,1)+x;
             pos(:,:,:,2)=pos(:,:,:,2)+y;
             pos(:,:,:,3)=pos(:,:,:,3)+obj.water_level.get_water_level(obj.time)-obj.transducer_depth;
         end
-        function plot_track(obj)
+        function handle_track=plot_track(obj,varargin)
+            % plot the track sailed by the vessel
+            %
+            %   plot_track(obj) plots the track sailed by the vessel
+            %
+            %   plot_track(obj, ...) pass additional parameters to the plot function 
+            %
+            %   handle_track = plot_track(...) returns the handle to plot object
+            %
+            %   see also: VMADCP, plot, plot_all
             figure
             [x,y]=obj.xy;
-            plot(x,y,'.-');
+            ht=plot(x,y,varargin{:});
             axis equal
             xlabel([obj.xy_cor_system.description,' x (m)']);
             ylabel([obj.xy_cor_system.description,' y (m)']);
+            if nargout > 0
+                handle_track=ht;
+            end
         end
-        function plot_bed_position(obj)
+        function [handle_scat, handle_cbar]=plot_bed_position(obj,varargin)
             figure
             pos=obj.bed_position();
             pos=reshape(pos,[],3);
-            scatter3(pos(:,1),pos(:,2),pos(:,3),10,pos(:,3),'filled');
+            hs=scatter3(pos(:,1),pos(:,2),pos(:,3),10,pos(:,3),'filled',varargin{:});
             set(gca,'DataAspectRatio',[1 1 .2])
             view(0,90)
             xlabel([obj.xy_cor_system.description,' x (m)']);
@@ -290,6 +335,12 @@ classdef VMADCP < ADCP
             zlabel('z (m)');
             hc=colorbar;
             ylabel(hc,'Bed elevation (m)')
+            if nargout > 0
+                handle_scat=hs;
+            end
+            if nargout > 1
+                handle_cbar=hc;
+            end
         end
         function plot_velocity(obj,vel)
             if nargin < 2

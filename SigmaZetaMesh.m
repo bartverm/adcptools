@@ -65,9 +65,11 @@ classdef SigmaZetaMesh < Mesh
 %   zb_middle - z-coordinate of bed at middle edges
 %   zb_right - z-coordinate of bed at right edges
 %   zb_all - z-coordinate of bed at all edges from left to right
-%   n_all - n-coordinate of bed at all edges from left to right
-%   x_all - x-coordinate of bed at all edges from left to right
-%   y_all - y-coordinate of bed at all edges from left to right
+%
+%   * Water surface position
+%   nw - n-coordinates of water surface boundaries
+%   xw - x-coordinates of water surface boundaries
+%   yw - y-coordinates of water surface boundaries
 %
 %   * Patch coordinates (for use with patch plotting function)
 %   n_patch - n-coordinate of edges for use with patch function
@@ -108,6 +110,10 @@ classdef SigmaZetaMesh < Mesh
         zb_left (1,:) double {mustBeFinite, mustBeReal}
         zb_middle (1,:) double {mustBeFinite, mustBeReal}
         zb_right (1,:) double {mustBeFinite, mustBeReal}
+        zb_all (1,:) double {mustBeFinite, mustBeReal}
+        nb_all (1,:) double {mustBeFinite, mustBeReal}
+        
+        nw (2,:) double {mustBeFinite, mustBeReal}
                
         col_to_mat (:,:) double {mustBeInteger, mustBeFinite mustBeReal}
         row_to_mat (:,:) double {mustBeInteger, mustBeFinite mustBeReal}
@@ -123,10 +129,10 @@ classdef SigmaZetaMesh < Mesh
         y_left
         y_middle
         y_right
-        n_all
-        zb_all
-        x_all
-        y_all
+        xb_all
+        yb_all
+        xw
+        yw
         n_patch
         x_patch
         y_patch
@@ -157,13 +163,21 @@ classdef SigmaZetaMesh < Mesh
         function val=get.y_right(obj)
             [~,val]=obj.xs.sn2xy(obj.n_right*0, obj.n_right);
         end
-        function val=get.x_all(obj)
-            nall=obj.n_all;
+        function val=get.xb_all(obj)
+            nall=obj.nb_all;
             [val,~]=obj.xs.sn2xy(nall*0, nall);
         end
-        function val=get.y_all(obj)
-            nall=obj.n_all;
+        function val=get.yb_all(obj)
+            nall=obj.nb_all;
             [~,val]=obj.xs.sn2xy(nall*0, nall);
+        end
+        function val=get.xw(obj)
+            nwl=obj.nw;
+            [val,~]=obj.xs.sn2xy(nwl*0, nwl);
+        end
+        function val=get.yw(obj)
+            nwl=obj.nw;
+            [~,val]=obj.xs.sn2xy(nwl*0, nwl);
         end
         function val=get.x_patch(obj)
             npatch=obj.n_patch;
@@ -172,12 +186,6 @@ classdef SigmaZetaMesh < Mesh
         function val=get.y_patch(obj)
             npatch=obj.n_patch;
             [~,val]=obj.xs.sn2xy(npatch*0, npatch);
-        end
-        function val=get.n_all(obj)
-            val=[reshape([obj.n_left;obj.n_middle],1,[]) obj.n_right(end)];
-        end
-        function val=get.zb_all(obj)
-            val=[reshape([obj.zb_left;obj.zb_middle],1,[]) obj.zb_right(end)];
         end
         function val=get.sig_bottom_left(obj)
             val=obj.z_to_sigma(obj.z_bottom_left, reshape(obj.zb_left(obj.col_to_cell),[],1));
@@ -258,10 +266,17 @@ classdef SigmaZetaMesh < Mesh
 %   plot(obj,var) plot the mesh and color the cells with the varibale var
 %
 %   see also: SigmaZetaMesh, plot3
+            if ~isscalar(obj)
+                for ce=1:numel(obj)
+                    subplot(numel(obj),1,ce)
+                    plot(obj(ce))
+                end
+                return
+            end
             hold_stat=get(gca,'NextPlot');
-            plot(obj.n_all,obj.zb_all,'k','Linewidth',2)
+            plot(obj.nb_all,obj.zb_all,'k','Linewidth',2)
             hold on
-            plot(obj.n_all([1 end]),obj.water_level.*[1 1],'b','Linewidth',2)
+            plot(obj.nw,obj.nw*0+obj.water_level,'b','Linewidth',2)
             plot_var=nan(obj.ncells,1);
             if nargin > 1
                 assert(numel(var)==obj.ncells, 'Variable to plot should have same number of elements as cells in the mesh');
@@ -278,10 +293,19 @@ classdef SigmaZetaMesh < Mesh
 %   plot3(obj,var) plot the mesh and color the cells with the varibale var
 %
 %   see also: SigmaZetaMesh, plot
+            if ~isscalar(obj)
+                hold_stat=get(gca,'NextPlot');
+                hold on
+                for ce=1:numel(obj)
+                    plot3(obj(ce))
+                end
+                set(gca,'NextPlot',hold_stat);
+                return
+            end
             hold_stat=get(gca,'NextPlot');
-            plot3(obj.x_all,obj.y_all,obj.zb_all, 'k', 'Linewidth',2)
+            plot3(obj.xb_all,obj.yb_all,obj.zb_all, 'k', 'Linewidth',2)
             hold on
-            plot3(obj.x_all([1 end]),obj.y_all([1 end]),obj.water_level*[1 1], 'b', 'Linewidth',2)
+            plot3(obj.xw,obj.yw,obj.water_level+obj.xw*0, 'b', 'Linewidth',2)
             plot_var=nan(obj.ncells,1);
             if nargin > 1
                 assert(numel(var)==obj.ncells, 'Variable to plot should have same number of elements as cells in the mesh');
@@ -289,7 +313,7 @@ classdef SigmaZetaMesh < Mesh
             end
             patch(obj.x_patch,obj.y_patch, obj.z_patch,plot_var(:));
             set(gca,'NextPlot',hold_stat);
-            set(gca,'DataAspectRatio',[20 20 1])
+            set(gca,'DataAspectRatio',[5 5 1])
         end
         
     end
