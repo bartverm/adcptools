@@ -41,6 +41,14 @@ else % if path is not given
     path=''; % make path empty char
 end % if
 
+if (nargin>2)
+	suffix=varargin{2};
+	assert(ischar(suffix) && isrow(suffix),'readDeployment:BadFormatSuffix','Suffix has to be a string');
+	suffix_pattern={['.*',suffix,'$']};
+else
+	suffix_pattern = {};
+end
+
 % Depname
 allFiles=dir([path,DepName,'*']); % read all filenames
 assert(~isempty(allFiles),'readDeployment:NoFileFound',['Could not find any file for deployment: ', DepName]); % check there is at least one file with the given deployment name
@@ -51,7 +59,7 @@ allFiles=({allFiles(~[allFiles(:).isdir]).name})';
 % search for raw data files
 % pattern '.*\.000$' typical for HADCPs is not included
 % as this is only usefull for self-contained measurements which should not be read with readDeployment
-rfiles=match_and_cat({'.*[0-9]{3,3}r\.[0-9]{3,3}$'; '.*\.PD0$'});
+rfiles=match_and_cat({'.*[0-9]{3,3}r\.[0-9]{3,3}$'; '.*\.PD0$'; suffix_pattern{:}});
 assert(~isempty(rfiles),'ReadDeployment:NoRFiles','Could not find raw data files') % Make sure we found at least one adcp file
 disp('Reading ADCP raw data files...') % Tell something nice to the user
 outADCP=readADCP(rfiles); % Read files
