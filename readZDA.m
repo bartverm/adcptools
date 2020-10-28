@@ -41,7 +41,7 @@ if ischar(instr)
 end
 
 
-% tmpdat=textscan([instr{:}],'$ %*2s ZDA %2f32 %2f32 %f32 %u16 %u16 %u16 %d8 %d8 %*2s',nlines,'Delimiter',',*');
+% tmpdat=textscan_checked([instr{:}],'$ %*2s ZDA %2f32 %2f32 %f32 %u16 %u16 %u16 %d8 %d8 %*2s',nlines,'Delimiter',',*');
 defineNMEA;
 [tmpdat,split]=regexp([instr{:}],patterns.zda,'names','split');
 clear instr
@@ -57,7 +57,7 @@ end
 
 
 %Initialize variable
-NMEA_ZDA.UTCtime=cell2mat(textscan([tmpdat(:).utc],'%2f32 %2f32 %f32','delimiter',','));
-NMEA_ZDA.date=fliplr(cell2mat(textscan([tmpdat(:).date],'%u16 %u16 %u16','delimiter',',')));
-NMEA_ZDA.zone=cell2mat(textscan([tmpdat(:).zone],'%d8 %d8','delimiter',',*'));
+NMEA_ZDA.UTCtime=cell2mat(textscan_checked([tmpdat(:).utc],'%2f32 %2f32 %f32','delimiter',','));
+NMEA_ZDA.date=fliplr(cell2mat(textscan_checked([tmpdat(:).date],'%u16 %u16 %u16','delimiter',',')));
+NMEA_ZDA.zone=cell2mat(textscan_checked([tmpdat(:).zone],'%d8 %d8','delimiter',',*'));
 
