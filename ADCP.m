@@ -616,7 +616,7 @@ classdef ADCP < handle
             two_alpha_R = 2.*pt.attenuation.*R;                    % compute 2alphaR
             LDBM=10*log10(obj.lengthxmitpulse);
             PDBW=10*log10(obj.power);                        
-            val = obj.backscatter_constant + 10*log10((obj.attitude_temperature+273.16).*R.^2.*pt.near_field_correction(R).^2) - LDBM - PDBW + two_alpha_R + 10*log10(10.^(obj.echo/10)-10.^(obj.intensity_scale.*obj.noise_level/10));       
+            val = obj.backscatter_constant + 10*log10((obj.attitude_temperature+273.16).*R.^2.*pt.near_field_correction(R).^2) - LDBM - PDBW + two_alpha_R + 10*log10(10.^((obj.echo-obj.noise_level)/10)-1); % equation according to fsa-031, correcting goustiaus and van haren equation      
             val(obj.bad)=nan;
         end
         
