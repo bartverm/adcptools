@@ -58,13 +58,13 @@ end
 if ~isempty(gf1)
     lat=inadcp.(gf1).(gf2).lat;
     long=inadcp.(gf1).(gf2).long;
-    if strcmp(gf2,'GGA')
-        badGPS=inadcp.(gf1).(gf2).qualind~=1 & inadcp.(gf1).(gf2).qualind~=2 ;
-        lat(badGPS)=NaN;
-        long(badGPS)=NaN;
-    else
-        warning('utmADCP:QualInd','No Quality indicator found')
-    end
+%     if strcmp(gf2,'GGA')
+%         badGPS=inadcp.(gf1).(gf2).qualind~=1 & inadcp.(gf1).(gf2).qualind~=2 ;
+%         lat(badGPS)=NaN;
+%         long(badGPS)=NaN;
+%     else
+%         warning('utmADCP:QualInd','No Quality indicator found')
+%     end
 else
     cntsf=0;
     while isempty (gf1)
