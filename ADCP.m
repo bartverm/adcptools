@@ -16,6 +16,7 @@ classdef ADCP < handle
     %   filters - filters for profiled data
     %   timezone - timezone of the data
     %   type - type of ADCP being used
+    %   transformation_matrix_source - source of instrument matrix
     %
     %   ADCP read-only properties:
     %   *Ambient properties*
@@ -111,6 +112,16 @@ classdef ADCP < handle
         %
         % see also: ADCP, datetime/TimeZone, timezones
         timezone(1,:) char = ''
+        
+        % ADCP/transformation_matrix_source
+        %
+        %   Specifies the sources for the transformation matrix as a
+        %   InstrumentMatrixProvider. This is a vector which allows to
+        %   define different sources. The first object capable of providing
+        %   the matrix will be used.
+        %
+        % see also: ADCP, InstrumentMatrixProvider
+        transformation_matrix_source (:,1) InstrumentMatrixProvider = [InstrumentMatrixFromCalibration; InstrumentMatrixFromBAngle];
         
         % ADCP/type
         %
@@ -405,9 +416,9 @@ classdef ADCP < handle
         % ADCP/backscatter
         %
         % Received Volume Backscatter strength (dB) computed according to
-        % Deines (1999) with the corrections of Gostiaux and van Haren. The
-        % backscatter strength is not corrected for attenuation due to
-        % sediment.
+        % Deines (1999) with the corrections of Gostiaux and van Haren and 
+        % the correction in the FSA-031. The backscatter strength is not 
+        % corrected for attenuation due to sediment.
         %
         % see also: ADCP, acoustics, Sv2SSC
         backscatter
@@ -501,10 +512,18 @@ classdef ADCP < handle
             blank=double(obj.raw.blnk(obj.fileid))/100;
         end
         function l=get.lengthxmitpulse(obj)
-            l=double(obj.raw.lngthtranspulse(obj.fileid))/100;
+            if isfield(obj.raw,'sp_transmit_length') % streampro leader support
+                l=double(obj.raw.sp_transmit_length)/1000;
+            else
+                l=double(obj.raw.lngthtranspulse(obj.fileid))/100;
+            end
         end
         function c=get.cellsize(obj)
-            c=double(obj.raw.binsize(obj.fileid))/100;
+            if isfield(obj.raw,'sp_bin_space') %streampro leader support (space makes more sense than size, for the actual use. These seem always to match btw)
+                c=double(obj.raw.sp_bin_space)/1000;
+            else
+                c=double(obj.raw.binsize(obj.fileid))/100;
+            end
         end
         function val=get.temperature(obj)
             val=double(obj.raw.temperature)/100;
@@ -525,7 +544,11 @@ classdef ADCP < handle
             t=reshape(datetime(obj.raw.timeV,'TimeZone',obj.timezone),1,[]);
         end
         function db1=get.distmidfirstcell(obj)
-            db1=double(obj.raw.distmidbin1(obj.fileid))/100;
+            if isfield(obj.raw,'sp_mid_bin1') % streampro leader support (more accurate)
+                db1=double(obj.raw.sp_mid_bin1)/1000;
+            else
+                db1=double(obj.raw.distmidbin1(obj.fileid))/100;
+            end
         end
 
         function n=get.ncells(obj)
@@ -537,6 +560,10 @@ classdef ADCP < handle
         end
 
         function val=get.voltage_factor(obj) % From workhorse operation manual
+            if isfield(obj.raw,'sp_mid_bin1') % streampro header, use voltage factor from manual (0.1 to convert to voltage, but factor is divide by 1e6 in voltage calculation)
+                val=1e5;
+                return
+            end
             if ~obj.is_workhorse
                 warning('Assuming ADCP is a Workhorse')
             end
@@ -942,9 +969,7 @@ classdef ADCP < handle
             I=CoordinateSystem.Instrument;
             S=CoordinateSystem.Ship;
             E=CoordinateSystem.Earth;
-            exp_cfilt=true(1,obj.nensembles);
-            bangle=obj.beam_angle;
-            conv=obj.convexity;
+            exp_cfilt=true(1,obj.nensembles); % dummy filter to expand scalar input
             croll=obj.roll;
             croll(obj.is_upward)=croll(obj.is_upward)+180;
             ha=obj.headalign;
@@ -954,7 +979,8 @@ classdef ADCP < handle
             % FORWARD
             % from lower than instrument to instrument
             cfilt = exp_cfilt & dst >= I & src < I;
-            tm(:,cfilt,:,:)=ADCP.beam_2_instrument(bangle(cfilt), conv(cfilt));
+            tmptm=obj.transformation_matrix_source.b2i_matrix(obj);
+            tm(:,cfilt,:,:)=tmptm(:,cfilt,:,:);
             
             % from lower than ship to ship
             cfilt = exp_cfilt & dst >= S & src < S;
@@ -983,50 +1009,16 @@ classdef ADCP < handle
             
             % from higher than beam to beam
             cfilt = exp_cfilt & dst <= S & src > S;
+            tmptm=obj.transformation_matrix_source.i2b_matrix(obj);
             tm(:,cfilt,:,:)=helpers.matmult(...
-                ADCP.instrument_2_beam(bangle(cfilt), conv(cfilt)),...
+                tmptm(:,cfilt,:,:),...
                 tm(1,cfilt,:,:));
         end
     end
     
     
     methods (Static)
-        function b2i=beam_2_instrument(bangle,c)
-            % Return the beam to instrument transformation matrices
-            %
-            %   b2i=beam_2_instrument(bangle,c) returns the beam to instrument
-            %   transformation matrices given the beam angle (bangle) and the
-            %   instrument convexity (c).
-            %
-            % see also: ADCP, xform
-            a=1./(2*sind(bangle));
-            b=1./(4*cosd(bangle));
-            d=a./sqrt(2);
-            zr=zeros(size(a));
-            b2i=cat(3,...
-                cat(4, c.*a, -c.*a,    zr,   zr),...
-                cat(4,   zr,    zr, -c.*a, c.*a),...
-                cat(4,    b,     b,     b,    b),...
-                cat(4,    d,     d,    -d,   -d));
-        end
-        function i2b=instrument_2_beam(bangle, c)
-            % Return the instrument to beam transformation matrices
-            %
-            %   b2i=beam_2_instrument(bangle,c) returns the instrument to beam
-            %   transformation matrices given the beam angle (bangle) and the
-            %   instrument convexity (c).
-            %
-            % see also: ADCP, xform
-            a=sind(bangle);
-            b=cosd(bangle);
-            d=sqrt(2)*a/2;
-            zr=zeros(size(a));
-            i2b=cat(3,...
-                cat(4,  c.*a,    zr, b,  d),...
-                cat(4, -c.*a,    zr, b,  d),...
-                cat(4,    zr, -c.*a, b, -d),...
-                cat(4,    zr,  c.*a, b, -d));
-        end
+
         function tm=head_tilt(heading,pitch,roll)
             % Return the transformation matrix for the three tilts
             %

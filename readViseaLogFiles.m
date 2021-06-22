@@ -25,15 +25,18 @@ function dat = readViseaLogFiles(inadcp, fname)
 %    You should have received a copy of the GNU General Public License
 %    along with ADCPTools.  If not, see <http://www.gnu.org/licenses/>.
 
+dat=struct;
 if exist('nmea.Message','class')~=8
     warning('Nmea toolbox not available, not reading VISEA log files')
-    dat=struct;
     return;
 end
 
 visea_time_stamp_fmt='\[(?<year>\d{4})/(?<month>\d{2})/(?<day>\d{2}),\s(?<hour>\d{2}):(?<minute>\d{2}):(?<second>\d{2}\.\d{3})\]';
 
 files = dir(fname);
+if isempty(files)
+    return;
+end
 folders={files(:).folder};
 bytes=[files(:).bytes];
 files={files(:).name};
