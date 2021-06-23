@@ -113,6 +113,11 @@ if any(hastime)
         
         %% Find correspondence between time of ADCP and UTCtime
         fadcpfile=find(inadcp.FileNumber==cntfile);
+        if isempty(innmea(cntfile).RDENS)
+            hastime(cntfile)=0;
+            continue
+        end
+            
         fline=(innmea(cntfile).RDENS.lineid >= lines{cntfile}(lineswtime(1)) & ...
             innmea(cntfile).RDENS.lineid <= lines{cntfile}(lineswtime(end)));         % search for RDENS lines with a timestamp
         [commens,idxnmea,idxadcp]=intersect(innmea(cntfile).RDENS.ensnum(fline),...
