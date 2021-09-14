@@ -1,6 +1,6 @@
-function out=readViseaExtern(adcp,filenames,varargin)
+function out=readViseaExtern(adcp,filenames,rfiles,varargin)
 % READVISEAEXTERN Reads Visea extern files
-%   READVISEAEXTERN(ADCP,FILENAME) Reads the visea file given by FILENAME
+%   READVISEAEXTERN(ADCP,FILENAME,RFILES) Reads the visea file given by FILENAME
 %       and returns a structure with the data stored in that file. It will
 %       match the visea data and the ADCP data based on the ensemble
 %       numbers in the file and the ADCP structure
@@ -66,9 +66,25 @@ for cf=1:nFiles
     head=cellfun(@(x) x(isstrprop(x,'alphanum')),head,'UniformOutput',false); % Retain only alphanumeric characters of field names (to make them suitable as variable name)
     dat=textscan(fid,['%*1s%4f/%2f/%2f,%2f:%2f:%6f%*1sENSEMBLE%5f:',repmat(['%',num2str(fwidth),'f'],1,nFields)]); % Read in the data
     fclose(fid); % close file
-    
-    % match ensnum
-    [~,idx_visea,idx_adcp]=intersect(dat{7},adcp.ensnum); % find matching ensemble numbers
+
+    % determine the corresponding ADCP-file
+    rid = 0;
+    for rdx=1:length(rfiles)
+	% compare until the r.000 suffix
+	if (strncmp(rfiles{rdx},filenames{cf},length(rfiles{rdx})-5))
+		rid = rdx;
+		break;
+	end % if strncmp
+    end % for rdx
+    if (rid == 0)
+    	warning(['Could not match visea-file ', filenames{cf},' with any adcp-file']);
+    end % if rid == 0
+
+    % match ensnum of corresponding adcp file
+    ensnum = adcp.ensnum;
+    ensnum((adcp.FileNumber ~= rid)) = NaN;
+    [~,idx_visea,idx_adcp]=intersect(dat{7},ensnum); % find matching ensemble numbers
+
     tmptime=[dat{1:6}]; % Temporarily store time from Visea file
     out.timeV(idx_adcp,:)=tmptime(idx_visea,:); % Store visea time in output structure
 

@@ -50,23 +50,33 @@ classdef BathymetryScatteredPoints < Bathymetry
         end
         function plot_residuals(obj)
             z_interp=obj.get_bed_elev(obj.x,obj.y);
-            scatter(obj.x,obj.y,5,z_interp-obj.z,'filled')
+            res=z_interp-obj.z;
+            scatter(obj.x,obj.y,5,res,'filled')
+            set(gca,'clim',nanmean(res) + nanstd(res)*2*[-1 1])
+            colorbar
             axis equal
         end
-        function plot(obj)
+        function varargout=plot(obj)
            if ~isscalar(obj)
                plot@Bathymetry(obj);
                return
            end
            hold_stat=get(gca,'NextPlot');
-           plot3(obj.x,obj.y,obj.z,'k.') 
+           hp=plot3(obj.x,obj.y,obj.z,'k.');
            hold on
            set(gca,'dataaspectratio',[5 5 1])
            as=alphaShape(obj.x',obj.y',1);
-           as.Alpha=as.criticalAlpha('one-region');
+           as.Alpha=as.criticalAlpha('one-region')*6;
            tri = alphaTriangulation(as);
-           trimesh(tri,obj.x, obj.y, obj.get_bed_elev(obj.x,obj.y),'FaceColor','interp','EdgeColor','none')
+           z_interp=obj.get_bed_elev(obj.x,obj.y);
+           ht=trimesh(tri,obj.x, obj.y, z_interp ,'FaceColor','interp','EdgeColor','none');
            set(gca,'NextPlot',hold_stat)
+           if nargout > 0
+               varargout{1}=hp;
+           end
+           if nargout > 1
+               varargout{2}=ht;
+           end
         end
     end
 end

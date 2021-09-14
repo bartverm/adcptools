@@ -285,7 +285,7 @@ classdef SigmaZetaMesh < Mesh
             patch(obj.n_patch, obj.z_patch, plot_var(:));
             set(gca,'NextPlot',hold_stat);
         end
-        function plot3(obj,var)
+        function [hpatch, hwater, hbed]=plot3(obj,var)
 % Plot the mesh optionally colored with a variable in 3D
 %
 %   plot3(obj) plots the mesh with the bed and water surface
@@ -303,18 +303,22 @@ classdef SigmaZetaMesh < Mesh
                 return
             end
             hold_stat=get(gca,'NextPlot');
-            plot3(obj.xb_all,obj.yb_all,obj.zb_all, 'k', 'Linewidth',2)
+            hbed=plot3(obj.xb_all,obj.yb_all,obj.zb_all, 'k', 'Linewidth',2);
             hold on
-            plot3(obj.xw,obj.yw,obj.water_level+obj.xw*0, 'b', 'Linewidth',2)
+            hwater=plot3(obj.xw,obj.yw,obj.water_level+obj.xw*0, 'b', 'Linewidth',2);
             plot_var=nan(obj.ncells,1);
             if nargin > 1
                 assert(numel(var)==obj.ncells, 'Variable to plot should have same number of elements as cells in the mesh');
                 plot_var=var;
             end
-            patch(obj.x_patch,obj.y_patch, obj.z_patch,plot_var(:));
+            hpatch_tmp=patch(obj.x_patch,obj.y_patch, obj.z_patch,plot_var(:));
             set(gca,'NextPlot',hold_stat);
             set(gca,'DataAspectRatio',[5 5 1])
+            if nargout>1
+                hpatch=hpatch_tmp;
+            end
         end
+        
         
     end
     methods(Access=protected)

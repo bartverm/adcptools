@@ -249,6 +249,19 @@ if any(regexpi(flags,'b'))                              %Same as above but now f
     end
 end
 
+%Read stream pro leader format
+if any(AllHeaders(:,1)==20480)
+    initSP(nens);
+    for cntens=1:nens
+        Ndatablock=find(DataHeader{cntens}(:,1)==20480, 1);
+        if isempty(Ndatablock)
+            continue
+        else
+            fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
+            readSP(fileid(cntens),fpos,cntens);
+        end
+    end
+end
 %Read variable leader data
 if any(regexpi(flags,'e'))                              %Same as above but now for variable leader data
     if ~any(AllHeaders(:,1)==128)
@@ -266,6 +279,21 @@ if any(regexpi(flags,'e'))                              %Same as above but now f
         end
     end
 end
+
+%Read instrument transformation matrix
+if any(AllHeaders(:,1)==12800)
+    initTM(nens);
+    for cntens=1:nens
+        Ndatablock=find(DataHeader{cntens}(:,1)==12800, 1);
+        if isempty(Ndatablock)
+            continue
+        else
+            fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
+            readTM(fileid(cntens),fpos,cntens);
+        end
+    end
+end
+
 
 % Read external data
 if any(regexpi(flags,'x'))                                                 % If external data is to be read
@@ -651,6 +679,35 @@ vl6=fread(fid,8,'uint8');
 dataout.timeV(cntens,:)=[vl6(1)*100+vl6(2) vl6(3) vl6(4) vl6(5) vl6(6) ...
     vl6(7)+vl6(8)/100];                                                    %Gives date in Matlab vector
 
+function readSP(fid,fpos,cntens)
+global dataout
+fseek(fid,fpos,-1);
+dataID=fread(fid,2,'*uint8');
+if any(dataID~=[0;80])
+    error('readADCP:readSP:wrongID','StreamPro Leader ID seems to be wrong')
+end
+dataout.sp_longlag(cntens)=fread(fid,1,'*uint16');
+dataout.sp_shortlag(cntens)=fread(fid,1,'*uint16');
+dataout.sp_pgood(cntens)=fread(fid,1,'*uint16');
+dataout.sp_subpings(cntens)=fread(fid,1,'*uint16');
+dataout.sp_lastbin(cntens)=fread(fid,1,'*uint16');
+dataout.sp_corr_thresh(cntens)=fread(fid,1,'*uint8');
+dataout.sp_mid_bin1(cntens)=fread(fid,1,'*uint16');
+dataout.sp_bin_size(cntens)=fread(fid,1,'*uint16');
+dataout.sp_bin_space(cntens)=fread(fid,1,'*uint16');
+dataout.sp_transmit_length(cntens)=fread(fid,1,'*uint16');
+
+function readTM(fid,fpos,cntens)
+global dataout
+fseek(fid,fpos,-1);
+dataID=fread(fid,2,'*uint8');
+if any(dataID~=[0;50])
+    error('readADCP:readTM:wrongID','Transformation matrix ID seems to be wrong')
+end
+dataout.transformation_matrix(:,:,cntens)=reshape(fread(fid,16,'*int16'),4,4);
+
+
+
 % Read WinRiverII General NMEA GGA data
 function readNMEAGGA(fid,fpos,cntens,cntblock)
 global dataout WRII_GGA_ID
@@ -858,6 +915,25 @@ dataout.errorstat4= zeros(nens,8, 'uint8');
 dataout.pressure= zeros(1,nens, 'uint32');
 dataout.pressurevar= zeros(1,nens, 'uint32');
 dataout.timeV= zeros(nens,6, 'double');
+
+%Initialize StreamPro leader data
+function initSP(nens)
+global dataout
+dataout.sp_longlag=zeros(1,nens, 'uint16');
+dataout.sp_shortlag=zeros(1,nens, 'uint16');
+dataout.sp_pgood=zeros(1,nens, 'uint16');
+dataout.sp_subpings=zeros(1,nens, 'uint16');
+dataout.sp_lastbin=zeros(1,nens, 'uint16');
+dataout.sp_corr_thresh=zeros(1,nens, 'uint8');
+dataout.sp_mid_bin1=zeros(1,nens, 'uint16');
+dataout.sp_bin_size=zeros(1,nens, 'uint16');
+dataout.sp_bin_space=zeros(1,nens, 'uint16');
+dataout.sp_transmit_length=zeros(1,nens, 'uint16');
+
+% Initialize transformation matrix data
+function initTM(nens)
+global dataout
+dataout.transformation_matrix=zeros(4,4,nens,'int16');
 
 %Initialize Bottom tracking data
 function initBT(nens)

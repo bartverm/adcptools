@@ -1,4 +1,4 @@
-function [outADCP]=readDeployment(DepName,varargin)
+function [outADCP]=readDeployment(DepName,path)
 % READDEPLOYMENT Read a Winriver deployment
 %   ADCP = readDeployment(DEPNAME) read deployment files starting with
 %       DEPNAME in the current folder. It currently supports navigation,
@@ -27,24 +27,37 @@ function [outADCP]=readDeployment(DepName,varargin)
 
 
 %% parse input 
-%path
 if nargin>1 % if path is given
-    path=varargin{1}; % get it
     assert(ischar(path) && isrow(path),'readDeployment:BadFormatPath','Path must be a row vector of characters') % make sure it is a row vector of characters
     assert(exist(path,'dir')==7,'readDeployment:InexistentPath',['Cannot find folder: ',path]) % check the path exists
 
-    % append slash to path if it's missing
-    if ~any(strcmp(path(end),{'/','\'})) % is a trailing slash or backslash missing?
-        if ispc(), path=[path,'\']; else path=[path,'/'];end % if we are on windows add a backslash, otherwise add a slash
-    end % if
+%     % append slash to path if it's missing
+%     if ~any(strcmp(path(end),{'/','\'})) % is a trailing slash or backslash missing?
+%         if ispc(), path=[path,'\']; else path=[path,'/'];end % if we are on windows add a backslash, otherwise add a slash
+%     end % if
 else % if path is not given 
     path=''; % make path empty char
 end % if
 
+%     if (nargin>2)
+%     suffix=varargin{2};
+%     assert(ischar(suffix) && isrow(suffix),'readDeployment:BadFormatSuffix','Suffix has to be a string');
+%     suffix_pattern={['.*',suffix,'$']};
+%     else
+%     suffix_pattern = {};
+%     end
+
+if iscellstr(DepName)
+    allFiles=DepName;
+else
+    allFiles=dir([path,DepName,'*']); % read all filenames
+    assert(~isempty(allFiles),'readDeployment:NoFileFound',['Could not find any file for deployment: ', DepName]); % check there is at least one file with the given deployment name
+    allFiles=({allFiles(~[allFiles(:).isdir]).name})';
+end
+
+
+
 % Depname
-allFiles=dir([path,DepName,'*']); % read all filenames
-assert(~isempty(allFiles),'readDeployment:NoFileFound',['Could not find any file for deployment: ', DepName]); % check there is at least one file with the given deployment name
-allFiles=({allFiles(~[allFiles(:).isdir]).name})';
 
 
 %% Read Transect Files
@@ -88,7 +101,7 @@ end
 vfiles=match_and_cat('.*[0-9]{3,3}extern\.dat$'); % search for transect files
 if ~isempty(vfiles)
     disp('Reading VISEA extern files...')
-    outADCP.VISEA_Extern=readViseaExtern(outADCP,vfiles);
+    outADCP.VISEA_Extern=readViseaExtern(outADCP,vfiles,rfiles);
 end
 
 %% Read VISEA log files
@@ -109,7 +122,7 @@ function files=match_and_cat(rex)
         tmpfiles=regexp(allFiles,rex{crex},'match'); % search for cells matching regular expression
         files=[files;vertcat(tmpfiles{~cellfun(@isempty,tmpfiles)})]; %#ok<AGROW> % Get result as cell of strings and add to output(growth should be insignificant)
     end
-    files=cellfun(@(x,y) [x y],repmat({path},size(files)),files,'UniformOutput',false); % Concatenate path and filenames
+    files=fullfile(path, files); %cellfun(@(x,y) [x y],repmat({path},size(files)),files,'UniformOutput',false); % Concatenate path and filenames
 end
 
 end

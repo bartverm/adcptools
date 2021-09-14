@@ -133,7 +133,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
             end
         end
         function val=get.water_level(obj)
-            val=obj.vmadcp.water_level.get_water_level(obj.time);
+            val=obj.vmadcp.water_level.get_water_level(obj);
         end
         function mesh=get_mesh(obj)
 % Construct the SigmaZetaMesh

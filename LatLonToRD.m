@@ -1,15 +1,15 @@
-classdef RDCoordinateSystem < ProjectedCoordinateSystem
+classdef LatLonToRD < LatLonToProjection
 % Rijksdriehoeks (RD) dutch coordinate system
 %
-%   RDCoordinateSystem properties:
+%   LatLonToRD properties:
 %   description - 'RD' (Constant property)
 %
-%   RDCoordinateSystem methods:
+%   LatLonToRD methods:
 %   xy - obtain x,y RD coordinates from lat, lon geographic coordinates
 %   ll - obtain lat, lon geographic coordinates from x,y RD coordinates
 %
-%   see also: VMADCP, ProjectedCoordinateSystem
-    properties(Constant)
+%   see also: VMADCP, LatLonToProjection
+    properties
         description = 'RD'
     end
     properties(Access = private, Constant)
@@ -19,6 +19,9 @@ classdef RDCoordinateSystem < ProjectedCoordinateSystem
     lam0    = 5.38720621
     end
     methods
+        function obj=LatLonToRD(varargin)
+            obj=obj@LatLonToProjection(varargin{:});
+        end
         function [lat, lon]=ll(obj, x, y)
             Kp = [0,2,0,2,0,2,1,4,2,4,1];
             Kq = [1,0,2,1,3,2,0,0,3,1,1];
