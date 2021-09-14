@@ -946,11 +946,11 @@ classdef ADCP < handle
             if nargin < 2
                 dst=CoordinateSystem.Earth;
             end
-            tm=-obj.xform(CoordinateSystem.Beam, dst); % minus since matrix for vel points to adcp
+            tm=-obj.xform(CoordinateSystem.Beam, dst, 'UseTilts', true); % minus since matrix for vel points to adcp
             tm(:,:,:,4)=[];
             pos=tm.*obj.depth_cell_slant_range;
         end
-        function tm=xform(obj,dst, src)
+        function tm=xform(obj,dst, src,varargin)
             % Get transformation matrices for coordinate transformations
             %
             %   tm=xform(obj,dst) get the transformation matrices for the
@@ -961,10 +961,22 @@ classdef ADCP < handle
             %   tm=xform(obj,dst,src) to specify a custom source coordinate
             %   system
             %
+            %   tm=xform(...,'ParameterName', parameterValue) allows to
+            %   specify the following options:
+            %   'UseTilts' - if unset checks the ADCP data in inverse
+            %   transformations to know whether to use the tilts. If set to
+            %   true will always use the tilts in invers transformations,
+            %   if set to false will never use tilts in inverse
+            %   transformations.
+            %
             %   see also: ADCP
             if nargin < 3
                 src=obj.coordinate_system;
             end
+            P=inputParser;
+            P.addParameter('UseTilts', false,@(x) isscalar(x) && islogical(x));
+            P.parse(varargin{:});
+            
             tm = repmat(shiftdim(eye(4),-2),1,obj.nensembles);
             I=CoordinateSystem.Instrument;
             S=CoordinateSystem.Ship;
@@ -1001,8 +1013,14 @@ classdef ADCP < handle
             
             % from higher than instrument to instrument
             cfilt = exp_cfilt & dst <= I & src > I;
-            cpitch(~obj.tilts_used_in_transform)=0; % Take into account whether tilts where used when transforming back
-            croll(~obj.tilts_used_in_transform)=0; % Take into account whether tilts where used when transforming back
+            if any(strcmp(P.UsingDefaults,'UseTilts'))
+                cpitch(~obj.tilts_used_in_transform)=0; % Take into account whether tilts where used when transforming back
+                croll(~obj.tilts_used_in_transform)=0; % Take into account whether tilts where used when transforming back
+            elseif ~P.Results.UseTilts
+                cpitch(:)=0;
+                croll(:)=0;
+            end
+                
             tm(1,cfilt,:,:)=helpers.matmult(...
                 permute(ADCP.head_tilt(ha(cfilt),cpitch(cfilt), croll(cfilt)),[1,2,4,3]),...
                 tm(1,cfilt,:,:));
@@ -1042,7 +1060,7 @@ classdef ADCP < handle
             cr=cosd(roll);
             tm = cat(3,...
                 cat(4,  ch.*cr+sh.*sp.*sr,  sh.*cp, ch.*sr-sh.*sp.*cr, zr),...
-                cat(4, -sh.*cr+ch.*sp.*sr,  ch.*cp, sh.*sr-ch.*sp.*cr, zr),...
+                cat(4, -sh.*cr+ch.*sp.*sr,  ch.*cp, -sh.*sr-ch.*sp.*cr, zr),...
                 cat(4,            -cp.*sr,      sp,            cp.*cr, zr),...
                 cat(4,                 zr,      zr,                zr, on));
         end
