@@ -1,21 +1,24 @@
-classdef UTMCoordinateSystem < ProjectedCoordinateSystem
+classdef LatLonToUTM < LatLonToProjection
 % UTM coordinate system
 %
-%   UTMCoordinateSystem properties:
+%   LatLonToUTM properties:
 %   description - 'UTM' (Constant property)
 %   zone - UTM zone
 %
-%   UTMCoordinateSystem methods:
+%   LatLonToUTM methods:
 %   xy - returns the UTM coordinates for the given lat lon coordinates
 %
-%   see also: ProjectedCoordinateSystem
-    properties(Constant)
+%   see also: LatLonToProjection
+    properties
         description = 'UTM'
     end
     properties
         zone
     end
     methods
+        function obj=LatLonToUTM(varargin)
+            obj=obj@LatLonToProjection(varargin{:});
+        end
         function [x, y]=xy(obj,lat, lon)
         % returns the UTM Coordinates from lat lon coordinates
         %
@@ -25,7 +28,7 @@ classdef UTMCoordinateSystem < ProjectedCoordinateSystem
         %   is automatically determined and assigned. If the property is
         %   set, the given zone is used. 
         %
-        %   see also: ProjectedCoordinateSystem, VMADCP
+        %   see also: LatLonToProjection, VMADCP
             if isempty(obj.zone)
                 [x,y,obj.zone]=geo2utm(lat,lon);
             else

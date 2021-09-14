@@ -12,7 +12,7 @@ classdef ShipVelocityFromGPS < ShipVelocityProvider
 %   see also: VMADCP, ProjectedCoordinateSystem, ShipVelocityProvider
     methods(Access=protected)
         function vel=get_ship_velocity(~,adcp,dst)
-            [x, y] = adcp.xy;
+            [x, y] = deal(adcp.horizontal_position(1,:), adcp.horizontal_position(2,:));
             t=adcp.time;
             dt=seconds(t(3:end)-t(1:end-2));
             dx=x(3:end)-x(1:end-2);

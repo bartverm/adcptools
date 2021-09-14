@@ -72,23 +72,25 @@ end
 
 %read the data
 NMEA_GGA.UTCtime=cell2mat(textscan_checked([tmpdat(:).utc],'%2f32 %2f32 %f32','delimiter',','));
-tmplat=textscan_checked([tmpdat(:).lat],'%s %s','delimiter',',');
-lat = str2double(tmplat{1});
-% GGA coordinates are stored as as seconds (fractions of 60) times 100
-lat = lat/100;
-lat = fix(lat) + (100/60)*(lat-fix(lat));
-NMEA_GGA.lat = lat;
-isneg        = strcmp(tmplat{2},'S');
-NMEA_GGA.lat(isneg)=-NMEA_GGA.lat(isneg);
-clear tmplat
-tmplong=textscan_checked([tmpdat(:).long],'%s %s','delimiter',',');
-long = str2double(tmplong{1});
-long  = long/100;
-long = fix(long) + (100/60)*(long-fix(long));
-NMEA_GGA.long=long;
-isneg=strcmp(tmplong{2},'W');
-NMEA_GGA.long(isneg)=-NMEA_GGA.long(isneg);
-clear tmplong isneg
+if (~isempty([tmpdat(:).lat]))
+    tmplat=textscan_checked([tmpdat(:).lat],'%s %s','delimiter',',');
+    lat = str2double(tmplat{1});
+    % GGA coordinates are stored as as seconds (fractions of 60) times 100
+    lat = lat/100;
+    lat = fix(lat) + (100/60)*(lat-fix(lat));
+    NMEA_GGA.lat = lat;
+    isneg        = strcmp(tmplat{2},'S');
+    NMEA_GGA.lat(isneg)=-NMEA_GGA.lat(isneg);
+    clear tmplat
+    tmplong=textscan_checked([tmpdat(:).long],'%s %s','delimiter',',');
+    long = str2double(tmplong{1});
+    long  = long/100;
+    long = fix(long) + (100/60)*(long-fix(long));
+    NMEA_GGA.long=long;
+    isneg=strcmp(tmplong{2},'W');
+    NMEA_GGA.long(isneg)=-NMEA_GGA.long(isneg);
+    clear tmplong isneg
+end
 NMEA_GGA.qualind=cell2mat(textscan_checked([tmpdat(:).qualind],'%u8','delimiter',','));
 NMEA_GGA.numsat =cell2mat(textscan_checked([tmpdat(:).numsat],'%u8','delimiter',','));
 NMEA_GGA.hdop   =cell2mat(textscan_checked([tmpdat(:).hdop],'%f32','delimiter',','));

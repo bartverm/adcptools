@@ -1,0 +1,3 @@
+classdef ProjectedCoordinatesProvider < ADCPHorizontalPosition
+
+end

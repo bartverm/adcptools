@@ -10,7 +10,8 @@ function [ef, xs]=cross_section_selector(vmadcp)
 %   see also: VMADCP, EnsembleFilter, XSection
     vmadcp.plot_track('-','color',[.5 .5 .5]);
     title('Press Enter to end selection')
-    [xa,ya]=vmadcp.xy;
+    hpos=vmadcp.horizontal_position;
+    [xa,ya]=deal(hpos(1,:),hpos(2,:));
     hold on
     uiwait(msgbox('Click on the figure to draw a polygon around the repeat transect track and press Enter to end'))
     get_next=true;

@@ -169,6 +169,15 @@ classdef XSection < handle
             %   h = plot(...) returns the handle to the quivers
             %
             %   see also: XSection
+            if ~isscalar(obj)
+                hold_stat=get(gca,'nextplot');
+                hold on
+                for co=1:numel(obj)
+                    obj(co).plot;
+                end
+                set(gca,'NextPlot',hold_stat)
+                return
+            end
             if nargin < 2
                 scale=obj.scale;
             end
@@ -198,7 +207,7 @@ classdef XSection < handle
             %   exclude parts of the track
             %
             %   see also: XSection, EnsembleFilter, VMADCP
-            [x,y]=V.xy;
+            [x,y]=deal(V.horizontal_position(1,:), V.horizontal_position(2,:));
             if nargin > 2 && ~isempty(filter)
                 assert(isa(filter,'EnsembleFilter'),'filter should be of class EnsembleFilter')
                 fbad=filter.all_cells_bad(V);
@@ -226,7 +235,7 @@ classdef XSection < handle
     end
     methods (Static, Access=protected)
         function mustBeUnitVector(val)
-            assert(sum(val.^2)-1<=eps,'The value must be a unit vector')
+            assert(sum(val.^2)-1<=3*eps,'The value must be a unit vector')
         end
     end
 end

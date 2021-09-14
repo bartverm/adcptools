@@ -9,6 +9,8 @@ classdef ADCP < handle
     %   - Filter objects are appended to the filters property
     %   - acoustics.Water is assigned to the water property
     %   - acoustics.PistonTransducer is assigned to the transducer property
+    %   - ADCPHorizontalPosition to horizontal_position_provider
+    %   - ADCPVerticalPosition to vertical_position_provider
     %   - struct objects are assigned to the raw property 
     %
     %   ADCP properties:
@@ -16,6 +18,9 @@ classdef ADCP < handle
     %   filters - filters for profiled data
     %   timezone - timezone of the data
     %   type - type of ADCP being used
+    %   transformation_matrix_source - source of instrument matrix
+    %   vertical_position_provider - Class providing vertical positions
+    %   horizontal_position_provider- Class providing horizontal positions
     %
     %   ADCP read-only properties:
     %   *Ambient properties*
@@ -56,6 +61,8 @@ classdef ADCP < handle
     %   blanking - blanking distance
     %   distmidfirstcell - vertical distance to the first measured depth cell
     %   depth_cell_slant_range - slant range to depth cell
+    %   horizontal_position - horizontal position of the ADCP
+    %   vertical_position - vertical position of the ADCP
     %
     %   *Backscatter*
     %   bandwidth - bandwidth used for measurements (0=wide, 1=narrow)
@@ -112,6 +119,16 @@ classdef ADCP < handle
         % see also: ADCP, datetime/TimeZone, timezones
         timezone(1,:) char = ''
         
+        % ADCP/transformation_matrix_source
+        %
+        %   Specifies the sources for the transformation matrix as a
+        %   InstrumentMatrixProvider. This is a vector which allows to
+        %   define different sources. The first object capable of providing
+        %   the matrix will be used.
+        %
+        % see also: ADCP, InstrumentMatrixProvider
+        transformation_matrix_source (:,1) InstrumentMatrixProvider = [InstrumentMatrixFromCalibration; InstrumentMatrixFromBAngle];
+        
         % ADCP/type
         %
         %   Specify the type of ADCP that is being used. Default is
@@ -157,6 +174,20 @@ classdef ADCP < handle
         %
         % see also: ADCP, acoustics.Water
         water(1,1) acoustics.Water;
+        
+        % ADCP/horizontal_position_provider
+        %
+        %   ADCPHorizontalPosition object specifying the position of the ADCP.
+        %
+        %
+        horizontal_position_provider(1,:) ADCPHorizontalPosition = ADCPFixedHorizontalPosition;
+        
+        % ADCP/vertical_position_provider
+        %
+        %   ADCPVerticalPoisition object specifying the position of the ADCP.
+        %
+        %
+        vertical_position_provider(1,1) ADCPVerticalPosition = ADCPFixedVerticalPosition;
     end
     properties(Dependent, SetAccess=private)
         % ADCP/fileid read only property
@@ -405,12 +436,27 @@ classdef ADCP < handle
         % ADCP/backscatter
         %
         % Received Volume Backscatter strength (dB) computed according to
-        % Deines (1999) with the corrections of Gostiaux and van Haren. The
-        % backscatter strength is not corrected for attenuation due to
-        % sediment.
+        % Deines (1999) with the corrections of Gostiaux and van Haren and 
+        % the correction in the FSA-031. The backscatter strength is not 
+        % corrected for attenuation due to sediment.
         %
         % see also: ADCP, acoustics, Sv2SSC
         backscatter
+        
+        % ADCP/horizontal_position
+        %
+        %   Returns a 2xN matrix holding the x and y coordinates of the
+        %   ADCP in m.
+        %
+        %   see also: adcp, vertical_position, horizontal_position_provider
+        horizontal_position
+        
+        % ADCP/vertical_position
+        %
+        %   Returns a 1xN vector holding the z coordinates of the ADCP in m.
+        %
+        %   see also: adcp, horizontal_position, vertical_position_provider
+        vertical_position
         
     end
     methods
@@ -436,6 +482,10 @@ classdef ADCP < handle
                     obj.water=varargin{ca};
                 elseif isa(varargin{ca},'acoustics.PistonTransducer')
                     obj.transducer=varargin{ca};
+                elseif isa(varargin{ca},'ADCPVerticalPosition')
+                    obj.vertical_position_provider=varargin{ca};
+                elseif isa(varargin{ca},'ADCPHorizontalPosition')
+                    obj.horizontal_position_provider=varargin{ca};
                 elseif isstruct(varargin{ca})
                     obj.raw=varargin{1};
                 end
@@ -501,10 +551,18 @@ classdef ADCP < handle
             blank=double(obj.raw.blnk(obj.fileid))/100;
         end
         function l=get.lengthxmitpulse(obj)
-            l=double(obj.raw.lngthtranspulse(obj.fileid))/100;
+            if isfield(obj.raw,'sp_transmit_length') % streampro leader support
+                l=double(obj.raw.sp_transmit_length)/1000;
+            else
+                l=double(obj.raw.lngthtranspulse(obj.fileid))/100;
+            end
         end
         function c=get.cellsize(obj)
-            c=double(obj.raw.binsize(obj.fileid))/100;
+            if isfield(obj.raw,'sp_bin_space') %streampro leader support (space makes more sense than size, for the actual use. These seem always to match btw)
+                c=double(obj.raw.sp_bin_space)/1000;
+            else
+                c=double(obj.raw.binsize(obj.fileid))/100;
+            end
         end
         function val=get.temperature(obj)
             val=double(obj.raw.temperature)/100;
@@ -525,7 +583,11 @@ classdef ADCP < handle
             t=reshape(datetime(obj.raw.timeV,'TimeZone',obj.timezone),1,[]);
         end
         function db1=get.distmidfirstcell(obj)
-            db1=double(obj.raw.distmidbin1(obj.fileid))/100;
+            if isfield(obj.raw,'sp_mid_bin1') % streampro leader support (more accurate)
+                db1=double(obj.raw.sp_mid_bin1)/1000;
+            else
+                db1=double(obj.raw.distmidbin1(obj.fileid))/100;
+            end
         end
 
         function n=get.ncells(obj)
@@ -537,6 +599,10 @@ classdef ADCP < handle
         end
 
         function val=get.voltage_factor(obj) % From workhorse operation manual
+            if isfield(obj.raw,'sp_mid_bin1') % streampro header, use voltage factor from manual (0.1 to convert to voltage, but factor is divide by 1e6 in voltage calculation)
+                val=1e5;
+                return
+            end
             if ~obj.is_workhorse
                 warning('Assuming ADCP is a Workhorse')
             end
@@ -616,8 +682,14 @@ classdef ADCP < handle
             two_alpha_R = 2.*pt.attenuation.*R;                    % compute 2alphaR
             LDBM=10*log10(obj.lengthxmitpulse);
             PDBW=10*log10(obj.power);                        
-            val = obj.backscatter_constant + 10*log10((obj.attitude_temperature+273.16).*R.^2.*pt.near_field_correction(R).^2) - LDBM - PDBW + two_alpha_R + 10*log10(10.^(obj.echo/10)-10.^(obj.intensity_scale.*obj.noise_level/10));       
+            val = obj.backscatter_constant + 10*log10((obj.attitude_temperature+273.16).*R.^2.*pt.near_field_correction(R).^2) - LDBM - PDBW + two_alpha_R + 10*log10(10.^((obj.echo-obj.noise_level)/10)-1); % equation according to fsa-031, correcting goustiaus and van haren equation      
             val(obj.bad)=nan;
+        end
+        function val=get.horizontal_position(obj)
+            val=obj.horizontal_position_provider.horizontal_position(obj);
+        end
+        function val=get.vertical_position(obj)
+            val=obj.vertical_position_provider.get_vertical_position(obj);
         end
         
         %%% Ordinary methods
@@ -813,7 +885,6 @@ classdef ADCP < handle
             %   heading.
             %
             % see also: ADCP, plot_velocity, plot_filters, plot_all
-            figure
             axh(1)=subplot(4,1,1);
             plot(obj.is_upward)
             ylabel('Is upward')
@@ -835,8 +906,7 @@ classdef ADCP < handle
             %   system
             %
             %   see also: ADCP
-            hf=figure;
-            vel_pos=obj.depth_cell_offset;
+            vel_pos=obj.depth_cell_position;
             vel_pos=nanmean(vel_pos(:,:,:,3),3);
             if nargin < 2
                 vel=obj.velocity(CoordinateSystem.Earth);
@@ -850,7 +920,7 @@ classdef ADCP < handle
             shading flat
             axh(2)=subplot(3,1,2);
             pcolor(t,vel_pos,vel(:,:,2));
-            ylabel('vertical elevation from transducer (m)')
+            ylabel('vertical position (m)')
             hc=colorbar;
             ylabel(hc,'V_y (m/s)')
             shading flat
@@ -872,7 +942,6 @@ classdef ADCP < handle
             %   system
             %
             %   see also: ADCP
-            hf=figure;
             sv_pos=obj.depth_cell_offset;
             sv_pos=nanmean(sv_pos(:,:,:,3),3);
             sv=obj.backscatter;
@@ -900,9 +969,13 @@ classdef ADCP < handle
             obj.filters.plot(obj);
         end
         function plot_all(obj)
+            figure
             obj.plot_orientations;
+            figure
             obj.plot_filters;
+            figure
             obj.plot_velocity;
+            figure
             obj.plot_backscatter;
         end
         function pos=depth_cell_offset(obj,dst)
@@ -915,13 +988,22 @@ classdef ADCP < handle
             %   in which the offsets should be returned. dst is a
             %   CoordinateSystem object.
             %
-            %   see also: ADCP
+            %   see also: ADCP, depth_cell_position
             if nargin < 2
                 dst=CoordinateSystem.Earth;
             end
             tm=-obj.xform(CoordinateSystem.Beam, dst); % minus since matrix for vel points to adcp
             tm(:,:,:,4)=[];
             pos=tm.*obj.depth_cell_slant_range;
+        end
+        function pos=depth_cell_position(obj)
+            % Computes the xyz positions of the depth cells
+            %
+            %   pos=depth_cell_position(obj) returns the position vector
+            %   (ncells x nensembles x nbeams x 3) in Earth coordinates
+            %
+            % see also: ADCP, position, depth_cell_offset
+            pos=obj.depth_cell_offset + permute([obj.horizontal_position; obj.vertical_position],[3,2,4,1]);
         end
         function tm=xform(obj,dst, src)
             % Get transformation matrices for coordinate transformations
@@ -942,9 +1024,7 @@ classdef ADCP < handle
             I=CoordinateSystem.Instrument;
             S=CoordinateSystem.Ship;
             E=CoordinateSystem.Earth;
-            exp_cfilt=true(1,obj.nensembles);
-            bangle=obj.beam_angle;
-            conv=obj.convexity;
+            exp_cfilt=true(1,obj.nensembles); % dummy filter to expand scalar input
             croll=obj.roll;
             croll(obj.is_upward)=croll(obj.is_upward)+180;
             ha=obj.headalign;
@@ -954,7 +1034,8 @@ classdef ADCP < handle
             % FORWARD
             % from lower than instrument to instrument
             cfilt = exp_cfilt & dst >= I & src < I;
-            tm(:,cfilt,:,:)=ADCP.beam_2_instrument(bangle(cfilt), conv(cfilt));
+            tmptm=obj.transformation_matrix_source.b2i_matrix(obj);
+            tm(:,cfilt,:,:)=tmptm(:,cfilt,:,:);
             
             % from lower than ship to ship
             cfilt = exp_cfilt & dst >= S & src < S;
@@ -983,50 +1064,16 @@ classdef ADCP < handle
             
             % from higher than beam to beam
             cfilt = exp_cfilt & dst <= S & src > S;
+            tmptm=obj.transformation_matrix_source.i2b_matrix(obj);
             tm(:,cfilt,:,:)=helpers.matmult(...
-                ADCP.instrument_2_beam(bangle(cfilt), conv(cfilt)),...
+                tmptm(:,cfilt,:,:),...
                 tm(1,cfilt,:,:));
         end
     end
     
     
     methods (Static)
-        function b2i=beam_2_instrument(bangle,c)
-            % Return the beam to instrument transformation matrices
-            %
-            %   b2i=beam_2_instrument(bangle,c) returns the beam to instrument
-            %   transformation matrices given the beam angle (bangle) and the
-            %   instrument convexity (c).
-            %
-            % see also: ADCP, xform
-            a=1./(2*sind(bangle));
-            b=1./(4*cosd(bangle));
-            d=a./sqrt(2);
-            zr=zeros(size(a));
-            b2i=cat(3,...
-                cat(4, c.*a, -c.*a,    zr,   zr),...
-                cat(4,   zr,    zr, -c.*a, c.*a),...
-                cat(4,    b,     b,     b,    b),...
-                cat(4,    d,     d,    -d,   -d));
-        end
-        function i2b=instrument_2_beam(bangle, c)
-            % Return the instrument to beam transformation matrices
-            %
-            %   b2i=beam_2_instrument(bangle,c) returns the instrument to beam
-            %   transformation matrices given the beam angle (bangle) and the
-            %   instrument convexity (c).
-            %
-            % see also: ADCP, xform
-            a=sind(bangle);
-            b=cosd(bangle);
-            d=sqrt(2)*a/2;
-            zr=zeros(size(a));
-            i2b=cat(3,...
-                cat(4,  c.*a,    zr, b,  d),...
-                cat(4, -c.*a,    zr, b,  d),...
-                cat(4,    zr, -c.*a, b, -d),...
-                cat(4,    zr,  c.*a, b, -d));
-        end
+
         function tm=head_tilt(heading,pitch,roll)
             % Return the transformation matrix for the three tilts
             %
