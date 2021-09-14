@@ -237,7 +237,7 @@ classdef VMADCP < ADCP
             if nargin < 2 
                 dst=CoordinateSystem.Earth;
             end
-            tm=-obj.xform(CoordinateSystem.Beam, dst);
+            tm=-obj.xform(CoordinateSystem.Beam,dst);
             tm(:,:,:,4)=[];
             pos=tm.*obj.slant_range_to_bed;
         end
