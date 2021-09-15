@@ -25,11 +25,9 @@ function [ADCPout]=readADCP(files,varargin)
 %         Example: ADCP=readADCP('data_000.000; data_001.000','vEyx') will
 %         read velocity, ensemble information and external data from the
 %         two files
-%
-%         Author:      Bart Vermeulen, David Vermaas, Maximiliano Sassi
-%         Last edit:   26-03-2009
 
-%    Copyright 2007-2010 Bart Vermeulen, David Vermaas, Maximiliano Sassi
+%    Copyright 2007-2021 Bart Vermeulen, David Vermaas, Maximiliano Sassi,
+%       Judith Zomer
 %
 %    This file is part of ADCPTools.
 %
@@ -66,7 +64,7 @@ else
 end
 inp=inputParser;                                                           % Create an object of the InputParser class
 inp.addRequired('files',@(x) (iscellstr(x) | ischar(x)));                  % Add the required variable 'files' and check for right format
-inp.addOptional('flags','vhcpbex',@ischar);                                % Add the optional argument 'flags' and check for right format
+inp.addOptional('flags','vhcpbexa',@ischar);                                % Add the optional argument 'flags' and check for right format
 inp.parse(files,varargin{:});                                              % Parse input
 
 if ischar(files)
@@ -230,6 +228,25 @@ if any(regexpi(flags,'p'))                              %Same as above but now f
         end
     end
 end
+
+%Read ambient sound data
+if any(regexpi(flags,'a'))                              %
+    if ~any(AllHeaders(:,1)==3074)                      % check if same for other data files
+        warning('readADCP:NoASData','No ambient sound data found.')
+    else
+        dataout.ambsound=zeros(nens,4,'uint8'); 
+        for cntens=1:nens 
+            Ndatablock=find(DataHeader{cntens}(:,1)==3074, 1);
+            if isempty(Ndatablock)
+                continue
+            else
+                fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
+                dataout.ambsound(cntens,:)=readAS(fileid(cntens),fpos);
+            end
+        end
+    end
+end
+
 
 %Read bottom track data
 if any(regexpi(flags,'b'))                              %Same as above but now for bottom track data
@@ -590,6 +607,16 @@ if any(dataID~=[0;4])
     error('readADCP:readPERC:wrongID','Percentage good data ID seems to be wrong')
 end
 P=reshape(fread(fid,4*double(nbins),'*uint8'),4,[])';    
+
+%Read ambient sound
+function AS=readAS(fid,fpos)
+fseek(fid,fpos,-1);
+dataID=fread(fid,2,'*uint8');
+if any(dataID~=[2;12])% What should be --> just check by reading..... 
+    error('readADCP:readAS:wrongID','Ambient sound data ID seems to be wrong')
+end
+AS=reshape(fread(fid,4*double(1),'*uint8'),4,[])';
+
 
 % Read bottom track data
 function readBT(fid,fpos,cntens)
