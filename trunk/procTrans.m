@@ -751,7 +751,14 @@ for ct=1:size(tid,1) % For all sections
     cTM1=TM1(:,fcur,:);
     cTM2=TM2(:,fcur,:);
     cTM3=TM3(:,fcur,:);
-    datacol=cell([siz nanmax(tid(ct,:))]); % Initialize variable to collect velocity and tr. matrix data
+
+    [m_u, m_v, m_w]=f_model([1,1,1,1,1]); % run the model with a dummy input to check get number of model parameters
+    npars_u=size(m_u,2);
+    npars_v=size(m_v,2);
+    npars_w=size(m_w,2);
+    npars=npars_u+npars_v+npars_w;
+
+    datacol=repmat({double.empty(0,npars+1)},[siz nanmax(tid(ct,:))]); % Initialize variable to collect velocity and tr. matrix data
 
     for ccr=nanmin(tid(ct,tid(ct,:)>0)):nanmax(tid(ct,:)) % loop over all crossings
         if IsCumulative
@@ -762,7 +769,9 @@ for ct=1:size(tid,1) % For all sections
         if proxim>0 % if a proximity is given
             fnd=fnd & abs(svel)<=proxim; % only include data within proxim distance from the section
         end
-        if ~any(fnd(:)), continue, end;
+        if ~any(fnd(:))
+            continue
+        end
             
 
         % compute model coefficients from dz, dn, ds and dt
@@ -798,10 +807,7 @@ for ct=1:size(tid,1) % For all sections
             [colmu,colmv,colmw]=cellfun(@(n,z,Sig,s,t) f_model([n,z,Sig,s,t]),coldn, coldz, colSig, colds,coldt,'UniformOutput',false);
             [colku,colkv,colkw]=cellfun(@(n,z,Sig,s,t) f_known([n,z,Sig,s,t]),coldn, coldz, colSig, colds,coldt,'UniformOutput',false);
         end
-        npars_u=size(colmu{1},2);
-        npars_v=size(colmv{1},2);
-        npars_w=size(colmv{1},2);
-        npars=npars_u+npars_v+npars_w;
+        
         if rotate && ~all(all(cellfun(@isequal,colmu,colmv)))
             rotate = false;
             warning('procTrans:NotEqualUVMods','To perform a rotation the model for u and v should be identical, skipping rotations!')        
