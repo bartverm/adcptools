@@ -40,7 +40,7 @@ classdef TimeBasedVelocitySolver < VelocitySolver
                 end
             end
         end
-        function vel=get_velocity(obj)
+        function [vel, velstd]=get_velocity(obj)
             % Solves velocity combining beam velocities based on time
             %
             %   vel=get_velocity(obj) computes the velocity in the mesh cells by using
@@ -49,23 +49,24 @@ classdef TimeBasedVelocitySolver < VelocitySolver
             %   measured within a mesh cell (this is determined by the Mesh class) are
             %   averaged.
             %
+            %   [vel,std] = get_velocity(obj) also returns the standard
+            %   deviation in the velocity
+            %
             % see also: TimeBasedVelocitySolver, Mesh, VMADCP
             vpos=obj.adcp.depth_cell_position;
             filters=[obj.filter; obj.adcp.filters];
             vpos(filters.bad(obj.adcp))=nan;
-            vpos=nanmean(vpos,3);
+            vpos=mean(vpos,3,'omitnan');
             [~, n_pos]=obj.xs.xy2sn(vpos(:,:,:,1),vpos(:,:,:,2));
             zb_pos=obj.bathy.get_bed_elev(vpos(:,:,:,1), vpos(:,:,:,2));
             sig_pos=1-vpos(:,:,:,3)./zb_pos;
             idx=repmat(obj.mesh.index(n_pos, sig_pos), 1, 1, 3);
             fcomp=cumsum(ones(size(idx)),3);
-            vel=nan(obj.mesh.ncells, 3);
             vel_data = obj.adcp.water_velocity(CoordinateSystem.Earth);
-            for cc = 1:obj.mesh.ncells
-                for comp=1:3
-                    vel(cc,comp) = nanmean(vel_data(idx==cc & fcomp==comp));
-                end
-            end
+            vel_data(:,:,4)=[];
+            fgood=isfinite(idx);
+            vel=accumarray({idx(fgood),fcomp(fgood)},vel_data(fgood),[obj.mesh.ncells,3],@(x) mean(x,'all','omitnan'),nan,false);
+            velstd=accumarray({idx(fgood),fcomp(fgood)},vel_data(fgood),[obj.mesh.ncells,3],@(x) std(x,0,'all','omitnan'),nan,false);
         end
     end
 end

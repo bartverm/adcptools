@@ -16,9 +16,9 @@ classdef WaterLevel < ADCPVerticalPosition
     end
     methods
         function val=get_vertical_position(obj,adcp)
-            if all(obj.depth_transducer==0)
-                warning('Set depth of transducer for correct results')
-            end
+%             if all(obj.depth_transducer==0)
+%                 warning('Set depth of transducer for correct results')
+%             end
             val=obj.get_water_level(adcp)-obj.depth_transducer;
         end
         function depth=get_depth(obj,z,adcp)
