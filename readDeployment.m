@@ -50,7 +50,7 @@ end % if
 if iscellstr(DepName)
     allFiles=DepName;
 else
-    allFiles=dir([path,DepName,'*']); % read all filenames
+    allFiles=dir(fullfile(path,[DepName,'*'])); % read all filenames
     assert(~isempty(allFiles),'readDeployment:NoFileFound',['Could not find any file for deployment: ', DepName]); % check there is at least one file with the given deployment name
     allFiles=({allFiles(~[allFiles(:).isdir]).name})';
 end

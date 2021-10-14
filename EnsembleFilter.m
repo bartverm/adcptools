@@ -14,7 +14,7 @@ classdef EnsembleFilter < Filter
 %   bad_ensembles - marks the bad ensembles
 %
 %   see also: Filter, cross_section_selector
-    properties
+    properties(SetAccess=public, GetAccess=protected)
         bad_ensembles (1,:) logical = logical.empty(1,0)
     end
     methods
@@ -32,6 +32,9 @@ classdef EnsembleFilter < Filter
     end
     methods(Access=protected)
         function bad=bad_int(obj,adcp)
+            if isempty(obj.bad_ensembles)
+                obj.bad_ensembles=false([1,adcp.nensembles]);
+            end
            assert(numel(obj.bad_ensembles)==adcp.nensembles, 'The number of elements in the bad_ensembles property should match the number of ensembles in the ADCP object') 
            bad=repmat(obj.bad_ensembles,[max(adcp.ncells),1,max(adcp.nbeams)]);
         end

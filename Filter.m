@@ -23,28 +23,19 @@ classdef Filter < matlab.mixin.Heterogeneous
         % bad_ensemble(obj,ADCP) get ensembles in which all cells are bad.
         % For arrays of filters it will return ensembles that have all
         % cells marked in at least one of the filters
-            bad=all(all(obj.bad(adcp),1),3);
+            bad=obj.expand_bad(@(obj,adcp) all(all(obj.bad(adcp),1),3), adcp);
         end
+
         function bad=any_cells_bad(obj,adcp)
         % bad_ensemble(obj,ADCP) get ensembles in which at least one bad
         % cell. For arrays of filters it will return ensembles that have 
         % at least one bad cell in at least one of the filters
-            bad=any(any(obj.bad(adcp),1),3);
+            bad=obj.expand_bad(@(obj,adcp) any(any(obj.bad(adcp),1),3), adcp);
         end
         function bad=bad(obj,adcp)
         % bad(obj,ADCP) get bad cells for ADCP object. If obj is an
         % array of filters it will return the combined filter
-            if isempty(obj)
-                bad=logical.empty();
-                return
-            elseif isscalar(obj)
-                bad=obj.bad_int(adcp);
-            else
-                bad=obj(1).bad_int(adcp);
-                for co=2:numel(obj)
-                    bad = bad | obj(co).bad_int(adcp);
-                end
-            end
+            bad=obj.expand_bad(@(obj,adcp) obj.bad_int(adcp), adcp);
         end
         function plot(obj,adcp)
             figure
@@ -78,6 +69,23 @@ classdef Filter < matlab.mixin.Heterogeneous
                 bad=false(max(adcp.ncells),adcp.nensembles, max(adcp.nbeams));
             else
                 bad=obj(1).bad();
+            end
+        end
+    end
+    methods(Sealed, Access=private)
+        function bad=expand_bad(obj, func, adcp) 
+            % combines filter functions on object arrays
+            if isempty(obj)
+                bad=false;
+                return
+            end
+            if isscalar(obj)
+                bad=func(obj,adcp);
+            else
+                bad=obj(1).expand_bad(func,adcp);
+                for co=1:numel(obj)
+                    bad = bad | obj(co).expand_bad(func, adcp);
+                end
             end
         end
     end

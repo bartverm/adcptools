@@ -149,16 +149,26 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
             mesh.xs=obj.xs;
             % get velocity position and project on track
             vpos = obj.vmadcp.depth_cell_position;
-            vpos(:,obj.filter.bad_ensembles,:,:) = nan;
-%             [~, vpos_n] = obj.xs.xy2sn(vpos(:, :, :, 1), vpos(:, :, :, 2) );
+            vpos(:,obj.filter.all_cells_bad(obj.vmadcp),:,:) = nan;
 
             % make n positions
             bpos=obj.vmadcp.bed_position();
-            bpos(:,obj.filter.bad_ensembles,:,:)=nan;
-            [~,n]=obj.xs.xy2sn(bpos(:,:,:,1),bpos(:,:,:,2));
-            nmin = nanmin(n, [], 'all');  % compute minimum n coordinate of depth cells
-            nmax = nanmax(n, [], 'all');  % compute maximum n coordinate of depth cells
-            nvec = nmin : obj.deltan : nmax + obj.deltan;  % compute n position of cell edges
+            bpos(:,obj.filter.all_cells_bad(obj.vmadcp),:,:)=nan;
+            [~,n]=obj.xs.xy2sn(bpos(:,:,:,1),bpos(:,:,:,2)); % compute n positions of bed detections
+            [xn,yn]=obj.xs.sn2xy(n*0,n); % compute x,y coordinates of bed detections projected on xs line
+            bpos=reshape(bpos,[prod(size(bpos,2,3)),size(bpos,4)]);
+            as=alphaShape(bpos(all(isfinite(bpos),2),1:2),'HoleThreshold',obj.xs.scale.^2); % get alphashape for bed positions, removing small holes
+            as.Alpha=as.criticalAlpha('one-region'); % set alpha radius to get one region
+            fgood=isfinite(n);
+            n=n(fgood);
+            xn=xn(fgood);
+            yn=yn(fgood);
+            outside_as=~as.inShape(xn,yn);
+            n(outside_as)=[]; % remove n-points outside alpha shape
+            nmin = min(n, [], 'all','omitnan');  % compute minimum n coordinate of depth cells
+            nmax = max(n, [], 'all','omitnan');  % compute maximum n coordinate of depth cells
+            nvec = [nmin : obj.deltan : nmax nmax];  % compute n position of cell edges
+            
             
             % interpolate bathymetry to n positions
             [xvec, yvec] = obj.xs.sn2xy(nvec*0, nvec); % compute xy positions of cell edges
@@ -167,8 +177,8 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
             mesh.zb_all=zvec;
             
             % compute vertical limits of mesh
-            minsigma=1-cosd(nanmax(obj.vmadcp.beam_angle));
-            maxz=nanmax(vpos(:,:,:,3),[],'all');
+            minsigma=1-cosd(max(obj.vmadcp.beam_angle,[],'omitnan'));
+            maxz=max(vpos(:,:,:,3),[],'all','omitnan');
 
             % Check for bathymetry crossing the waterlevel
             wl=obj.water_level;

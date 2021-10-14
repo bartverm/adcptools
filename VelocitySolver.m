@@ -21,6 +21,7 @@ classdef VelocitySolver < handle
     %
     %   VelocitySolver methods:
     %   get_velocity - returns velocities for each mesh cell (Abstract)
+    %   get_velocity_xs - rotates velocity to cross-section direction
     %
     %   see also: VMADCP, Mesh, Bathymetry, XSection, Filter,
     %   TimeBasedVelocitySolver
@@ -104,6 +105,19 @@ classdef VelocitySolver < handle
         end
     end
     methods (Abstract)
-        vel=get_velocity(obj)
+        [vel, velstd]=get_velocity(obj)
+    end
+    methods
+        function vel=get_velocity_xs(obj)
+        % Rotates velocity to direction of cross-section
+        %
+        %   vel=get_velocity_xs(obj) Rotates the velocity obtained
+        %   with get_velocity to the direction of the cross-section.
+        %
+        % See also: VelocitySolver, get_velocity
+            orig_vel=obj.get_velocity();
+            [~,~,vels,veln]=obj.xs.xy2sn(obj.mesh.x_middle(obj.mesh.col_to_cell),obj.mesh.y_middle(obj.mesh.col_to_cell),orig_vel(:,1),orig_vel(:,2));
+            vel=[vels,veln,orig_vel(:,3)];
+        end
     end
 end
