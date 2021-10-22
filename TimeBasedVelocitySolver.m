@@ -53,20 +53,38 @@ classdef TimeBasedVelocitySolver < VelocitySolver
             %   deviation in the velocity
             %
             % see also: TimeBasedVelocitySolver, Mesh, VMADCP
-            vpos=obj.adcp.depth_cell_position;
-            filters=[obj.filter; obj.adcp.filters];
-            vpos(filters.bad(obj.adcp))=nan;
-            vpos=mean(vpos,3,'omitnan');
-            [~, n_pos]=obj.xs.xy2sn(vpos(:,:,:,1),vpos(:,:,:,2));
-            zb_pos=obj.bathy.get_bed_elev(vpos(:,:,:,1), vpos(:,:,:,2));
-            sig_pos=1-vpos(:,:,:,3)./zb_pos;
-            idx=repmat(obj.mesh.index(n_pos, sig_pos), 1, 1, 3);
-            fcomp=cumsum(ones(size(idx)),3);
-            vel_data = obj.adcp.water_velocity(CoordinateSystem.Earth);
-            vel_data(:,:,4)=[];
-            fgood=isfinite(idx);
-            vel=accumarray({idx(fgood),fcomp(fgood)},vel_data(fgood),[obj.mesh.ncells,3],@(x) mean(x,'all','omitnan'),nan,false);
-            velstd=accumarray({idx(fgood),fcomp(fgood)},vel_data(fgood),[obj.mesh.ncells,3],@(x) std(x,0,'all','omitnan'),nan,false);
+
+            [idx_mesh,idx_ef]=obj.make_indices();
+
+            % Sigma coordinates
+            vpos=obj.adcp.depth_cell_position; % velocity positions
+%             vpos(obj.adcp.filters.bad(obj.adcp))=nan; % filter out velocity (make this optional?)
+            vpos=mean(vpos,3,'omitnan'); % compute average position of beams
+            [~, n_pos]=obj.xs.xy2sn(vpos(:,:,:,1),vpos(:,:,:,2)); % get velocity position transverse to cross section
+            zb_pos=obj.bathy.get_bed_elev(vpos(:,:,:,1), vpos(:,:,:,2)); % get bed elevation at velocity position. This could optionally be done with the bed detection at the beam.
+            sig_pos=(vpos(:,:,:,3)-zb_pos)./(obj.adcp.water_level-zb_pos); % compute sigma coordinate of velocities
+
+            % get velocity data
+            vel_data = obj.adcp.water_velocity(CoordinateSystem.Earth); % get velocity data
+            vel_data(:,:,4)=[]; % remove error velocity
+
+            vel=cell(numel(idx_ef),1);
+            velstd=cell(numel(idx_ef),1);
+            for crp=1:numel(idx_ef)
+                cur_n=n_pos(:,~obj.ensemble_filter(idx_ef(crp)).bad_ensembles);
+                cur_sig=sig_pos(:,~obj.ensemble_filter(idx_ef(crp)).bad_ensembles);
+                cur_vel=vel_data(:,~obj.ensemble_filter(idx_ef(crp)).bad_ensembles,:);
+                cur_n=reshape(cur_n,[],1);
+                cur_sig=reshape(cur_sig,[],1);
+                cur_vel=reshape(cur_vel,[],3);
+                fgood=isfinite(cur_n) & isfinite(cur_sig) & all(isfinite(cur_vel),2);
+                cur_vel=cur_vel(fgood,:);
+                idx=repmat(obj.mesh(idx_mesh(crp)).index(cur_n(fgood),cur_sig(fgood)),1,3);
+                fgood=isfinite(idx);
+                fcomp=cumsum(ones(size(idx)),2); % make an index to map component of velocity to output matrix
+                vel{crp}=accumarray({idx(fgood),fcomp(fgood)},cur_vel(fgood),[obj.mesh(idx_mesh(crp)).ncells,3],@(x) mean(x,'all','omitnan'),nan,false); % compute mean velocity for each mesh cell
+                velstd{crp}=accumarray({idx(fgood),fcomp(fgood)},cur_vel(fgood),[obj.mesh(idx_mesh(crp)).ncells,3],@(x) std(x,0,'all','omitnan'),nan,false); % compute standard deviation of velocity in each mesh cell
+            end
         end
     end
 end

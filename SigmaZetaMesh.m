@@ -1,4 +1,4 @@
-classdef SigmaZetaMesh < Mesh
+classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
 % Defines a sigma-z mesh
 %   
 %   The SigmaZetaMesh should be generated with a SigmaZetaMeshGenerator.
@@ -208,6 +208,12 @@ classdef SigmaZetaMesh < Mesh
         function s=z_to_sigma(obj,z, zb)
             s=(z-zb)./(obj.water_level-zb);
         end
+        function z=sigma_to_z(obj,sig, zb, water_level)
+            if nargin < 4
+                water_level=obj.water_level;
+            end
+            z=sig.*(water_level-zb)+zb;
+        end
         function val=get.n_patch(obj)
             val=[obj.n_left(obj.col_to_cell)
                  obj.n_middle(obj.col_to_cell)
@@ -225,6 +231,32 @@ classdef SigmaZetaMesh < Mesh
                  obj.z_top_mid,...
                  obj.z_top_left,...
                  obj.z_bottom_left]';
+        end
+        function mesh=mesh_at_water_level(obj,target_wl, constant_z)
+            mesh(numel(target_wl))=SigmaZetaMesh;
+            for cm=1:numel(mesh)
+                mesh(cm)=obj.copy();
+            end
+            if nargin<3
+                constant_z=false;
+            end
+
+            % adapt z_coordinates, unlees z is to be constant
+
+            for cm=1:numel(mesh)
+                if ~constant_z
+                    mesh(cm).z_bottom_left=obj.sigma_to_z(obj.sig_bottom_left, reshape(obj.zb_left(obj.col_to_cell),[],1),target_wl(cm));
+                    mesh(cm).z_top_left=obj.sigma_to_z(obj.sig_top_left, reshape(obj.zb_left(obj.col_to_cell),[],1),target_wl(cm));
+                    mesh(cm).z_bottom_mid=obj.sigma_to_z(obj.sig_bottom_mid, reshape(obj.zb_middle(obj.col_to_cell),[],1),target_wl(cm));
+                    mesh(cm).z_top_mid=obj.sigma_to_z(obj.sig_top_mid, reshape(obj.zb_middle(obj.col_to_cell),[],1),target_wl(cm));
+                    mesh(cm).z_bottom_right=obj.sigma_to_z(obj.sig_bottom_right, reshape(obj.zb_right(obj.col_to_cell),[],1),target_wl(cm));
+                    mesh(cm).z_top_right=obj.sigma_to_z(obj.sig_top_right, reshape(obj.zb_right(obj.col_to_cell),[],1),target_wl(cm));
+
+                    % set the target water level in the mesh
+                    mesh(cm).water_level=target_wl(cm);
+                end
+            end
+
         end
         function idx=index(obj,n,sigma)
 % Indices of mesh cells for given positions

@@ -14,7 +14,7 @@ classdef EnsembleFilter < Filter
 %   bad_ensembles - marks the bad ensembles
 %
 %   see also: Filter, cross_section_selector
-    properties(SetAccess=public, GetAccess=protected)
+    properties
         bad_ensembles (1,:) logical = logical.empty(1,0)
     end
     methods

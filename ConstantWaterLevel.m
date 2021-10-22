@@ -37,11 +37,7 @@ classdef ConstantWaterLevel < WaterLevel
 %   holding the water level
 %
 %   see also: ConstantWaterLevel
-            if nargin>1
-                wl=ones(size(time))*obj.level;
-            else
-                wl=obj.level;
-            end
+            wl=ones(size(time))*obj.level;
         end
     end
 end

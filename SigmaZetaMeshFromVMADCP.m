@@ -97,6 +97,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
             construct_bathymetry=true;
             construct_xs=true;
             construct_filter=true;
+            construct_time=true;
             has_vmadcp=false;
             for count_arg=1:nargin         
                 cur_arg=varargin{count_arg};
@@ -114,6 +115,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
                     obj.filter=cur_arg;
                 elseif isa(cur_arg,'datetime')
                     obj.time=cur_arg;
+                    construct_time=false;
                 else
                     warning(['Unhandled input of type: ',class(cur_arg)])
                     % warning here
@@ -131,9 +133,14 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
             if construct_filter
                 obj.filter=EnsembleFilter(obj.vmadcp);
             end
+            if construct_time
+                t=obj.vmadcp.time;
+                t(obj.filter.all_cells_bad(obj.vmadcp))=[];
+                obj.time=mean(t,"all","omitnan");
+            end
         end
         function val=get.water_level(obj)
-            val=obj.vmadcp.water_level.get_water_level(obj);
+            val=obj.vmadcp.water_level_object.get_water_level(obj.time);
         end
         function mesh=get_mesh(obj)
 % Construct the SigmaZetaMesh
