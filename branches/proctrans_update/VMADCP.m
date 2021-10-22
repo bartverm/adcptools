@@ -40,7 +40,7 @@ classdef VMADCP < ADCP
     %   see also: VMADCP, LatLonProvider
         shipvel_provider (:,1) ShipVelocityProvider
         
-        water_level (1,1) WaterLevel= ConstantWaterLevel(0);
+        water_level_object (1,1) WaterLevel= ConstantWaterLevel(0);
     end
     properties(Dependent, SetAccess=private)
         % VMADCP/bt_vertical_range read only property.
@@ -56,12 +56,15 @@ classdef VMADCP < ADCP
         %
         % see also: VMADCP
         slant_range_to_bed
+
+        water_level
     end
     methods
         %%% Constructor method %%%
         function obj=VMADCP(varargin)
             obj=obj@ADCP(varargin{:});
-            obj.vertical_position_provider=obj.water_level;
+            obj.water_level_object=ConstantWaterLevel(0);
+            obj.vertical_position_provider=ADCPVerticalPositionFromWaterLevel(obj.water_level_object);
             obj.horizontal_position_provider=[ProjectedCoordinatesFromViseaExtern; LatLonToUTM];
             obj.shipvel_provider=[ShipVelocityFromBT; ShipVelocityFromGPS];
             if numel(obj.filters)==1 && isa(obj.filters,'Filter')
@@ -156,6 +159,9 @@ classdef VMADCP < ADCP
             pos(:,:,:,2)=pos(:,:,:,2)+repmat(obj.horizontal_position(2,:),[1,1,4]);
             pos(:,:,:,3)=pos(:,:,:,3)+permute(obj.vertical_position,[3,2,4,1]);
         end
+        function wl=get.water_level(obj)
+            wl=obj.water_level_object.get_water_level(obj.time);
+        end
         function pos=depth_cell_position(obj)
             % Get the geographic position of the depth cells
             %
@@ -188,7 +194,23 @@ classdef VMADCP < ADCP
             if ~exist('ca','var')
                 ca=gca;
             end
-            ht=plot(ca,obj.horizontal_position(1,:),obj.horizontal_position(2,:),varargin{:});
+            arg_used=false(size(varargin));
+            ensfilt=EnsembleFilter(obj);
+            for cin=1:numel(varargin)
+                if isa(varargin{cin},'EnsembleFilter')
+                    ensfilt=varargin{cin};
+                    arg_used(cin)=true;
+                end
+            end
+            varargin(arg_used)=[];
+            ht=nan(numel(ensfilt),1);
+            hold_stat=get(ca,'NextPlot');
+            hold on
+            for ce=1:numel(ensfilt)
+                filt=~ensfilt(ce).all_cells_bad(obj);
+                ht(ce)=plot(ca,obj.horizontal_position(1,filt),obj.horizontal_position(2,filt),varargin{:});
+            end
+            set(gca,'NextPlot',hold_stat)
             axis equal
             xlabel(ca,[obj.horizontal_position_provider.description,' x (m)']);
             ylabel(ca,[obj.horizontal_position_provider.description,' y (m)']);
@@ -242,7 +264,7 @@ classdef VMADCP < ADCP
             bed_pos=obj.bed_position;
             bed_pos=squeeze(bed_pos(:,:,:,3));
             if av_beams
-                bed_pos=repmat(nanmean(bed_pos,2), 1,size(bed_pos,2));
+                bed_pos=repmat(mean(bed_pos,2,'omitnan'), 1,size(bed_pos,2));
             end
             c=get(hf,'Children');
             cb=size(bed_pos,2)+1;

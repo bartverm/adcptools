@@ -16,6 +16,9 @@ classdef BathymetryScatteredPoints < Bathymetry
 %   - Interpolator object is assigned to the 'interpolator' property
 %   - WaterLevel objects are assigned to the 'water_level' property
 %
+%   If a VMADCP object is passed upon construction and no WaterLevel object
+%   is given, the water_level property is set from the VMADCP object
+%
 %   BathymetryScatteredPoints properties:
 %   known - known scatterd input points (3xN)
 %   interpolator - Interpolator object performing the interpolation
@@ -50,26 +53,33 @@ classdef BathymetryScatteredPoints < Bathymetry
     methods
         function obj=BathymetryScatteredPoints(varargin)
             obj=obj@Bathymetry(varargin{:});
-            obj.interpolator=LoessInterpolator;
+            obj.interpolator=LoessNNInterpolator;
             addlistener(obj,'known','PostSet',@obj.set_interpolator_known);
             addlistener(obj,'interpolator','PostSet',@obj.set_interpolator_known);
             filter=EnsembleFilter;
             construct_from_vmadcp=false;
+            construct_water_level=false;
             for ca=1:nargin
                 cur_arg=varargin{ca};
                 if isa(cur_arg,'VMADCP')
                     construct_from_vmadcp=true;
+                    construct_water_level=true;
                     vadcp=cur_arg;
                 elseif isa(cur_arg,'EnsembleFilter')
                     filter=[filter, cur_arg]; %#ok<AGROW>
                 elseif isa(cur_arg,'Interpolator')
                     obj.interpolator=cur_arg;
+                elseif isa(cur_arg,'WaterLevel')
+                    construct_water_level=false;
                 else
                     warning('Bathymetry:unhadled_input',['Unhandled input of type: ', class(cur_arg)])
                 end
             end
             if construct_from_vmadcp
                 obj.known_from_vmadcp(vadcp,filter)
+            end
+            if construct_water_level
+                obj.water_level=vadcp.water_level_object;
             end
         end
         function z=get_bed_elev(obj,x,y)
@@ -142,7 +152,7 @@ classdef BathymetryScatteredPoints < Bathymetry
                return
            end
            hold_stat=get(gca,'NextPlot');
-           hp=plot3(obj.known(1,:),obj.known(2,:),obj.known(3,:),'k.');
+           hp=plot3(obj.known(1,:),obj.known(2,:),obj.known(3,:),'k.','MarkerSize',.1);
            hold on
            set(gca,'dataaspectratio',[5 5 1])
            as=alphaShape(obj.known(1,:)',obj.known(2,:)',1);
