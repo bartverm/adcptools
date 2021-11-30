@@ -39,7 +39,9 @@ classdef VMADCP < ADCP
     %
     %   see also: VMADCP, LatLonProvider
         shipvel_provider (:,1) ShipVelocityProvider
-        
+
+    end
+    properties (SetObservable)
         water_level_object (1,1) WaterLevel= ConstantWaterLevel(0);
     end
     properties(Dependent, SetAccess=private)
@@ -64,7 +66,7 @@ classdef VMADCP < ADCP
         function obj=VMADCP(varargin)
             obj=obj@ADCP(varargin{:});
             obj.water_level_object=ConstantWaterLevel(0);
-            obj.vertical_position_provider=ADCPVerticalPositionFromWaterLevel(obj.water_level_object);
+            obj.vertical_position_provider=ADCPVerticalPositionFromWaterLevel(obj.water_level_object, obj);
             obj.horizontal_position_provider=[ProjectedCoordinatesFromViseaExtern; LatLonToUTM];
             obj.shipvel_provider=[ShipVelocityFromBT; ShipVelocityFromGPS];
             if numel(obj.filters)==1 && isa(obj.filters,'Filter')
@@ -75,7 +77,6 @@ classdef VMADCP < ADCP
                     obj.shipvel_provider=varargin{ca};
                 end
             end
-
         end
         
         %%% Set and Get methods %%%

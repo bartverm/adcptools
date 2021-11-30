@@ -913,6 +913,7 @@ classdef ADCP < handle
             end
             t=obj.time;
             t=seconds(t-t(1));
+            hf=gcf;
             axh(1)=subplot(3,1,1);
             pcolor(t,vel_pos,vel(:,:,1));
             hc=colorbar;
