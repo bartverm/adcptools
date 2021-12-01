@@ -31,7 +31,7 @@ classdef ADCPVerticalPositionFromWaterLevel < ADCPVerticalPosition
                 elseif isa(arg,'double')
                     obj.depth_transducer=arg;
                 elseif isa(arg,'VMADCP')
-                    addlistener(arg,'water_level_object','PostSet',@obj.set_wl)
+                    addlistener(arg,'water_level_object','PostSet',@obj.set_wl);
                 else
                     warning(['Unhandled input of type: ', class(arg)])
                 end
