@@ -21,6 +21,7 @@ classdef ADCP < handle
     %   transformation_matrix_source - source of instrument matrix
     %   vertical_position_provider - Class providing vertical positions
     %   horizontal_position_provider- Class providing horizontal positions
+    %   heading_provider - Class providing headings
     %
     %   ADCP read-only properties:
     %   *Ambient properties*
@@ -179,15 +180,22 @@ classdef ADCP < handle
         %
         %   ADCPHorizontalPosition object specifying the position of the ADCP.
         %
-        %
+        % see also: ADCP
         horizontal_position_provider(1,:) ADCPHorizontalPosition = ADCPFixedHorizontalPosition;
         
         % ADCP/vertical_position_provider
         %
-        %   ADCPVerticalPoisition object specifying the position of the ADCP.
+        %   ADCPVerticalPosition object specifying the position of the ADCP.
         %
-        %
+        % see also: ADCP
         vertical_position_provider(1,1) ADCPVerticalPosition = ADCPFixedVerticalPosition;
+
+        % ADCP/heading_provider
+        %
+        %  HeadingProvider object which returns the heading of the ADCP.
+        %
+        % see also: ADCP
+        heading_provider(:,1) HeadingProvider = [HeadingProviderTFiles; HeadingProviderInternal];
     end
     properties(Dependent, SetAccess=private)
         % ADCP/fileid read only property
@@ -519,7 +527,7 @@ classdef ADCP < handle
             roll=double(obj.raw.roll)/100;
         end
         function head=get.heading(obj)
-            head=double(obj.raw.heading)/100;
+            head=obj.heading_provider.heading(obj);
         end
         function ha=get.headalign(obj)
             ha=double(obj.raw.headalign(obj.fileid))/100;
