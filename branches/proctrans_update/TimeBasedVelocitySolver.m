@@ -78,7 +78,7 @@ classdef TimeBasedVelocitySolver < VelocitySolver
                 cur_sig=reshape(cur_sig,[],1);
                 cur_vel=reshape(cur_vel,[],3);
                 fgood=isfinite(cur_n) & isfinite(cur_sig) & all(isfinite(cur_vel),2);
-                cur_vel=cur_vel(fgood,:);
+                cur_vel=cur_vel(fgood,:); % is this correct?
                 idx=repmat(obj.mesh(idx_mesh(crp)).index(cur_n(fgood),cur_sig(fgood)),1,3);
                 fgood=isfinite(idx);
                 fcomp=cumsum(ones(size(idx)),2); % make an index to map component of velocity to output matrix

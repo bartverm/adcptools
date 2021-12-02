@@ -915,7 +915,7 @@ classdef ADCP < handle
             %
             %   see also: ADCP
             vel_pos=obj.depth_cell_position;
-            vel_pos=nanmean(vel_pos(:,:,:,3),3);
+            vel_pos=mean(vel_pos(:,:,:,3),3,'omitnan');
             if nargin < 2
                 vel=obj.velocity(CoordinateSystem.Earth);
             end
@@ -952,7 +952,7 @@ classdef ADCP < handle
             %
             %   see also: ADCP
             sv_pos=obj.depth_cell_offset;
-            sv_pos=nanmean(sv_pos(:,:,:,3),3);
+            sv_pos=mean(sv_pos(:,:,:,3),3,'omitnan');
             sv=obj.backscatter;
             t=obj.time;
             t=seconds(t-t(1));
@@ -961,7 +961,7 @@ classdef ADCP < handle
             for cb=1:nb
                 axh(cb)=subplot(nb,1,cb);
                 pcolor(t,sv_pos,sv(:,:,cb));
-                clim=nanmean(sv(:,:,cb),'all')+[-2 2]*nanstd(sv(:,:,cb),0,'all');
+                clim=mean(sv(:,:,cb),'all','omitnan')+[-2 2]*std(sv(:,:,cb),0,'all','omitnan');
                 hc=colorbar;
                 ylabel(hc,'Backscatter (dB)')
                 shading flat
