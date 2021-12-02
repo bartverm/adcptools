@@ -214,14 +214,14 @@ classdef XSection < handle
                 x(fbad)=nan;
                 y(fbad)=nan;
             end
-            C=nancov([x;y]');
+            C=cov([x;y]','omitrows');
             [eigvec,eigval]=eig(C);
             [~, fprinc]=max(sum(eigval,2));
             obj.direction=eigvec(:,fprinc);
-            obj.origin=[nanmean(x); nanmean(y)];
+            obj.origin=[mean(x,'omitnan'); mean(y,'omitnan')];
             [~ , n]=obj.xy2sn(x, y);
-            n_orig=(nanmax(n)+nanmin(n))/2;
-            obj.scale=nanstd(n);
+            n_orig=(max(n,[],'omitnan')+min(n,[],'omitnan'))/2;
+            obj.scale=std(n,'omitnan');
             [obj.origin(1), obj.origin(2)]=obj.sn2xy(0, n_orig);
         end
         function revert(obj)

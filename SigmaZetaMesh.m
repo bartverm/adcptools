@@ -280,11 +280,11 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
                 % left side
                 fleft = n >= nl(cc) & n < nm(cc);
                 fright = n >= nm(cc) & n < nr(cc);
-                fsigleft = sigma > sbl(cc) + (sbm(cc) - sbl(cc))./ (nm(cc) - nl(cc)) .* n &...
-                           sigma <= stl(cc) + (stm(cc) - stl(cc))./ (nm(cc) - nl(cc)) .* n &...
+                fsigleft = sigma >  obj.fit_sig(n,nl(cc),nm(cc),sbl(cc),sbm(cc)) &...
+                           sigma <= obj.fit_sig(n,nl(cc),nm(cc),stl(cc),stm(cc)) &...
                            fleft;
-                fsigright = sigma > sbm(cc) + (sbr(cc) - sbm(cc))./ (nr(cc) - nm(cc)) .* n &...
-                            sigma <= stm(cc) + (str(cc) - str(cc))./ (nr(cc) - nm(cc)) .* n &...
+                fsigright = sigma > obj.fit_sig(n,nm(cc),nr(cc),sbm(cc),sbr(cc)) &...
+                            sigma <= obj.fit_sig(n,nm(cc),nr(cc),stm(cc),str(cc)) &...
                            fright;
                 fincell = fsigleft | fsigright;
                 idx(fincell) = cc;
@@ -356,6 +356,11 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
     methods(Access=protected)
         function val=get_ncells(obj)
             val=size(obj.z_bottom_left,1);
+        end
+    end
+    methods(Access=protected, Static)
+        function sig=fit_sig(n,n0,n1,sig0,sig1)
+            sig=(sig1-sig0)./(n1-n0).*(n-n0)+sig0;
         end
     end
     
