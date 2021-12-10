@@ -154,6 +154,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
 %   see also: SigmaZetaMeshFromVMADCP, SigmaZetaMesh, VMADCP
             mesh=SigmaZetaMesh;
             mesh.xs=obj.xs;
+            mesh.time=obj.time;
             % get velocity position and project on track
             vpos = obj.vmadcp.depth_cell_position;
             vpos(:,obj.filter.all_cells_bad(obj.vmadcp),:,:) = nan;

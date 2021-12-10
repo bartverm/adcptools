@@ -35,6 +35,7 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
 %   * General
 %   xs - defines the cross-section of the mesh
 %   water_level - the water level for the mesh
+%   time - time of the mesh
 %   ncells - number of cells in the mesh
 %   
 %   * Edge Position
@@ -95,7 +96,8 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
 
     properties (SetAccess=?SigmaZetaMeshGenerator)
         xs (1,1) XSection
-        water_level (1,1) double 
+        water_level (1,1) double
+        time (1,1) datetime
         
         z_bottom_left (:,1) double {mustBeFinite, mustBeReal}
         z_top_left (:,1) double {mustBeFinite, mustBeReal}
@@ -129,6 +131,7 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
         y_left
         y_middle
         y_right
+        z_center
         xb_all
         yb_all
         xw
@@ -143,6 +146,7 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
         sig_top_mid
         sig_bottom_right
         sig_top_right
+        sig_center
     end
     methods
         function val=get.x_left(obj)
@@ -162,6 +166,9 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
         end
         function val=get.y_right(obj)
             [~,val]=obj.xs.sn2xy(obj.n_right*0, obj.n_right);
+        end
+        function val=get.z_center(obj)
+            val=(obj.z_bottom_mid+obj.z_top_mid)/2;
         end
         function val=get.xb_all(obj)
             nall=obj.nb_all;
@@ -204,6 +211,9 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
         end
         function val=get.sig_top_right(obj)
             val=obj.z_to_sigma(obj.z_top_right, reshape(obj.zb_right(obj.col_to_cell),[],1));
+        end
+        function val=get.sig_center(obj)
+            val=(obj.sig_bottom_mid+obj.sig_top_mid)/2;
         end
         function s=z_to_sigma(obj,z, zb)
             s=(z-zb)./(obj.water_level-zb);
