@@ -19,6 +19,10 @@ classdef XSection < handle
     %   XSection methods:
     %   xy2sn - transform xy coordinates of points and vectors to sn coordinates
     %   sn2xy - transform sn coordinates of points and vectors to xy coordinates
+    %   xy2sn_vel - rotate xy velocity to sn velocity
+    %   sn2xy_vel - rotate sn velocity to xy velocity
+    %   xy2sn_tens -rotate xy tensor to sn tensor
+    %   sn2xy_tens - rotate sn tensor to xy tensor
     %   plot - plots the tangential and orthogonal vectors at the origin
     %   set_from_vmadcp - sets the origin and direction based on the vmadcp track
     %   revert - revert the direction of the cross-section
@@ -104,19 +108,13 @@ classdef XSection < handle
                 error('Function takes either 3 or 5 inputs')
             end
             
-            if has_vel
-                validateattributes(u,{'numeric'},{});
-                validateattributes(v,{'numeric'},{});
-                assert(isequal(size(u),size(v)),'size of u and v should match')
-            end
             validateattributes(x,{'numeric'},{});
             validateattributes(y,{'numeric'},{});
             assert(isequal(size(x),size(y)),'size of x and y should match')
             s = (x - obj.origin(1)) * obj.direction_orthogonal(1) + (y - obj.origin(2)) * obj.direction_orthogonal(2);
             n = (x - obj.origin(1)) * obj.direction(1) + (y - obj.origin(2)) * obj.direction(2);
             if has_vel
-                us = u * obj.direction_orthogonal(1) + v * obj.direction_orthogonal(2);
-                un = u * obj.direction(1) + v * obj.direction(2);
+                [us,un]=xy2sn_vel(u,v);
             end
         end
         function [x, y, u, v]=sn2xy(obj, s, n, us, un)
@@ -126,10 +124,9 @@ classdef XSection < handle
             %   given in (s,n), i.e. accross and along coordinates to projected
             %   geographic coordinates in (x,y).
             %
-            %   [x, y, u, v] = xy2sn(obj, s, n, us, un) allows to transform a vector
-            %   located at (s,n) with component (us,un) both in accros and along
-            %   coordinates to the corresponding (s,n) locations with (us,un)
-            %   components across and along the cross-section respectively.
+            %   [x, y, u, v] = sn2xy(obj, s, n, us, un) transform a vector
+            %   with component (us,un) in accros and along coordinates to 
+            %   the corresponding x,y.
             %
             %   see also: XSection, sn2xy
             if nargout == 0
@@ -143,9 +140,6 @@ classdef XSection < handle
             end
             
             if has_vel
-                validateattributes(us,{'numeric'},{});
-                validateattributes(un,{'numeric'},{});
-                assert(isequal(size(us),size(un)),'size of u and v should match')
             end
             validateattributes(s,{'numeric'},{});
             validateattributes(n,{'numeric'},{});
@@ -153,9 +147,63 @@ classdef XSection < handle
             x = obj.origin(1) + obj.direction(1) * n + obj.direction_orthogonal(1) * s;
             y = obj.origin(2) + obj.direction(2) * n + obj.direction_orthogonal(2) * s;
             if has_vel
+                [u,v]=obj.sn2xy_vel(us,un);
+            end
+        end
+        function [us,un]=xy2sn_vel(obj,u,v)
+            % Transform vectors from xy to sn coordinates
+            %
+            %   [us,un]=xy2sn(obj,u,v) transform a vector with component 
+            %   (u,v) both in projected coordinates to the corresponding 
+            %   (s,n) locations with (us,un) components across and along 
+            %   the cross-section respectively.
+            %
+            %   see also: XSection, sn2xy_vel
+                validateattributes(u,{'numeric'},{});
+                validateattributes(v,{'numeric'},{});
+                assert(isequal(size(u),size(v)),'size of u and v should match')
+                us = u * obj.direction_orthogonal(1) + v * obj.direction_orthogonal(2);
+                un = u * obj.direction(1) + v * obj.direction(2);
+        end
+        function [u,v]=sn2xy_vel(obj,us,un)
+            % Transform vectors from sn to xy coordinates
+            %
+            %   [u, v] = sn2xy(obj, us, un) transform a vector with 
+            %   component (us,un) in accros and along coordinates to the 
+            %   corresponding (u, v) components in x and y direction
+            %
+            %   see also: XSection, xy2sn_vel
+                validateattributes(us,{'numeric'},{});
+                validateattributes(un,{'numeric'},{});
+                assert(isequal(size(us),size(un)),'size of u and v should match')
                 u = obj.direction(1) * un + obj.direction_orthogonal(1) * us;
                 v = obj.direction(2) * un + obj.direction_orthogonal(2) * us;
-            end
+        end
+        function Tsn=xy2sn_tens(obj,T)
+            % Transform tesnors from xy to sn coordinates
+            %
+            %   Tsn=xy2sn(obj,T) transform a tensor from xy to sn
+            %   components. T has dimenions (Nx2x2).
+            %
+            %   see also: XSection, sn2xy_tens
+            siz_T=size(T);
+            assert(isequal(siz_T(end), siz_T(end-1),2), 'Size of trailing two dimensions of T must be equal to two')
+            M=[obj.direction_orthogonal'; obj.direction'];
+            Minv=M';
+            s=ndims(M)-ndims(T);
+            M=shiftdim(M,s);
+            Minv=shiftdim(Minv,s);
+            Tsn=helpers.matmult(helpers.matmult(M,T), Minv);
+        end
+        function T=sn2xy_tens(T_sn)
+            % Transform tensors from sn to xy coordinates
+            %
+            %   T = sn2xy(obj, Tsn) transform a tensor from sn to xy 
+            %   coordinates. T has dimenions (Nx2x2).
+            %
+            %   see also: XSection, xy2sn_tens
+            M=[obj.direction_orthogonal obj.direction];
+            T=helpers.matmult(helpers.matmult(M,T_sn), M');
         end
         
         function varargout=plot(obj, scale)

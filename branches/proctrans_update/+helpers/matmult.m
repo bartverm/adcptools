@@ -29,7 +29,11 @@ validateattributes(a,{'numeric'},{},'helpers.matmult','a',1);
 validateattributes(b,{'numeric'},{},'helpers.matmult','b',2);
 
 % Number of dimensions involved in computation
-nd=max(ndims(a),ndims(b)); 
+nd=max(ndims(a),ndims(b));
+if nd == 2
+    out = a * b;
+    return
+end
 
 if nargin > 2                                                              % a dim1 was given
     validateattributes(dim1,{'numeric'},{'integer','scalar','positive',...

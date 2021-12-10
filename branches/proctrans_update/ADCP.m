@@ -1045,6 +1045,7 @@ classdef ADCP < handle
             I=CoordinateSystem.Instrument;
             S=CoordinateSystem.Ship;
             E=CoordinateSystem.Earth;
+            B=CoordinateSystem.Beam;
             exp_cfilt=true(1,obj.nensembles); % dummy filter to expand scalar input
             croll=obj.roll;
             croll(obj.is_upward)=croll(obj.is_upward)+180;
@@ -1090,7 +1091,7 @@ classdef ADCP < handle
                 tm(1,cfilt,:,:));
             
             % from higher than beam to beam
-            cfilt = exp_cfilt & dst <= S & src > S;
+            cfilt = exp_cfilt & dst == B & src > B;
             tmptm=obj.transformation_matrix_source.i2b_matrix(obj);
             tm(:,cfilt,:,:)=helpers.matmult(...
                 tmptm(:,cfilt,:,:),...
