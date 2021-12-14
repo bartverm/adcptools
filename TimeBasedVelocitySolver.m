@@ -44,8 +44,8 @@ classdef TimeBasedVelocitySolver < VelocitySolver
                 end
             end
         end
-
-
+    end
+    methods(Access=protected)
         function [vpos, vdat, xform] = get_solver_input(obj)
             % Get velocity position and compute sigma coordinates
             vpos = obj.adcp.depth_cell_position; % velocity positions

@@ -48,11 +48,34 @@ classdef VelocityModel < handle
         %   see also: VelocitySolver   
 
             t_var=zeros(size(pars,1),1);
-            if nargin < 4, d_time = t_var; end
-            if nargin < 5, d_s = t_var; end
-            if nargin < 6, d_n = t_var; end
-            if nargin < 7, d_z = t_var; end
-            if nargin < 8, d_sigma = t_var; end
+            mult=ones(size(t_var));
+            if nargin < 4
+                d_time = t_var; 
+            else 
+                if isscalar(d_time)
+                    d_time = repmat(d_time, size(pars, 1), 1);
+                end
+            end
+            if nargin < 5
+                d_s = t_var; 
+            else 
+                d_s = d_s .* mult; 
+             end
+            if nargin < 6
+                d_n = t_var; 
+            else 
+                d_n = d_n .* mult; 
+            end
+            if nargin < 7
+                d_z = t_var;  
+            else 
+                d_z = d_z .* mult; 
+            end
+            if nargin < 8
+                d_sigma = t_var;  
+            else 
+                d_sigma = d_sigma .* mult; 
+            end
             [Mu, Mv, Mw] = obj.get_model(d_time, d_s, d_n, d_z, d_sigma);
             
             % reconstruct model matrix with kron product
@@ -80,11 +103,11 @@ classdef VelocityModel < handle
             vel = ipermute(vel, [2, 3, 1]);
             cov_vel = ipermute(cov_vel, [2, 3, 1]);
         end
+        
         function val=get.npars(obj)
             val=obj.get_npars();
         end
-    end
-    methods(Access=protected)
+
         function [Mu, Mv, Mw] = get_model(~, d_time, ~, ~, ~, ~)
         % build velocity model matrices
         %

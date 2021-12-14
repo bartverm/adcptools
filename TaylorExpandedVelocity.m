@@ -96,6 +96,7 @@ classdef TaylorExpandedVelocity < handle
         %   n_order, n_order
         time_order (1,3) double {...
             mustBeFinite, mustBeInteger, mustBeNonnegative} = [0 0 0];
+
     end
     methods(Access = protected)
         function val = get_npars(obj)
@@ -107,6 +108,8 @@ classdef TaylorExpandedVelocity < handle
                 obj.sigma_order +...
                 obj.time_order;
         end
+    end
+    methods
         function [Mu, Mv, Mw]=get_model(obj, time, d_s, d_n, d_z, d_sigma)
             Mu = obj.combine_expands(1, time, d_s, d_n, d_z, d_sigma);
             Mv = obj.combine_expands(2, time, d_s, d_n, d_z, d_sigma);

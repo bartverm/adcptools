@@ -185,7 +185,7 @@ classdef VelocitySolver < handle
             % get bed elevation at velocity position. This could optionally
             % be done with the bed detection at the beam.
             zb_pos = obj.bathy.get_bed_elev(vpos(:,:,:,1), vpos(:,:,:,2)); 
-            
+
             % compute sigma coordinate of velocities
             sig_pos = (vpos(:,:,:,3) - zb_pos) ./...
                 (obj.adcp.water_level - zb_pos); 
@@ -207,7 +207,7 @@ classdef VelocitySolver < handle
                 ens_filt = ~obj.ensemble_filter(idx_ef(crp)).bad_ensembles;
                 cur_n = n_pos(:, ens_filt, :);
                 cur_s = s_pos(:, ens_filt, :);
-                cur_t = time(:, ens_filt,:);
+                cur_t = time(:, ens_filt, :);
                 cur_t = repmat(cur_t, ...
                     size(vel_data, 1), 1, size(vel_data, 3));
                 cur_sig = sig_pos(:, ens_filt, :);
