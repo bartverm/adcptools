@@ -1,4 +1,4 @@
-classdef ShipVelocityProvider < matlab.mixin.Heterogeneous
+classdef ShipVelocityProvider < matlab.mixin.Heterogeneous & handle
 % Base class to implement methods that yield the ship's velocity
 %
 %   ShipVelocityProvider methods:

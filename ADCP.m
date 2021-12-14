@@ -9,6 +9,8 @@ classdef ADCP < handle
     %   - Filter objects are appended to the filters property
     %   - acoustics.Water is assigned to the water property
     %   - acoustics.PistonTransducer is assigned to the transducer property
+    %   - ADCPHorizontalPosition to horizontal_position_provider
+    %   - ADCPVerticalPosition to vertical_position_provider
     %   - struct objects are assigned to the raw property 
     %
     %   ADCP properties:
@@ -17,6 +19,9 @@ classdef ADCP < handle
     %   timezone - timezone of the data
     %   type - type of ADCP being used
     %   transformation_matrix_source - source of instrument matrix
+    %   vertical_position_provider - Class providing vertical positions
+    %   horizontal_position_provider- Class providing horizontal positions
+    %   heading_provider - Class providing headings
     %
     %   ADCP read-only properties:
     %   *Ambient properties*
@@ -57,6 +62,8 @@ classdef ADCP < handle
     %   blanking - blanking distance
     %   distmidfirstcell - vertical distance to the first measured depth cell
     %   depth_cell_slant_range - slant range to depth cell
+    %   horizontal_position - horizontal position of the ADCP
+    %   vertical_position - vertical position of the ADCP
     %
     %   *Backscatter*
     %   bandwidth - bandwidth used for measurements (0=wide, 1=narrow)
@@ -168,6 +175,27 @@ classdef ADCP < handle
         %
         % see also: ADCP, acoustics.Water
         water(1,1) acoustics.Water;
+        
+        % ADCP/horizontal_position_provider
+        %
+        %   ADCPHorizontalPosition object specifying the position of the ADCP.
+        %
+        % see also: ADCP
+        horizontal_position_provider(1,:) ADCPHorizontalPosition = ADCPFixedHorizontalPosition;
+        
+        % ADCP/vertical_position_provider
+        %
+        %   ADCPVerticalPosition object specifying the position of the ADCP.
+        %
+        % see also: ADCP
+        vertical_position_provider(1,1) ADCPVerticalPosition = ADCPFixedVerticalPosition;
+
+        % ADCP/heading_provider
+        %
+        %  HeadingProvider object which returns the heading of the ADCP.
+        %
+        % see also: ADCP
+        heading_provider(:,1) HeadingProvider = [HeadingProviderTFiles; HeadingProviderInternal];
     end
     properties(Dependent, SetAccess=private)
         % ADCP/fileid read only property
@@ -423,6 +451,20 @@ classdef ADCP < handle
         % see also: ADCP, acoustics, Sv2SSC
         backscatter
         
+        % ADCP/horizontal_position
+        %
+        %   Returns a 2xN matrix holding the x and y coordinates of the
+        %   ADCP in m.
+        %
+        %   see also: adcp, vertical_position, horizontal_position_provider
+        horizontal_position
+        
+        % ADCP/vertical_position
+        %
+        %   Returns a 1xN vector holding the z coordinates of the ADCP in m.
+        %
+        %   see also: adcp, horizontal_position, vertical_position_provider
+        vertical_position
     end
     methods
         %%% Constructor method %%%
@@ -447,6 +489,10 @@ classdef ADCP < handle
                     obj.water=varargin{ca};
                 elseif isa(varargin{ca},'acoustics.PistonTransducer')
                     obj.transducer=varargin{ca};
+              elseif isa(varargin{ca},'ADCPVerticalPosition')
+                    obj.vertical_position_provider=varargin{ca};
+                elseif isa(varargin{ca},'ADCPHorizontalPosition')
+                    obj.horizontal_position_provider=varargin{ca};
                 elseif isstruct(varargin{ca})
                     obj.raw=varargin{1};
                 end
@@ -480,7 +526,7 @@ classdef ADCP < handle
             roll=double(obj.raw.roll)/100;
         end
         function head=get.heading(obj)
-            head=double(obj.raw.heading)/100;
+            head=obj.heading_provider.heading(obj);
         end
         function ha=get.headalign(obj)
             ha=double(obj.raw.headalign(obj.fileid))/100;
@@ -645,6 +691,12 @@ classdef ADCP < handle
             PDBW=10*log10(obj.power);                        
             val = obj.backscatter_constant + 10*log10((obj.attitude_temperature+273.16).*R.^2.*pt.near_field_correction(R).^2) - LDBM - PDBW + two_alpha_R + 10*log10(10.^((obj.echo-obj.noise_level)/10)-1); % equation according to fsa-031, correcting goustiaus and van haren equation      
             val(obj.bad)=nan;
+        end
+        function val=get.horizontal_position(obj)
+            val=obj.horizontal_position_provider.horizontal_position(obj);
+        end
+        function val=get.vertical_position(obj)
+            val=obj.vertical_position_provider.get_vertical_position(obj);
         end
         
         %%% Ordinary methods
@@ -840,7 +892,6 @@ classdef ADCP < handle
             %   heading.
             %
             % see also: ADCP, plot_velocity, plot_filters, plot_all
-            figure
             axh(1)=subplot(4,1,1);
             plot(obj.is_upward)
             ylabel('Is upward')
@@ -862,14 +913,14 @@ classdef ADCP < handle
             %   system
             %
             %   see also: ADCP
-            hf=figure;
-            vel_pos=obj.depth_cell_offset;
-            vel_pos=nanmean(vel_pos(:,:,:,3),3);
+            vel_pos=obj.depth_cell_position;
+            vel_pos=mean(vel_pos(:,:,:,3),3,'omitnan');
             if nargin < 2
                 vel=obj.velocity(CoordinateSystem.Earth);
             end
             t=obj.time;
             t=seconds(t-t(1));
+            hf=gcf;
             axh(1)=subplot(3,1,1);
             pcolor(t,vel_pos,vel(:,:,1));
             hc=colorbar;
@@ -877,7 +928,7 @@ classdef ADCP < handle
             shading flat
             axh(2)=subplot(3,1,2);
             pcolor(t,vel_pos,vel(:,:,2));
-            ylabel('vertical elevation from transducer (m)')
+            ylabel('vertical position (m)')
             hc=colorbar;
             ylabel(hc,'V_y (m/s)')
             shading flat
@@ -899,9 +950,8 @@ classdef ADCP < handle
             %   system
             %
             %   see also: ADCP
-            hf=figure;
             sv_pos=obj.depth_cell_offset;
-            sv_pos=nanmean(sv_pos(:,:,:,3),3);
+            sv_pos=mean(sv_pos(:,:,:,3),3,'omitnan');
             sv=obj.backscatter;
             t=obj.time;
             t=seconds(t-t(1));
@@ -910,7 +960,7 @@ classdef ADCP < handle
             for cb=1:nb
                 axh(cb)=subplot(nb,1,cb);
                 pcolor(t,sv_pos,sv(:,:,cb));
-                clim=nanmean(sv(:,:,cb),'all')+[-2 2]*nanstd(sv(:,:,cb),0,'all');
+                clim=mean(sv(:,:,cb),'all','omitnan')+[-2 2]*std(sv(:,:,cb),0,'all','omitnan');
                 hc=colorbar;
                 ylabel(hc,'Backscatter (dB)')
                 shading flat
@@ -927,9 +977,13 @@ classdef ADCP < handle
             obj.filters.plot(obj);
         end
         function plot_all(obj)
+            figure
             obj.plot_orientations;
+            figure
             obj.plot_filters;
+            figure
             obj.plot_velocity;
+            figure
             obj.plot_backscatter;
         end
         function pos=depth_cell_offset(obj,dst)
@@ -942,13 +996,22 @@ classdef ADCP < handle
             %   in which the offsets should be returned. dst is a
             %   CoordinateSystem object.
             %
-            %   see also: ADCP
+            %   see also: ADCP, depth_cell_position
             if nargin < 2
                 dst=CoordinateSystem.Earth;
             end
             tm=-obj.xform(CoordinateSystem.Beam, dst, 'UseTilts', true); % minus since matrix for vel points to adcp
             tm(:,:,:,4)=[];
             pos=tm.*obj.depth_cell_slant_range;
+        end
+        function pos=depth_cell_position(obj)
+            % Computes the xyz positions of the depth cells
+            %
+            %   pos=depth_cell_position(obj) returns the position vector
+            %   (ncells x nensembles x nbeams x 3) in Earth coordinates
+            %
+            % see also: ADCP, position, depth_cell_offset
+            pos=obj.depth_cell_offset + permute([obj.horizontal_position; obj.vertical_position],[3,2,4,1]);
         end
         function tm=xform(obj,dst, src,varargin)
             % Get transformation matrices for coordinate transformations
@@ -981,6 +1044,7 @@ classdef ADCP < handle
             I=CoordinateSystem.Instrument;
             S=CoordinateSystem.Ship;
             E=CoordinateSystem.Earth;
+            B=CoordinateSystem.Beam;
             exp_cfilt=true(1,obj.nensembles); % dummy filter to expand scalar input
             croll=obj.roll;
             croll(obj.is_upward)=croll(obj.is_upward)+180;
@@ -1026,7 +1090,7 @@ classdef ADCP < handle
                 tm(1,cfilt,:,:));
             
             % from higher than beam to beam
-            cfilt = exp_cfilt & dst <= S & src > S;
+            cfilt = exp_cfilt & dst == B & src > B;
             tmptm=obj.transformation_matrix_source.i2b_matrix(obj);
             tm(:,cfilt,:,:)=helpers.matmult(...
                 tmptm(:,cfilt,:,:),...

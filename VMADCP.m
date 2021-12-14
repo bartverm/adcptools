@@ -5,119 +5,29 @@ classdef VMADCP < ADCP
 %
 %   obj=VMADCP(...) You can pass different objects to the class on
 %   initialization. Depending on the class of the object it will be
-%   assigned to a property:
-%   - Filter objects are appended to the filters property
-%   - acoustics.Water is assigned to the water property
-%   - acoustics.PistonTransducer is assigned to the transducer property
-%   - struct objects are assigned to the raw property
-%   - ProjectedCoordinateSystem object to the xy_cor_system property
-%   - LatLonProvider to the ll_provider property
+%   assigned to a property. On top of those recognized by the ADCP
+%   superclass, VMADCP also add support for:
 %   - ShipVelocityProvider to the shipvel_provider property
 %   
 %
-%   VMADCP properties:
-%   raw - adcp structure read by readADCP.m/readDeployment.m
-%   filters - filters for profiled data. Defaults to SideLobeFilter
-%   timezone - timezone of the data
-%   type - type of ADCP being used
-%   xy_cor_system - projected coordinate system to be used
-%   ll_provider - configure where to get geographic coordinates
+%   VMADCP properties (see also inherited properties of ADCP):
 %   shipvel_provider - configure how to obtain ship velocity
-%   adcp_elevation - elevation of the ADCP
 %
 %   VMADCP read-only properties:
-%   *Instrument characteristics*
-%   transducer - object describing transducer characteristics
-%   is_workhorse - return whether ADCP is a Workhorse ADCP
-%
-%   *Sizing*
-%   fileid - ID of file ensemble was read from
-%   time - time ensembles were measured
-%   nensembles - number of ensembles
-%   nbeams - number of beams
-%   ncells - number of cells
-%
-%   *Coordinate systems properties*
-%   coordinate_system - coordinate system used
-%   beam_angle - angle of acoustic beam with vertical
-%   convexity - convexity of the instrument
-%   three_beam_solutions_used - whether three beams solutions were used
-%   tilts_used_in_transform - whether tilts were used in transformations
-%   bin_mapping_used - wheteher bin mapping was used during measurements     
-%
-%   *Orientation*
-%   pitch - pitch rotation angle
-%   roll - roll rotation
-%   heading - heading rotation
-%   headalign - heading alignment 
-%   is_upward - whether instrument was pointing upward
 %
 %   *Data positioning*
-%   cellsize - vertical size of depth cell
-%   lengthxmitpulse - length of transmitted pulse
-%   blanking - blanking distance
-%   distmidfirstcell - vertical distance to the first measured depth cell
-%   depth_cell_slant_range - slant range to depth cell
 %   bt_vertical_range - vertical range to observed bed 
 %   slant_range_to_bed - slant range to observed bed
 %
-%   *Backscatter*
-%   bandwidth - bandwidth used for measurements (0=wide, 1=narrow)
-%   current - transmit current of transducer (A)
-%   current_factor - factor for current computation from ADC channel
-%   voltage - transmit voltage of transducer (V)
-%   voltage_factor - factor for voltage computation from ADC channel
-%   power - transmit power of transducer (W)
-%   attitude_temperature - temperature of transducer (Celsius)
-%   intensity_scale - intensity scale factor (dB/m)
-%   echo - Raw echo intennstiy (dB)
-%   backscatter - Volumne backscatter strength (dB)
-%
 %   VMADCP methods
-%   bad - filter in use                           
-%   xform - coordinate transformation matrices
-%   depth_cell_offset - xyz offset from transducer to depth cell
-%   depth_cell_position - xyz positions of depth cells in projected coords.
 %   bed_offset - xyz offset to the bed
 %   bed_position - xyz positions of the bed
-%   ll - lat lon positions of ADCP
-%   xy - xy projected coordinates of the ADCP
-%   velocity - get velocity profile data
 %   water_velocity - get velocity profile data corrected for ship motions
 %   btvel - ship velocity detected with  bottom tracking
-%   plot_filters - plot active profile data filters
-%   plot_orientations - plot orientations of ADCP
-%   plot_velocity - plot velocity profiling data
-%   plot_track - plot track of the ADCP
 %   plot_bed_position - plot position of detected bed
-%
-%   VMADCP static methods:
-%   beam_2_instrument - beam to instrument transformation matrices
-%   head_tilt - tilt matrices 
-%   instrument_2_beam - instrument to beam transformation matrices
-%   int16_to_double - transform int16 to double values
-%   invert_xform - invert transformation matrices
 %
 % see also: ADCP
     properties
-    % VMADCP/xy_cor_system 
-    %
-    %   Projected geographic coordinate system to be used. Default is the
-    %   UTMCoordinateSystem. Value must be an object of a class inherited
-    %   from ProjectedCoordinateSystem.
-    %
-    %   see also: VMADCP
-        xy_cor_system (1,1) ProjectedCoordinateSystem = UTMCoordinateSystem
-    
-    % VMADCP/ll_provider 
-    %
-    %   Latitude, Longitude provider. Array of LatLonProvider objects. The
-    %   first provider that has valid LatLon data is used. Default is
-    %   [LatLonVisea; LatLonNfiles; LatLonTfiles; LatLonGGA]
-    %
-    %   see also: VMADCP, LatLonProvider
-        ll_provider (:,1) LatLonProvider
-
     % VMADCP/shipvel_provider 
     %
     %   Allows to set how ship velocity is estimated. This is a vector with
@@ -129,14 +39,9 @@ classdef VMADCP < ADCP
     %
     %   see also: VMADCP, LatLonProvider
         shipvel_provider (:,1) ShipVelocityProvider
-
-    
-    % VMADCP/adcp_elevation
-    %
-    %   specifies the elevation of the ADCP during the measurement. This
-    %   can be used to correct for water level changes during data
-    %   collection
-        adcp_elevation (1,:) double {mustBeFinite} = 0;
+    end
+    properties (SetObservable)
+        water_level_object (1,1) WaterLevel= ConstantWaterLevel(0);
     end
     properties(Dependent, SetAccess=private)
         % VMADCP/bt_vertical_range read only property.
@@ -152,27 +57,25 @@ classdef VMADCP < ADCP
         %
         % see also: VMADCP
         slant_range_to_bed
+
+        water_level
     end
     methods
         %%% Constructor method %%%
         function obj=VMADCP(varargin)
             obj=obj@ADCP(varargin{:});
-            obj.xy_cor_system=UTMCoordinateSystem;
-            obj.ll_provider=[LatLonVisea; LatLonNfilesGGA; LatLonTfiles; LatLonGGA];
+            obj.water_level_object=ConstantWaterLevel(0);
+            obj.vertical_position_provider=ADCPVerticalPositionFromWaterLevel(obj.water_level_object, obj);
+            obj.horizontal_position_provider=[ProjectedCoordinatesFromViseaExtern; LatLonToUTM];
             obj.shipvel_provider=[ShipVelocityFromBT; ShipVelocityFromGPS];
             if numel(obj.filters)==1 && isa(obj.filters,'Filter')
                 obj.filters=SideLobeFilter;
             end
             for ca=1:nargin
-                if isa(varargin{ca},'ProjectedCoordinateSystem')
-                    obj.xy_cor_system=varargin{ca};
-                elseif isa(varargin{ca},'LatLonProvider')
-                    obj.ll_provider=varargin{ca};
-                elseif isa(varargin{ca},'ShipVelocityProvider')
+                if isa(varargin{ca},'ShipVelocityProvider')
                     obj.shipvel_provider=varargin{ca};
                 end
             end
-
         end
         
         %%% Set and Get methods %%%
@@ -226,55 +129,112 @@ classdef VMADCP < ADCP
                 btvel=helpers.matmult(tm, btvel);
             end
         end
-        function [lat, lon]=ll(obj)
-            [lat,lon]=obj.ll_provider.lat_lon(obj);
-        end
-        function [x, y]=xy(obj)
-            [lat, lon]=obj.ll;
-            [x, y]= obj.xy_cor_system.xy(lat,lon);
-        end
+       
         function pos=bed_offset(obj,dst)
+            % Get the offset from the ADCP to the observed bed in m
+            %
+            %   pos = bed_offset(obj) returns the x,y and z components of the vector
+            %   pointing from the ADCP to the detected bed. 
+            %
+            %   pos = bed_offset(obj, dst) allows to additionaly specify the coordinate
+            %   system to get the offsets in as a CoordinateSystem object.
+            %
+            %   see also: VMADCP, CoordinateSystem, slant_range_to_bed, bed_position
             if nargin < 2 
                 dst=CoordinateSystem.Earth;
             end
-            tm=-obj.xform(CoordinateSystem.Beam,dst);
+            tm=-obj.xform(CoordinateSystem.Beam, dst,'UseTilts',true);
             tm(:,:,:,4)=[];
             pos=tm.*obj.slant_range_to_bed;
         end
         function pos=bed_position(obj)
+        % Position of the bed in geographic coordinates
+        %
+        %   pos = bed_position(obj) returns the x,y and z coordinates of the bed as
+        %   detected by the bottom tracking of the ADCP.
+        %
+        % see also: VMADCP, bed_offset
             pos=obj.bed_offset(CoordinateSystem.Earth);
-            [x,y]=obj.xy();
-            pos(:,:,:,1)=pos(:,:,:,1)+x;
-            pos(:,:,:,2)=pos(:,:,:,2)+y;
-            pos(:,:,:,3)=pos(:,:,:,3)+obj.adcp_elevation;
+            pos(:,:,:,1)=pos(:,:,:,1)+repmat(obj.horizontal_position(1,:),[1,1,4]);
+            pos(:,:,:,2)=pos(:,:,:,2)+repmat(obj.horizontal_position(2,:),[1,1,4]);
+            pos(:,:,:,3)=pos(:,:,:,3)+permute(obj.vertical_position,[3,2,4,1]);
+        end
+        function wl=get.water_level(obj)
+            wl=obj.water_level_object.get_water_level(obj.time);
         end
         function pos=depth_cell_position(obj)
+            % Get the geographic position of the depth cells
+            %
+            %   pos = depth_cell_position(obj) returns the x, y and z coordinates of
+            %   the depth cells of the ADCP.
+            %
+            %   see also: VMADCP, depth_cell_offset
             pos=obj.depth_cell_offset(CoordinateSystem.Earth);
-            [x,y]=obj.xy();
-            pos(:,:,:,1)=pos(:,:,:,1)+x;
-            pos(:,:,:,2)=pos(:,:,:,2)+y;
-            pos(:,:,:,3)=pos(:,:,:,3)+obj.adcp_elevation;
+            pos(:,:,:,1)=pos(:,:,:,1)+repmat(obj.horizontal_position(1,:),[1,1,4]);
+            pos(:,:,:,2)=pos(:,:,:,2)+repmat(obj.horizontal_position(2,:),[1,1,4]);
+            pos(:,:,:,3)=pos(:,:,:,3)+permute(obj.vertical_position,[3,2,4,1]);
         end
-        function plot_track(obj)
-            figure
-            [x,y]=obj.xy;
-            plot(x,y,'.-');
+        function handle_track=plot_track(obj,varargin)
+            % plot the track sailed by the vessel
+            %
+            %   plot_track(obj) plots the track sailed by the vessel
+            %
+            %   plot_track(obj, ...) pass additional parameters to the plot function 
+            %
+            %   handle_track = plot_track(...) returns the handle to plot object
+            %
+            %   see also: VMADCP, plot, plot_all
+            for cin=1:numel(varargin)
+                if isa(varargin{cin},'matlab.graphics.axis.Axes')% || isa(obj.axes,'matlab.ui.control.UIAxes')
+                    ca=varargin{cin};
+                    varargin(cin)=[];
+                    break
+                end
+            end
+            if ~exist('ca','var')
+                ca=gca;
+            end
+            arg_used=false(size(varargin));
+            ensfilt=EnsembleFilter(obj);
+            for cin=1:numel(varargin)
+                if isa(varargin{cin},'EnsembleFilter')
+                    ensfilt=varargin{cin};
+                    arg_used(cin)=true;
+                end
+            end
+            varargin(arg_used)=[];
+            ht=nan(numel(ensfilt),1);
+            hold_stat=get(ca,'NextPlot');
+            hold on
+            for ce=1:numel(ensfilt)
+                filt=~ensfilt(ce).all_cells_bad(obj);
+                ht(ce)=plot(ca,obj.horizontal_position(1,filt),obj.horizontal_position(2,filt),varargin{:});
+            end
+            set(gca,'NextPlot',hold_stat)
             axis equal
-            xlabel([obj.xy_cor_system.description,' x (m)']);
-            ylabel([obj.xy_cor_system.description,' y (m)']);
+            xlabel(ca,[obj.horizontal_position_provider.description,' x (m)']);
+            ylabel(ca,[obj.horizontal_position_provider.description,' y (m)']);
+            if nargout > 0
+                handle_track=ht;
+            end
         end
-        function plot_bed_position(obj)
-            figure
+        function [handle_scat, handle_cbar]=plot_bed_position(obj,varargin)
             pos=obj.bed_position();
             pos=reshape(pos,[],3);
-            scatter3(pos(:,1),pos(:,2),pos(:,3),10,pos(:,3),'filled');
+            hs=scatter3(pos(:,1),pos(:,2),pos(:,3),10,pos(:,3),'filled',varargin{:});
             set(gca,'DataAspectRatio',[1 1 .2])
             view(0,90)
-            xlabel([obj.xy_cor_system.description,' x (m)']);
-            ylabel([obj.xy_cor_system.description,' y (m)']);
+            xlabel([obj.horizontal_position_provider.description,' x (m)']);
+            ylabel([obj.horizontal_position_provider.description,' y (m)']);
             zlabel('z (m)');
             hc=colorbar;
             ylabel(hc,'Bed elevation (m)')
+            if nargout > 0
+                handle_scat=hs;
+            end
+            if nargout > 1
+                handle_cbar=hc;
+            end
         end
         function plot_velocity(obj,vel)
             if nargin < 2
@@ -289,7 +249,9 @@ classdef VMADCP < ADCP
         end
         function plot_all(obj)
             plot_all@ADCP(obj)
+            figure
             obj.plot_track
+            figure
             obj.plot_bed_position
         end
         function add_bed_and_surface(obj,hf,av_beams)
@@ -299,10 +261,10 @@ classdef VMADCP < ADCP
             if nargin < 3
                 av_beams=true;
             end
-            bed_pos=obj.bed_offset;
+            bed_pos=obj.bed_position;
             bed_pos=squeeze(bed_pos(:,:,:,3));
             if av_beams
-                bed_pos=repmat(nanmean(bed_pos,2), 1,size(bed_pos,2));
+                bed_pos=repmat(mean(bed_pos,2,'omitnan'), 1,size(bed_pos,2));
             end
             c=get(hf,'Children');
             cb=size(bed_pos,2)+1;
