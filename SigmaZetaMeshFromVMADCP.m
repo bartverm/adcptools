@@ -30,7 +30,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
 %   scalar VMADCP object holding the adcp data
 %
 %   see also:SigmaZetaFromVMADCP, VMADCP
-        vmadcp (1,1) VMADCP
+        vmadcp (:,1) VMADCP {mustBeScalarOrEmpty} = rdi.VMADCP.empty
         
 % SigmaZetaMeshFromVMADCP/filter
 %
@@ -93,18 +93,15 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
         water_level
     end
     methods
-        function obj=SigmaZetaMeshFromVMADCP(varargin)   
+        function obj=SigmaZetaMeshFromVMADCP(vmadcp, varargin) 
+            obj.vmadcp = vmadcp;
             construct_bathymetry=true;
             construct_xs=true;
             construct_filter=true;
             construct_time=true;
-            has_vmadcp=false;
-            for count_arg=1:nargin         
+            for count_arg=1:nargin-1         
                 cur_arg=varargin{count_arg};
-                if isa(cur_arg,'VMADCP')
-                    has_vmadcp=true;
-                    obj.vmadcp=cur_arg;
-                elseif isa(cur_arg,'Bathymetry')
+                if isa(cur_arg,'Bathymetry')
                     construct_bathymetry=false;
                     obj.bathymetry=cur_arg;
                 elseif isa(cur_arg,'XSection')
@@ -120,9 +117,6 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
                     warning(['Unhandled input of type: ',class(cur_arg)])
                     % warning here
                 end
-            end
-            if ~has_vmadcp
-                error('Please pass a VMADCP object upon construction')
             end
             if construct_bathymetry
                 obj.bathymetry=BathymetryScatteredPoints(obj.vmadcp);

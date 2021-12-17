@@ -20,7 +20,11 @@ classdef LatLonToProjection < ADCPHorizontalPosition
     end
     methods
         function obj=LatLonToProjection(varargin)
-            obj.ll_provider=[LatLonVisea; LatLonNfilesGGA; LatLonTfiles; LatLonNMEAGGA; LatLonGGA];
+            for ca = 1 : nargin
+                if isa(varargin{ca},'LatLonProvider')
+                    obj.ll_provider = varargin{ca};
+                end
+            end
         end
     end
     methods(Access=protected)

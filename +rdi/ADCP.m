@@ -104,24 +104,14 @@ classdef ADCP < ADCP
         % see also: ADCP, transducer, water
         raw(1,1) struct;
         
-        
-        % ADCP/transformation_matrix_source
-        %
-        %   Specifies the sources for the transformation matrix as a
-        %   InstrumentMatrixProvider. This is a vector which allows to
-        %   define different sources. The first object capable of providing
-        %   the matrix will be used.
-        %
-        % see also: ADCP, InstrumentMatrixProvider
-        transformation_matrix_source (:,1) InstrumentMatrixProvider = [InstrumentMatrixFromCalibration; InstrumentMatrixFromBAngle];
-        
+               
         % ADCP/type
         %
         %   Specify the type of ADCP that is being used. Default is
-        %   ADCP_Type.Monitor.
+        %   rdi.ADCP_Type.Monitor.
         %
-        % see also: ADCP, ADCP_Type
-        type(1,1) ADCP_Type = ADCP_Type.Unknown
+        % see also: ADCP, rdi.ADCP_Type
+        type(1,1) rdi.ADCP_Type = rdi.ADCP_Type.Unknown
         
         % ADCP/temperature_offset
         %
@@ -276,9 +266,17 @@ classdef ADCP < ADCP
         %%% Constructor method %%%
         function obj=ADCP(varargin)
             obj = obj@ADCP(varargin{:});
-            obj.type=ADCP_Type.Unknown;
+            obj.type = rdi.ADCP_Type.Unknown;
+            obj.transformation_matrix_source = [
+                rdi.InstrumentMatrixFromCalibration; 
+                InstrumentMatrixFromBAngle
+                ];
+            obj.heading_provider = [
+                rdi.HeadingProviderTFiles; 
+                HeadingProviderInternal
+                ];
             for ca=1:nargin
-                if isa(varargin{ca},'ADCP_Type')
+                if isa(varargin{ca},'rdi.ADCP_Type')
                     obj.type=varargin{ca};
                 elseif isstruct(varargin{ca})
                     obj.raw=varargin{1};
@@ -379,16 +377,16 @@ classdef ADCP < ADCP
                     val=-159.1;
                 case 307.2e3
                     switch obj.type
-                        case ADCP_Type.Sentinel
+                        case rdi.ADCP_Type.Sentinel
                             val=-143.5;
-                        case ADCP_Type.Monitor
+                        case rdi.ADCP_Type.Monitor
                             val=-143;
                         otherwise
                             warning('Assuming ADCP is a Monitor')
                             val=-143;
                     end
                 case 614.4e3
-                    if obj.type~=ADCP_Type.RioGrande
+                    if obj.type~=rdi.ADCP_Type.RioGrande
                         warning('Assuming ADCP is a RioGrande')
                     end
                     val=-139.3;
@@ -419,9 +417,9 @@ classdef ADCP < ADCP
         end
         
         function tf=is_workhorse(obj)
-            if any(obj.type== [ADCP_Type.LongRanger1500, ADCP_Type.LongRanger3000, ADCP_Type.QuarterMaster1500,...
-                    ADCP_Type.QuarterMaster1500ModBeams, ADCP_Type.QuarterMaster3000, ADCP_Type.QuarterMaster6000,...
-                    ADCP_Type.Sentinel, ADCP_Type.Mariner, ADCP_Type.Monitor])
+            if any(obj.type== [rdi.ADCP_Type.LongRanger1500, rdi.ADCP_Type.LongRanger3000, rdi.ADCP_Type.QuarterMaster1500,...
+                    rdi.ADCP_Type.QuarterMaster1500ModBeams, rdi.ADCP_Type.QuarterMaster3000, rdi.ADCP_Type.QuarterMaster6000,...
+                    rdi.ADCP_Type.Sentinel, rdi.ADCP_Type.Mariner, rdi.ADCP_Type.Monitor])
                 tf=true;
             else
                 tf=false;
@@ -621,7 +619,7 @@ classdef ADCP < ADCP
             %TODO: compute SentinelV and MonitorV radii back from
             %beam_width and frequency (see equation in Deines 1999)
             % Handle phased array ADCPs
-            if obj.type==ADCP_Type.RiverRay
+            if obj.type==rdi.ADCP_Type.RiverRay
                 if ~isa(pt,'acoustics.PhasedArrayTransducer')
                     pt=acoustics.PhasedArrayTransducer;
                 end
@@ -644,11 +642,11 @@ classdef ADCP < ADCP
                 case '100' % Only QuarterMaster ADCPs
                     pt.frequency=153.6e3; % From operation Manual Quarter Master
                     switch obj.type
-                        case {ADCP_Type.QuarterMaster1500,ADCP_Type.QuarterMaster3000}
+                        case {rdi.ADCP_Type.QuarterMaster1500,rdi.ADCP_Type.QuarterMaster3000}
                             pt.radius=0.178/2; % From operation manual Quarter Master (drawing 6082, 6083)
-                        case ADCP_Type.QuarterMaster1500ModBeams
+                        case rdi.ADCP_Type.QuarterMaster1500ModBeams
                             pt.radius=0.1854/2; % From operation manual Quarter Master (drawing 1106)
-                        case ADCP_Type.QuarterMaster6000
+                        case rdi.ADCP_Type.QuarterMaster6000
                             pt.radius=0.184/2; % From operation manual Quarter Master (drawing 1082)
                         otherwise
                             warning('Unknown radius for given ADCP type, assuming QM1500_Modular Beams')
@@ -657,11 +655,11 @@ classdef ADCP < ADCP
                 case '010'
                     pt.frequency=307.2e3; % Workhorse and SentinelV manual
                     switch obj.type
-                        case {ADCP_Type.SentinelV,ADCP_Type.MonitorV}
+                        case {rdi.ADCP_Type.SentinelV,rdi.ADCP_Type.MonitorV}
                             pt.radius=nan;
-                        case {ADCP_Type.Monitor,ADCP_Type.Sentinel}
+                        case {rdi.ADCP_Type.Monitor,rdi.ADCP_Type.Sentinel}
                             pt.radius=0.0984/2; % Workhorse operation manual
-                        case ADCP_Type.Mariner
+                        case rdi.ADCP_Type.Mariner
                             pt.radius=0.0895/2; % Workhorse operation manual
                         otherwise
                             warning('Unknown frequency and radius for ADCP type, assuming Monitor or Sentinel')
@@ -669,13 +667,13 @@ classdef ADCP < ADCP
                     end
                 case '110'
                     switch obj.type
-                        case {ADCP_Type.SentinelV}
+                        case {rdi.ADCP_Type.SentinelV}
                             pt.frequency=491.52e3; % Sentinel V operation manual
                             pt.radius=nan;
-                        case {ADCP_Type.Monitor,ADCP_Type.Sentinel}
+                        case {rdi.ADCP_Type.Monitor,rdi.ADCP_Type.Sentinel}
                             pt.frequency=614.4e3; % Workhorse operation manual
                             pt.radius=0.0984/2; % Workhorse operation manual
-                        case {ADCP_Type.Mariner,ADCP_Type.RioGrande}
+                        case {rdi.ADCP_Type.Mariner,rdi.ADCP_Type.RioGrande}
                             pt.frequency=614.4e3; % Workhorse operation manual
                             pt.radius=0.0895/2; % Workhorse operation manual
                         otherwise
@@ -685,10 +683,10 @@ classdef ADCP < ADCP
                     end
                 case '001'
                     switch obj.type
-                        case {ADCP_Type.SentinelV, ADCP_Type.MonitorV}
+                        case {rdi.ADCP_Type.SentinelV, rdi.ADCP_Type.MonitorV}
                             pt.frequency=983.04e3; % Sentinel V operation manual
                             pt.radius=nan;
-                        case {ADCP_Type.Monitor , ADCP_Type.Sentinel, ADCP_Type.Mariner, ADCP_Type.RioGrande}
+                        case {rdi.ADCP_Type.Monitor , rdi.ADCP_Type.Sentinel, rdi.ADCP_Type.Mariner, rdi.ADCP_Type.RioGrande}
                             pt.frequency=1228.8e3; % Workhorse and RioGrande operation manual
                             pt.radius=0.0699/2; % Workhorse and RioGrande operation manual
                         otherwise
@@ -699,7 +697,7 @@ classdef ADCP < ADCP
                 case '101' % 2457.6e3 had this number, but don't know which ADCP has such specs?
                     pt.radius=nan;
                     switch obj.type
-                        case ADCP_Type.StreamPro
+                        case rdi.ADCP_Type.StreamPro
                             pt.frequency=2e6; % From StreamPro Manual
                             pt.radius=nan;
                         otherwise

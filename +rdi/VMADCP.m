@@ -5,7 +5,15 @@ classdef VMADCP < VMADCP & rdi.ADCP
         function obj=VMADCP(varargin)
             obj=obj@rdi.ADCP(varargin{:});
             obj=obj@VMADCP(varargin{:});
-            obj.horizontal_position_provider=[ProjectedCoordinatesFromViseaExtern; LatLonToUTM];
+            obj.horizontal_position_provider = [
+                rdi.ProjectedCoordinatesFromViseaExtern;
+                LatLonToUTM([ ...
+                    rdi.LatLonVisea; ...
+                    rdi.LatLonNfilesGGA; ...
+                    rdi.LatLonTfiles; ...
+                    rdi.LatLonNMEAGGA; ...
+                    rdi.LatLonGGA])
+                ];
         end
     end
     methods(Access = protected)

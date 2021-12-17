@@ -34,7 +34,7 @@ classdef VelocitySolver < handle
         %   Scalar VMADCP object holding the adcp data to compute the velocity
         %
         %   see also: VelocitySolver, VMADCP
-        adcp (1,1) VMADCP
+        adcp (:,1) VMADCP {mustBeScalarOrEmpty} = rdi.VMADCP.empty
         
         % VelocitySolver/mesh mesh on which velocity is solved
         %

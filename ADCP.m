@@ -35,7 +35,17 @@ classdef ADCP < handle
         %  HeadingProvider object which returns the heading of the ADCP.
         %
         % see also: ADCP
-        heading_provider(:,1) HeadingProvider = [HeadingProviderTFiles; HeadingProviderInternal];
+        heading_provider(:,1) HeadingProvider = HeadingProviderInternal
+
+        % ADCP/transformation_matrix_source
+        %
+        %   Specifies the sources for the transformation matrix as a
+        %   InstrumentMatrixProvider. This is a vector which allows to
+        %   define different sources. The first object capable of providing
+        %   the matrix will be used.
+        %
+        % see also: ADCP, InstrumentMatrixProvider
+        transformation_matrix_source (:,1) InstrumentMatrixProvider = InstrumentMatrixFromBAngle;
     end
     properties(Access=protected)
         override_transducer
