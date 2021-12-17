@@ -218,7 +218,7 @@ classdef ADCP < handle
         %%% Set and get methods
         function val = get.water(obj)
             if isempty(obj.override_water)
-                val=obj.water;
+                val=acoustics.Water;
                 val.temperature=obj.temperature;
                 val.salinity=obj.salinity*1000;
             else
@@ -397,6 +397,7 @@ classdef ADCP < handle
             t=obj.time;
             t=seconds(t-t(1));
             nb=size(sv,3);
+            hf=gcf;
             axh=nan(nb,1);
             for cb=1:nb
                 axh(cb)=subplot(nb,1,cb);

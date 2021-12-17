@@ -1,4 +1,4 @@
-classdef RDI_ADCP < ADCP
+classdef ADCP < ADCP
     % Wrapper class for adcp structures
     %
     %   obj=ADCP() Constructs default object
@@ -274,7 +274,7 @@ classdef RDI_ADCP < ADCP
 
     methods
         %%% Constructor method %%%
-        function obj=RDI_ADCP(varargin)
+        function obj=ADCP(varargin)
             obj = obj@ADCP(varargin{:});
             obj.type=ADCP_Type.Unknown;
             for ca=1:nargin
@@ -399,15 +399,7 @@ classdef RDI_ADCP < ADCP
                     val=nan;
             end
         end
-        function val=get_backscatter(obj)
-            pt=obj.transducer;
-            R=obj.depth_cell_slant_range+obj.cellsize/2/cosd(obj.beam_angle); % slant range to last quarter of cell
-            two_alpha_R = 2.*pt.attenuation.*R;                    % compute 2alphaR
-            LDBM=10*log10(obj.lengthxmitpulse);
-            PDBW=10*log10(obj.power);                        
-            val = obj.backscatter_constant + 10*log10((obj.attitude_temperature+273.16).*R.^2.*pt.near_field_correction(R).^2) - LDBM - PDBW + two_alpha_R + 10*log10(10.^((obj.echo-obj.noise_level)/10)-1); % equation according to fsa-031, correcting goustiaus and van haren equation      
-            val(obj.bad)=nan;
-        end
+
         
         %%% Ordinary methods
         
@@ -447,7 +439,7 @@ classdef RDI_ADCP < ADCP
             %   of the ones specified in the current object.
             %
             %   see also: ADCP, CoordinateSystem
-            vel=ADCP.int16_to_double(obj.raw.VEL)/1000;
+            vel=obj.int16_to_double(obj.raw.VEL)/1000;
             B=CoordinateSystem.Beam;
             src=obj.coordinate_system;
             if nargin > 1 && ~all(dst == src)
@@ -512,19 +504,19 @@ classdef RDI_ADCP < ADCP
             % from lower than ship to ship
             cfilt = exp_cfilt & dst >= S & src < S;
             tm(1,cfilt,:,:)=helpers.matmult(...
-                ADCP.head_tilt(ha(cfilt),cpitch(cfilt), croll(cfilt)),...
+                obj.head_tilt(ha(cfilt),cpitch(cfilt), croll(cfilt)),...
                 tm(1,cfilt,:,:));
             
             % from lower than earth to earth
             cfilt = exp_cfilt & dst >= E & src < E;
             tm(:,cfilt,:,:)=helpers.matmult(...
-                ADCP.head_tilt(head(cfilt)),...
+                obj.head_tilt(head(cfilt)),...
                 tm(:,cfilt,:,:));
             
             % INVERSE
             % from higher than ship to ship
             cfilt = exp_cfilt & dst <= S & src > S;
-            tm(:,cfilt,:,:)=permute(ADCP.head_tilt(head(cfilt)),[1,2,4,3]);
+            tm(:,cfilt,:,:)=permute(obj.head_tilt(head(cfilt)),[1,2,4,3]);
             
             % from higher than instrument to instrument
             cfilt = exp_cfilt & dst <= I & src > I;
@@ -537,7 +529,7 @@ classdef RDI_ADCP < ADCP
             end
                 
             tm(1,cfilt,:,:)=helpers.matmult(...
-                permute(ADCP.head_tilt(ha(cfilt),cpitch(cfilt), croll(cfilt)),[1,2,4,3]),...
+                permute(obj.head_tilt(ha(cfilt),cpitch(cfilt), croll(cfilt)),[1,2,4,3]),...
                 tm(1,cfilt,:,:));
             
             % from higher than beam to beam
@@ -717,6 +709,16 @@ classdef RDI_ADCP < ADCP
                     end
             end
         end
+        function val=get_backscatter(obj)
+            pt=obj.transducer;
+            R=obj.depth_cell_slant_range+obj.cellsize/2/cosd(obj.beam_angle); % slant range to last quarter of cell
+            two_alpha_R = 2.*pt.attenuation.*R;                    % compute 2alphaR
+            LDBM=10*log10(obj.lengthxmitpulse);
+            PDBW=10*log10(obj.power);                        
+            val = obj.backscatter_constant + 10*log10((obj.attitude_temperature+273.16).*R.^2.*pt.near_field_correction(R).^2) - LDBM - PDBW + two_alpha_R + 10*log10(10.^((obj.echo-obj.noise_level)/10)-1); % equation according to fsa-031, correcting goustiaus and van haren equation      
+            val(obj.bad)=nan;
+        end
+    
     end
     
     methods (Static)

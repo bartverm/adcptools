@@ -18,7 +18,7 @@ classdef ADCPHorizontalPosition < matlab.mixin.Heterogeneous
 %   given adcp data. adcp must be an object of VMADCP class
 %
 %   see also: LatLonProvider, lat_lon
-            validateattributes(adcp,{'VMADCP'},{'scalar'})
+            validateattributes(adcp,{'ADCP'},{'scalar'})
             tf=false(size(obj));
             for co=1:numel(obj)
                 tf(co)= obj(co).get_has_data(adcp);
