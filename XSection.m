@@ -114,7 +114,7 @@ classdef XSection < handle
             s = (x - obj.origin(1)) * obj.direction_orthogonal(1) + (y - obj.origin(2)) * obj.direction_orthogonal(2);
             n = (x - obj.origin(1)) * obj.direction(1) + (y - obj.origin(2)) * obj.direction(2);
             if has_vel
-                [us,un]=xy2sn_vel(u,v);
+                [us,un]=obj.xy2sn_vel(u,v);
             end
         end
         function [x, y, u, v]=sn2xy(obj, s, n, us, un)
