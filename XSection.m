@@ -45,7 +45,7 @@ classdef XSection < handle
         % finite values. Default is [1; 0]
         %
         % see also: XSection, origin, direction_orthogonal
-        direction (2,1) double {mustBeFinite,XSection.mustBeUnitVector} = [1; 0];
+        direction (2,1) double {mustBeFinite} = [1; 0];
         
         % Xsection/scale
         %
@@ -60,7 +60,7 @@ classdef XSection < handle
         % Unit vector orthogonal to the tangential direction.
         %
         % see also: XSection, origin, direction
-        direction_orthogonal (2,1) double {mustBeFinite,XSection.mustBeUnitVector}
+        direction_orthogonal (2,1) double {mustBeFinite}
     end
     methods
         function obj=XSection(varargin)
@@ -82,8 +82,11 @@ classdef XSection < handle
         function val=get.direction_orthogonal(obj)
             val=[obj.direction(2); -obj.direction(1)];
         end
+        function set.direction(obj,val)
+            obj.direction = val ./ sqrt(sum(val.^2,1));
+        end
         function set.direction_orthogonal(obj,val)
-            obj.direction=[-val(2) val(1)];
+            obj.direction=[-val(2); val(1)];
         end
         function [s,n,us,un]=xy2sn(obj,x,y,u,v)
             % Transform points and vectors from xy to sn coordinates
@@ -114,7 +117,7 @@ classdef XSection < handle
             s = (x - obj.origin(1)) * obj.direction_orthogonal(1) + (y - obj.origin(2)) * obj.direction_orthogonal(2);
             n = (x - obj.origin(1)) * obj.direction(1) + (y - obj.origin(2)) * obj.direction(2);
             if has_vel
-                [us,un]=xy2sn_vel(u,v);
+                [us,un]=obj.xy2sn_vel(u,v);
             end
         end
         function [x, y, u, v]=sn2xy(obj, s, n, us, un)
@@ -279,11 +282,6 @@ classdef XSection < handle
             %
             %   see also: XSection
             obj.direction=-obj.direction;
-        end
-    end
-    methods (Static, Access=protected)
-        function mustBeUnitVector(val)
-            assert(sum(val.^2)-1<=3*eps,'The value must be a unit vector')
         end
     end
 end
