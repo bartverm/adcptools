@@ -338,7 +338,9 @@ classdef VelocitySolver < handle
         %
         % See also: VelocitySolver, get_velocity
             vel = cell(size(orig_vel));
-            cov = cell(size(orig_cov));
+            if nargin > 2
+                cov = cell(size(orig_cov));
+            end
             for crp = 1:numel(orig_vel)
                 [vels, veln] = obj.xs.xy2sn_vel( ...
                     orig_vel{crp}(:, 1), ...
