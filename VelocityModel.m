@@ -60,7 +60,7 @@ classdef VelocityModel < handle
                 d_s = t_var; 
             else 
                 d_s = d_s .* mult; 
-             end
+            end
             if nargin < 6
                 d_n = t_var; 
             else 
@@ -90,7 +90,7 @@ classdef VelocityModel < handle
                 cat(2, z1, z2, Mw));
 
             % apply model to obtain vel (permutations for use of pagemtimes)
-            M = permute(M,[2, 3 ,1]);
+            M = permute(M,[3, 2 ,1]);
             pars = permute(pars, [2, 3, 1]);
             vel = pagemtimes(M,pars);
 
@@ -134,6 +134,8 @@ classdef VelocityModel < handle
 
             [Mu, Mv, Mw]=deal(ones(numel(d_time),1));
         end
+    end
+    methods(Access=protected)
         function val=get_npars(~)
         % return number of parameters as a 3x1 row vector, with the number
         % of parameters for the x,y and z components, respectively.

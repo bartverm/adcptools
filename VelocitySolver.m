@@ -155,8 +155,7 @@ classdef VelocitySolver < handle
                 [vel{crp}, cov_vel{crp}] = ...
                     obj.velocity_model.get_velocity( ...
                     pars{crp}, ...
-                    cov_pars{crp}, ...
-                    cmesh.time);
+                    cov_pars{crp});
             end
         end
 
@@ -256,6 +255,7 @@ classdef VelocitySolver < handle
                 cur_z = cur_z - cmesh.z_center(cell_idx); % delta_z
                 cur_sig = cur_sig - cmesh.sig_center(cell_idx); % delta_sig
                 cur_t = cur_t - cmesh.time; % delta time
+                cur_t = seconds(cur_t);
 
                 % get model matrices
                 [Mu, Mv, Mw] = obj.velocity_model.get_model(...

@@ -1,4 +1,4 @@
-classdef TaylorExpandedVelocity < handle
+classdef TaylorExpandedVelocity < VelocityModel
 % Velocity model based on Taylor expansions.
 %
 %   TaylorExpandedVelocity properties:
