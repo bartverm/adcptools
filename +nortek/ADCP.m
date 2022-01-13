@@ -28,6 +28,9 @@ classdef ADCP < ADCP
         BURST_BIT_STDDEV = 14
         
     end
+    properties
+        head_tilt_source(1,1)
+    end
     properties(Dependent, SetAccess = protected)
         nbytes
         has_burst
@@ -45,9 +48,9 @@ classdef ADCP < ADCP
         velocity_scale
         number_altimeter_samples
         configuration_string
-    end
-    properties(Dependent, Access = protected)
         burst_version
+        ahrs_matrix
+        burst_echo_ncells
     end
     methods
         function obj = ADCP(varargin)
@@ -133,7 +136,23 @@ classdef ADCP < ADCP
             % exclude 0x10 and ending zero byte
             val = char(obj.raw(pos + 1: pos + dat_size - 2)); 
         end
+        function val = get.ahrs_matrix(obj)
+            if ~ obj.burst_has_data(obj.BURST_BIT_AHRS)
+                error('No AHRS data are available')
+            end
+            offs = obj.burst_data_offset(obj.BURST_BIT_AHRS);
+            offs = offs + (0:9*4-1)';
+            offs = offs(:);
+            val = typecast(obj.raw(offs), 'single');
+            val = reshape(val, 3, 3, obj.nensembles);
+            val = permute(val, [4, 3, 2, 1]);
+            val = double(val);
+        end
         function val = burst_has_data(obj,bit)
+            if ~ obj.has_burst
+                val = false(1, obj.nensembles);
+                return
+            end
             dat = obj.get_scalar([6 2], 'uint16', obj.BURST_ID);
             val = logical(bitand(1, bitshift(dat, -bit)));
         end
@@ -185,7 +204,65 @@ classdef ADCP < ADCP
             obj.find_headers();
         end
 
-        function val = xform(obj,dst,src,varargin)
+        function tm = xform(obj,dst,src,varargin)
+            if nargin < 3
+                src=obj.coordinate_system;
+            end
+            tm = repmat(shiftdim(eye(4),-2),1,obj.nensembles);
+            I=CoordinateSystem.Instrument;
+            S=CoordinateSystem.Ship;
+            E=CoordinateSystem.Earth;
+            B=CoordinateSystem.Beam;
+            exp_cfilt=true(1,obj.nensembles); % dummy filter to expand scalar input
+            croll=obj.roll;
+            croll(obj.is_upward)=croll(obj.is_upward)+180;
+            ha=obj.headalign;
+            cpitch=obj.pitch;
+            head=obj.heading;
+            
+            % FORWARD
+            % from lower than instrument to instrument
+            cfilt = exp_cfilt & dst >= I & src < I;
+            tmptm=obj.transformation_matrix_source.b2i_matrix(obj);
+            tm(:,cfilt,:,:)=tmptm(:,cfilt,:,:);
+            
+            % from lower than ship to ship
+            cfilt = exp_cfilt & dst >= S & src < S;
+            tm(1,cfilt,:,:)=helpers.matmult(...
+                obj.head_tilt(ha(cfilt),cpitch(cfilt), croll(cfilt)),...
+                tm(1,cfilt,:,:));
+            
+            % from lower than earth to earth
+            cfilt = exp_cfilt & dst >= E & src < E;
+            tm(:,cfilt,:,:)=helpers.matmult(...
+                obj.head_tilt(head(cfilt)),...
+                tm(:,cfilt,:,:));
+            
+            % INVERSE
+            % from higher than ship to ship
+            cfilt = exp_cfilt & dst <= S & src > S;
+            tm(:,cfilt,:,:)=permute(obj.head_tilt(head(cfilt)),[1,2,4,3]);
+            
+            % from higher than instrument to instrument
+            cfilt = exp_cfilt & dst <= I & src > I;
+            if any(strcmp(P.UsingDefaults,'UseTilts'))
+                cpitch(~obj.tilts_used_in_transform)=0; % Take into account whether tilts where used when transforming back
+                croll(~obj.tilts_used_in_transform)=0; % Take into account whether tilts where used when transforming back
+            elseif ~P.Results.UseTilts
+                cpitch(:)=0;
+                croll(:)=0;
+            end
+                
+            tm(1,cfilt,:,:)=helpers.matmult(...
+                permute(obj.head_tilt(ha(cfilt),cpitch(cfilt), croll(cfilt)),[1,2,4,3]),...
+                tm(1,cfilt,:,:));
+            
+            % from higher than beam to beam
+            cfilt = exp_cfilt & dst == B & src > B;
+            tmptm=obj.transformation_matrix_source.i2b_matrix(obj);
+            tm(:,cfilt,:,:)=helpers.matmult(...
+                tmptm(:,cfilt,:,:),...
+                tm(1,cfilt,:,:));
         end
         function vel = velocity(obj,dst,filter)
             if ~ obj.burst_has_data(obj.BURST_BIT_VELOCITY)
@@ -195,7 +272,20 @@ classdef ADCP < ADCP
             vel = double(obj.get_field(offs, 'int16', obj.BURST_ID));
             vel = vel .* 10.^obj.velocity_scale;
 
-            %TODO: implement transformations and filters
+            % coordinate transformation
+            src = obj.coordinate_system;
+            if nargin > 1 && ~all(dst == src)
+                tm = obj.xform(dst);
+                vel = helpers.matmult(tm, vel);
+            end
+            
+            % filtering
+            if nargin > 2
+                bad=obj.bad(filter);
+            else
+                bad=obj.bad();
+            end
+            vel(bad)=nan;
         end
     end
     methods(Access=protected)
