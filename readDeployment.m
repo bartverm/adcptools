@@ -119,7 +119,7 @@ function files=match_and_cat(rex)
     assert(iscellstr(rex)); % Make sure input is cell of char
     files={}; % Initialize empty list of files
     for crex=1:numel(rex) % Match each regular expression given
-        tmpfiles=regexp(allFiles,rex{crex},'match'); % search for cells matching regular expression
+        tmpfiles=regexpi(allFiles,rex{crex},'match'); % search for cells matching regular expression
         files=[files;vertcat(tmpfiles{~cellfun(@isempty,tmpfiles)})]; %#ok<AGROW> % Get result as cell of strings and add to output(growth should be insignificant)
     end
     files=fullfile(path, files); %cellfun(@(x,y) [x y],repmat({path},size(files)),files,'UniformOutput',false); % Concatenate path and filenames
