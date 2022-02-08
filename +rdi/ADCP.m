@@ -426,17 +426,6 @@ classdef ADCP < ADCP
             end
         end
         function vel=velocity(obj,dst,filter)
-            % velocity profile data
-            %
-            %   vel=velocity(obj) returns the profiled velocity in m/s.
-            %
-            %   vel=velocity(obj,dst) specify destination coordinate system as
-            %   CoordinateSystem object.
-            %
-            %   vel=velocity(obj,dst,filter) specify filter to be used insted
-            %   of the ones specified in the current object.
-            %
-            %   see also: ADCP, CoordinateSystem
             vel=obj.int16_to_double(obj.raw.VEL)/1000;
             B=CoordinateSystem.Beam;
             src=obj.coordinate_system;
@@ -455,25 +444,6 @@ classdef ADCP < ADCP
             vel(bad)=nan;
         end
         function tm=xform(obj,dst, src,varargin)
-            % Get transformation matrices for coordinate transformations
-            %
-            %   tm=xform(obj,dst) get the transformation matrices for the
-            %   transformation from obj.coordinate_system to the given
-            %   destination coordinate system. matrix will be 1 x nensembles x
-            %   4 x 4
-            %
-            %   tm=xform(obj,dst,src) to specify a custom source coordinate
-            %   system
-            %
-            %   tm=xform(...,'ParameterName', parameterValue) allows to
-            %   specify the following options:
-            %   'UseTilts' - if unset checks the ADCP data in inverse
-            %   transformations to know whether to use the tilts. If set to
-            %   true will always use the tilts in invers transformations,
-            %   if set to false will never use tilts in inverse
-            %   transformations.
-            %
-            %   see also: ADCP
             if nargin < 3
                 src=obj.coordinate_system;
             end
@@ -553,16 +523,6 @@ classdef ADCP < ADCP
             ang(ang==0 & ang_sys==2)=20;
             ang(ang==0 & ang_sys==3)=30;
             ang(ang==0)=nan;
-        end
-        function pitch=get_pitch(obj)
-            pitch=double(obj.raw.pitch)/100;
-            pitch=atand(tand(pitch).*cosd(obj.roll));
-        end
-        function roll=get_roll(obj)
-            roll=double(obj.raw.roll)/100;
-        end
-        function head=get_heading(obj)
-            head=obj.heading_provider.heading(obj);
         end
         function nens=get_nensembles(obj)
             nens=size(obj.fileid,2);

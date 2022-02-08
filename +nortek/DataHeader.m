@@ -14,5 +14,6 @@ classdef DataHeader < uint8
         Altimeter (0x1E)
         AverageAltimeter (0x1F)
         String (0xA0)
+        Unknown2 (0xB0) % Need to figure this out!
     end
 end

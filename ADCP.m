@@ -1,4 +1,59 @@
 classdef ADCP < handle
+% Abstract base class to represent ADCP datasets
+%
+%   A = ADCP(...) based on the class of the passed arguments
+%   configuration properties are set:
+%   Filter - filter
+%   HorizontalPositionProvider - horizontal_position_provider
+%   VerticalPositionProvider - vertical_position_provider
+%
+%   ADCP properties (configuration):
+%   filters - filters to exclude data from profiles
+%   timezone - specifies the timezone used
+%   horizontal_position_provider - provides horizontal positioning
+%   vertical_position_provider - provides vertical positioning
+%   tilts_provider - provides pitch and roll angles
+%   heading_provider - provides heading angle
+%   instrument_matrix_provider - provides instrument to beam matrix
+%   transducer - transducer acoustic properties
+%   water - water acoustic properties
+%
+%   ADCP data properties (read only):
+%   nbeams - number of acoustic beams
+%   nensembles - number of ensembles
+%   ncells - number of depth cells
+%   coordinate_system - coordinate system of velocity data
+%   beam_angle - angle of acoustic beams with vertical (degrees)
+%   pitch - pitch angle (degrees)
+%   roll - roll angle (degrees)
+%   heading - heading angle (degrees)
+%   cellsize - depth cell size (m)
+%   time - time and date of ensembles
+%   distmidfirstcell - distance to center of first depth cell (m)
+%   depth_cell_slant_range - distance along ac. beam to depth cells (m)
+%   temperature - instrument temperature (Celsius)
+%   salinity - salinity of water (psu)
+%   pressure - pressure of water (Pa)
+%   echo - received echo intensity (dB)
+%   backscatter - volume backscatter strength (dB)
+%   horizontal_position - horizontal position of the instrument (m)
+%   vertical_position - vertical position of the instrument (m)
+%   beam_2_instrument_matrix - beam to instrument transformation matrix
+%   instrument_2_beam_matrix - instrument to beam transformation matrix
+%
+%   ADCP methods:
+%   bad - return a mask with ones for data marked as being bad
+%   plot_orientations - plots pitch, roll and heading of the ADCP
+%   plot_velocity - plot the velocity in Earth coordinates
+%   plot_backscatter - plot the volume backscatter strength
+%   plot_all - plot all available plots
+%   depth_cell_offset - get east,north,up offset of depth cells from ADCP
+%   depth_cell_position - get east,north,up position of depth cells
+%   
+%   ADCP methods (abstract):
+%   xform - get transformation matrices
+%   velocity - get velocity
+
     properties
         % ADCP/filters
         %
@@ -30,14 +85,24 @@ classdef ADCP < handle
         % see also: ADCP
         vertical_position_provider(1,1) ADCPVerticalPosition = ADCPFixedVerticalPosition;
 
-        % ADCP/heading_provider
+        % ADCP/tilts_provider
         %
-        %  HeadingProvider object which returns the heading of the ADCP.
+        % TiltsProvider object which returns the heading and tilts of the 
+        % ADCP.
         %
         % see also: ADCP
-        heading_provider(:,1) HeadingProvider = HeadingProviderInternal
+        tilts_provider(:,1) TiltsProvider = rdi.TiltsInternal;
 
-        % ADCP/transformation_matrix_source
+        % ADCP/heading_provider
+        %
+        % HeadingProvider object which returns the heading and tilts of the 
+        % ADCP.
+        %
+        % see also: ADCP
+        heading_provider(:,1) HeadingProvider = rdi.HeadingInternal
+
+
+        % ADCP/instrument_matrix_provider
         %
         %   Specifies the sources for the transformation matrix as a
         %   InstrumentMatrixProvider. This is a vector which allows to
@@ -45,7 +110,8 @@ classdef ADCP < handle
         %   the matrix will be used.
         %
         % see also: ADCP, InstrumentMatrixProvider
-        transformation_matrix_source (:,1) InstrumentMatrixProvider = InstrumentMatrixFromBAngle;
+        instrument_matrix_provider (:,1) InstrumentMatrixProvider =...
+            rdi.InstrumentMatrixFromBAngle;
     end
     properties(Access=protected)
         override_transducer
@@ -74,119 +140,86 @@ classdef ADCP < handle
         water(1,1) acoustics.Water;    
     end
     properties(Dependent, SetAccess = private)
-        % ADCP/nbeams read only property
-        %
-        % number of beams in use by the instrument
+        % Number of beams in use by the instrument.
         %
         % see also: ADCP
         nbeams
         
-        % ADCP/nensembles read only property
-        %
         % Number of ensembles.
         %
         % see also: ADCP
         nensembles
         
-        % ADCP/ncells read only property
-        %
-        % Number of depth cells used
+        % Number of depth cells.
         %
         % see also: ADCP
         ncells
         
-        % ADCP/coordinate_system
-        %
-        % Coordinate system used. Returns CoordinateSystems objects
+        % Coordinate system used. Returns CoordinateSystems objects.
         %
         % see also: ADCP, CoordinateSystem
         coordinate_system
         
-        % ADCP/beam_angle read only property
-        %
-        % Angle of acoustic beam makes with vertical in degrees
+        % Angle of acoustic beam makes with vertical in degrees.
         %
         % see also: ADCP
         beam_angle
         
-        % ADCP/pitch read only property
-        %
-        % Pitch angle in degrees
+        % Pitch angle in degrees.
         %
         % see also: ADCP
         pitch
         
-        % ADCP/roll read only property
-        %
-        % Roll angle in degrees
+        % Roll angle in degrees.
         %
         % see also: ADCP
         roll
         
-        % ADCP/heading read only property
-        %
-        % Heading angle in degrees
+        % Heading angle in degrees.
         %
         % see also: ADCP
         heading
 
-        % ADCP/cellsize  read only property
-        %
-        % vertical size of the depth cells (m).
+        % Vertical size of the depth cells (m).
         %
         % see also: ADCP
         cellsize
-         % ADCP/time  read only property
+
+        % Time the ensembles were measured. Returns datetime objects.
         %
-        % time the ensembles were measured. returns datetime objects
-        %
-        % see also: ADCP
+        % see also: ADCP, datetime
         time
         
-        % ADCP/distmidfirstcell read only property
-        %
-        % vertical distance to the middle of the first cell (m).
+        % Vertical distance to the middle of the first cell (m).
         %
         % see also: ADCP
         distmidfirstcell
         
-        % ADCP/depth_cell_slant_range read only property
-        %
-        % slant range, i.e. distance along acoustic beam to depth cells
+        % Slant range, i.e. distance along acoustic beam to depth cells
         %
         % see also: ADCP
         depth_cell_slant_range
         
-        % ADCP/temperature
-        %
-        %  temperature of the instrument (Celsius)
+        % Temperature of the instrument (Celsius)
         %
         % see also: ADCP
         temperature
         
-        % ADCP/salinity
-        %
         %  salinity (psu)
         %
         % see also: ADCP
         salinity
         
-        % ADCP/pressure
-        %
         % pressure (Pa)
         %
         % see also: ADCP
         pressure
 
-        % ADCP/echo
-        %
         % Received raw echo intensity (dB).
         %
         % see also: ADCP
         echo
         
-        % ADCP/backscatter
-        %
         % Received Volume Backscatter strength (dB) computed according to
         % Deines (1999) with the corrections of Gostiaux and van Haren and 
         % the correction in the FSA-031. The backscatter strength is not 
@@ -195,20 +228,28 @@ classdef ADCP < handle
         % see also: ADCP, acoustics, Sv2SSC
         backscatter
         
-        % ADCP/horizontal_position
-        %
-        %   Returns a 2xN matrix holding the x and y coordinates of the
+        %   2xN matrix holding the x and y coordinates of the
         %   ADCP in m.
         %
         %   see also: adcp, vertical_position, horizontal_position_provider
         horizontal_position
         
-        % ADCP/vertical_position
-        %
-        %   Returns a 1xN vector holding the z coordinates of the ADCP in m.
+        %   1xN vector holding the z coordinates of the ADCP in m.
         %
         %   see also: adcp, horizontal_position, vertical_position_provider
         vertical_position
+
+        % matrix transforming beam coordinates to instrument coordinates
+        %
+        %   see also: ADCP, instrument_matrix_provider
+        beam_2_instrument_matrix
+
+        % matrix transforming instrument coordinates to beam coordinates
+        %
+        %   see also: ADCP, instrument_matrix_provider
+        instrument_2_beam_matrix
+
+        beam_orientation_matrix
     end
     methods
         %%% Constuctor
@@ -275,14 +316,17 @@ classdef ADCP < handle
         function val = get.beam_angle(obj)
             val = obj.get_beam_angle;
         end
+        function val = get.beam_orientation_matrix(obj)
+            val = obj.instrument_matrix_provider.beam_orientation_matrix(obj);
+        end
         function val = get.pitch(obj)
-            val = obj.get_pitch;
+            val = obj.tilts_provider.pitch(obj);
         end
         function val = get.roll(obj)
-            val = obj.get_roll;
+            val = obj.tilts_provider.roll(obj);
         end
         function val = get.heading(obj)
-            val = obj.get_heading;
+            val = obj.heading_provider.heading(obj);
         end
         function val = get.cellsize(obj)
             val = obj.get_cellsize;
@@ -318,6 +362,12 @@ classdef ADCP < handle
         function val=get.vertical_position(obj)
             val=obj.vertical_position_provider.get_vertical_position(obj);
         end
+        function val = get.beam_2_instrument_matrix(obj)
+            val = obj.instrument_matrix_provider.b2i_matrix(obj);
+        end
+        function val = get.instrument_2_beam_matrix(obj)
+            val = obj.instrument_matrix_provider.i2b_matrix(obj);
+        end
         function bad=bad(obj,filter)
             % Mask for profiled data
             %
@@ -339,20 +389,16 @@ classdef ADCP < handle
         function plot_orientations(obj)
             % Plots orientations of instrument
             %
-            %   plot_orientations(obj) plots the upward status, pitch, roll and
-            %   heading.
+            %   plot_orientations(obj) plots the pitch, roll and heading.
             %
             % see also: ADCP, plot_velocity, plot_filters, plot_all
-            axh(1)=subplot(4,1,1);
-            plot(obj.is_upward)
-            ylabel('Is upward')
-            axh(2)=subplot(4,1,2);
+            axh=subplot(3,1,1);
             plot(obj.pitch)
             ylabel('Pitch (degr)')
-            axh(3)=subplot(4,1,3);
+            axh(2)=subplot(3,1,2);
             plot(obj.roll)
             ylabel('Roll (degr)')
-            axh(4)=subplot(4,1,4);
+            axh(3)=subplot(3,1,3);
             plot(obj.heading)
             ylabel('Head (degr)')
             linkaxes(axh,'x')
@@ -472,9 +518,6 @@ classdef ADCP < handle
         val = get_ncells(obj)
         val = get_coordinate_system(obj)
         val = get_beam_angle(obj)
-        val = get_pitch(obj)
-        val = get_roll(obj)
-        val = get_heading(obj)
         val = get_cellsize(obj)
         val = get_time(obj)
         val = get_distmidfirstcell(obj)
@@ -486,7 +529,38 @@ classdef ADCP < handle
         val = get_transducer(obj)
     end
     methods(Abstract)
+        % Get transformation matrices for coordinate transformations
+        %
+        %   tm=xform(obj,dst) get the transformation matrices for the
+        %   transformation from obj.coordinate_system to the given
+        %   destination coordinate system. matrix will be 1 x nensembles x
+        %   4 x 4
+        %
+        %   tm=xform(obj,dst,src) to specify a custom source coordinate
+        %   system
+        %
+        %   tm=xform(...,'ParameterName', parameterValue) allows to
+        %   specify the following options:
+        %   'UseTilts' - if unset checks the ADCP data in inverse
+        %   transformations to know whether to use the tilts. If set to
+        %   true will always use the tilts in invers transformations,
+        %   if set to false will never use tilts in inverse
+        %   transformations.
+        %
+        %   see also: ADCP
         val = xform(obj,dst,src,varargin)
+
+        % velocity profile data
+        %
+        %   vel=velocity(obj) returns the profiled velocity in m/s.
+        %
+        %   vel=velocity(obj,dst) specify destination coordinate system as
+        %   CoordinateSystem object.
+        %
+        %   vel=velocity(obj,dst,filter) specify filter to be used insted
+        %   of the ones specified in the current object.
+        %
+        %   see also: ADCP, CoordinateSystem
         vel = velocity(obj,dst,filter)
     end
 end
