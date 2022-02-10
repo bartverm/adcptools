@@ -1,4 +1,4 @@
-classdef InstrumentMatrixFromPS3 < InstrumentMatrixProvider
+classdef InstrumentMatrixFromPS3 < rdi.InstrumentMatrixProvider
 % Gets calibrated instrument matrix from ps3 command output
 %
 %   properties:

@@ -102,6 +102,8 @@ classdef ADCP < ADCP
         %
         %  see also: nortek.ADCP, available_echo_sounder
         echo_sounder_selector (:,1) double = 0
+
+        head_tilt_provider (:,1) nortek.HeadTiltProvider = nortek.HeadTiltFromAHRS
     end
     properties(Dependent, SetAccess = private)
         % Available data types in ad2cp file. Column vector of type:
@@ -152,6 +154,9 @@ classdef ADCP < ADCP
         %
         %   see also: nortek.ADCP, has_tilts_internal
         roll_internal
+
+        
+        head_tilt
 
 
         % Blanking distance (m).
@@ -265,6 +270,9 @@ classdef ADCP < ADCP
         function val = get.roll_internal(obj)
             val = obj.get_roll_internal;
         end
+        function val = get.head_tilt(obj)
+            val = obj.head_tilt_provider.head_tilt_matrix(obj);
+        end
         function val = get.blanking(obj)
             val = obj.get_blanking;
         end
@@ -365,58 +373,38 @@ classdef ADCP < ADCP
             end
             tm = repmat(shiftdim(eye(4),-2),1,obj.nensembles);
             I=CoordinateSystem.Instrument;
-            S=CoordinateSystem.Ship;
             E=CoordinateSystem.Earth;
             B=CoordinateSystem.Beam;
             exp_cfilt=true(1,obj.nensembles); % dummy filter to expand scalar input
-            croll=obj.roll;
-            croll(obj.is_upward)=croll(obj.is_upward)+180;
-            ha=obj.headalign;
-            cpitch=obj.pitch;
-            head=obj.heading;
             
+            assert(all(dst~=CoordinateSystem.Ship),'Ship coordinate system not supported for nortek ADCPs')
+            assert(all(src~=CoordinateSystem.Ship),'Ship coordinate system not supported for nortek ADCPs')
+
+%             assert(all(src >= dst) | all(src<=dst),'It is not possible to combine forward and backward transformations')
+
             % FORWARD
             % from lower than instrument to instrument
             cfilt = exp_cfilt & dst >= I & src < I;
-            tmptm=obj.instrument_matrix_provider.b2i_matrix(obj);
+            tmptm=obj.beam_2_instrument_matrix(:,cfilt,:,:);
             tm(:,cfilt,:,:)=tmptm(:,cfilt,:,:);
-            
-            % from lower than ship to ship
-            cfilt = exp_cfilt & dst >= S & src < S;
-            tm(1,cfilt,:,:)=helpers.matmult(...
-                obj.head_tilt(ha(cfilt),cpitch(cfilt), croll(cfilt)),...
-                tm(1,cfilt,:,:));
             
             % from lower than earth to earth
             cfilt = exp_cfilt & dst >= E & src < E;
             tm(:,cfilt,:,:)=helpers.matmult(...
-                obj.head_tilt(head(cfilt)),...
+                obj.head_tilt(:,cfilt,:,:),...
                 tm(:,cfilt,:,:));
             
-            % INVERSE
-            % from higher than ship to ship
-            cfilt = exp_cfilt & dst <= S & src > S;
-            tm(:,cfilt,:,:)=permute(obj.head_tilt(head(cfilt)),[1,2,4,3]);
-            
+            % INVERSE           
             % from higher than instrument to instrument
-            cfilt = exp_cfilt & dst <= I & src > I;
-            if any(strcmp(P.UsingDefaults,'UseTilts'))
-                cpitch(~obj.tilts_used_in_transform)=0; % Take into account whether tilts where used when transforming back
-                croll(~obj.tilts_used_in_transform)=0; % Take into account whether tilts where used when transforming back
-            elseif ~P.Results.UseTilts
-                cpitch(:)=0;
-                croll(:)=0;
-            end
-                
+            cfilt = exp_cfilt & dst <= I & src > I;               
             tm(1,cfilt,:,:)=helpers.matmult(...
-                permute(obj.head_tilt(ha(cfilt),cpitch(cfilt), croll(cfilt)),[1,2,4,3]),...
+                permute(obj.head_tilt(:,cfilt,:,:),[1,2,4,3]),...
                 tm(1,cfilt,:,:));
             
             % from higher than beam to beam
             cfilt = exp_cfilt & dst == B & src > B;
-            tmptm=obj.instrument_matrix_provider.i2b_matrix(obj);
             tm(:,cfilt,:,:)=helpers.matmult(...
-                tmptm(:,cfilt,:,:),...
+                obj.instrument_2_beam_matrix(:,cfilt,:,:),...
                 tm(1,cfilt,:,:));
         end
         function vel = velocity(obj,dst,filter,filt)
@@ -444,6 +432,13 @@ classdef ADCP < ADCP
                 bad=obj.bad();
             end
             vel(bad)=nan;
+        end
+        function val = burst_has_data(obj, bit, filt)
+            if nargin < 3
+                filt = obj.get_data_filt;
+            end
+            dat = obj.get_scalar([6 2], 'uint16', filt);
+            val = logical(obj.get_bit(dat, bit));
         end
     end
     methods(Access=protected)
@@ -769,14 +764,6 @@ classdef ADCP < ADCP
             if cur_pos < tot_bytes
                 dat(cur_pos : end) = [];
             end
-        end
-
-        function val = burst_has_data(obj, bit, filt)
-            if nargin < 3
-                filt = obj.get_data_filt;
-            end
-            dat = obj.get_scalar([6 2], 'uint16', filt);
-            val = logical(obj.get_bit(dat, bit));
         end
         function offs = burst_data_offset(obj, bit, filt)
             if nargin < 3

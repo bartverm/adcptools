@@ -338,8 +338,10 @@ classdef ADCP < handle
             val = obj.get_distmidfirstcell;
         end
         function rng=get.depth_cell_slant_range(obj)
-            bangle=obj.beam_angle;
-            rng=(obj.distmidfirstcell+reshape(0:max(obj.ncells)-1,[],1).*obj.cellsize)./cosd(bangle);
+            tm = obj.instrument_2_beam_matrix;
+            beam_matr = obj.instrument_matrix_provider.cart2beam_to_orient(obj,tm);
+            beam_matr = beam_matr(:,:,:,3);
+            rng=(obj.distmidfirstcell+reshape(0:max(obj.ncells)-1,[],1).*obj.cellsize)./beam_matr;
         end
         function val = get.temperature(obj)
             val = obj.get_temperature;
@@ -498,8 +500,8 @@ classdef ADCP < handle
             if nargin < 2
                 dst=CoordinateSystem.Earth;
             end
-            tm=-obj.xform(CoordinateSystem.Beam, dst, 'UseTilts', true); % minus since matrix for vel points to adcp
-            tm(:,:,:,4)=[];
+            tm=obj.xform(CoordinateSystem.Beam, dst, 'UseTilts', true); % minus since matrix for vel points to adcp
+            tm = obj.instrument_matrix_provider.cart2beam_to_orient(obj,tm);
             pos=tm.*obj.depth_cell_slant_range;
         end
         function pos=depth_cell_position(obj)
@@ -562,5 +564,19 @@ classdef ADCP < handle
         %
         %   see also: ADCP, CoordinateSystem
         vel = velocity(obj,dst,filter)
+    end
+    methods(Static)
+        function inv=invert_xform(tm)
+            % Inverts transformation matrices
+            %
+            %   Inverts transformation matrices given in tm. Matrices are
+            %   defined in the third and fourth dimension.
+            %
+            % see also: ADCP, xform
+            inv=nan(size(tm));
+            for ce=1:size(tm,2)
+                inv(1,ce,:,:)=shiftdim(inv(squeeze(tm(1,ce,:,:))),-2);
+            end
+        end
     end
 end

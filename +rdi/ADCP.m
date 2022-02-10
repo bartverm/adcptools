@@ -707,18 +707,6 @@ classdef ADCP < ADCP
                 cat(4,            -cp.*sr,      sp,            cp.*cr, zr),...
                 cat(4,                 zr,      zr,                zr, on));
         end
-        function inv=invert_xform(tm)
-            % Inverts transformation matrices
-            %
-            %   Inverts transformation matrices given in tm. Matrices are
-            %   defined in the third and fourth dimension.
-            %
-            % see also: ADCP, xform
-            inv=nan(size(tm));
-            for ce=1:size(tm,2)
-                inv(1,ce,:,:)=shiftdim(inv(squeeze(tm(1,ce,:,:))),-2);
-            end
-        end
         function d=int16_to_double(i)
             % Transform 16 bit signed integers to double
             %

@@ -1,4 +1,4 @@
-classdef InstrumentMatrixFromCalibration < InstrumentMatrixProvider
+classdef InstrumentMatrixFromCalibration < rdi.InstrumentMatrixProvider
 % Gets calibrated instrument matrix from pd0 files
 %
 %   see also: InstrumentMatrixProvider

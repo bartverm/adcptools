@@ -1,4 +1,4 @@
-classdef InstrumentMatrixFromBAngle < InstrumentMatrixProvider
+classdef InstrumentMatrixFromBAngle < rdi.InstrumentMatrixProvider
 % Computes uncalibrated instrument matrix from the beam angle
 %
 % see also: InstrumentMatrixProvider
@@ -32,9 +32,6 @@ classdef InstrumentMatrixFromBAngle < InstrumentMatrixProvider
                 cat(4,   zr,    zr, -c.*a, c.*a),...
                 cat(4,    b,     b,     b,    b),...
                 cat(4,    d,     d,    -d,   -d));
-        end
-        function val = get_beam_orientation_matrix(obj,adcp)
-
         end
     end
 end

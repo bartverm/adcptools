@@ -1,4 +1,4 @@
-classdef InstrumentMatrixFromConfString < InstrumentMatrixProvider
+classdef InstrumentMatrixFromConfString < nortek.InstrumentMatrixProvider
     methods (Access = protected)
         function val = get_has_data(obj, adcp)
             val = ~isempty(obj.get_xfburst_lines(adcp));
@@ -31,16 +31,7 @@ classdef InstrumentMatrixFromConfString < InstrumentMatrixProvider
             end
             val = shiftdim(val, -2);
             val = repmat(val, [1, adcp.nensembles, 1, 1]);
-        end
-        function val = get_beam_orientation_matrix(obj,adcp)
-            val = obj.i2b_matrix(adcp);
-            val = cat(4, val(:,:,1:2),...
-                    cat(3,...
-                    val(:,:,1,3), ...
-                    val(:,:,2,4), ...
-                    val(:,:,3,3), ...
-                    val(:,:,4,4)));
-        end   
+        end  
     end
     methods(Access = protected, Static)
         function val = get_xfburst_lines(adcp)
