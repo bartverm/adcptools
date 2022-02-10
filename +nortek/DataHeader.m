@@ -14,6 +14,23 @@ classdef DataHeader < uint8
         Altimeter (0x1E)
         AverageAltimeter (0x1F)
         String (0xA0)
-        Unknown2 (0xB0) % Need to figure this out!
+        
+        % PTP base64 strings
+        PTP0 (0xB0)
+        PTP1 (0xB1)
+        PTP2 (0xB2)
+        PTP3 (0xB3)
+        PTP4 (0xB4)
+        PTP5 (0xB5)
+        PTP6 (0xB6)
+        PTP7 (0xB7)
+        PTP8 (0xB8)
+        PTP9 (0xB9)
+        PTPa (0xBA)
+        PTPb (0xBB)
+        PTPc (0xBC)
+        PTPd (0xBD)
+        PTPe (0xBE)
+        PTPf (0xBF)
     end
 end

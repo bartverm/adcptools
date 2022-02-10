@@ -335,10 +335,15 @@ classdef ADCP < ADCP
         end
        
         function val = get.active_configuration(obj)
+            % only computed for version 3 burst or average data
             val = nan(size(obj.data_header));
-            filt = obj.data_header ~= nortek.DataHeader.String;
-            tmp_val = get_scalar(obj, 68, 'uint32', filt);
-            val(filt) = double(obj.get_bit(tmp_val, 16));
+            filt = obj.data_header == nortek.DataHeader.Burst |...
+                   obj.data_header == nortek.DataHeader.Average;
+            filt_ver = false(size(filt));
+            ver = obj.get_burst_version(filt);
+            filt_ver(filt) = ver == 3;
+            tmp_val = get_scalar(obj, 68, 'uint32', filt_ver);
+            val(filt_ver) = double(obj.get_bit(tmp_val, 16));
         end
         function val = get.echo_sounder_index(obj)
             val = nan(size(obj.data_header));
@@ -811,10 +816,11 @@ classdef ADCP < ADCP
             cur_pos = 0;
             c_ens = 1;
             est_size = floor(obj.nbytes / 1000);
-            obj.data_position = nan(est_size, 1);
-            obj.data_header = zeros(est_size, 1, 'uint8');
-            obj.data_size = nan(est_size, 1);
-            while cur_pos < obj.nbytes
+            store_pos = nan(est_size, 1);
+            store_head = zeros(est_size, 1, 'uint8');
+            store_size = nan(est_size, 1);
+            tot_bytes = obj.nbytes;
+            while cur_pos < tot_bytes
                 cur_pos = cur_pos + 1;
                 f_sync = 1;
                 if ~obj.raw(cur_pos) == nortek.DataHeader.AD2CP
@@ -825,11 +831,11 @@ classdef ADCP < ADCP
                     break
                 end
                 f_sync = f_sync + cur_pos - 1;
-                if f_sync + 1 > obj.nbytes
+                if f_sync + 1 > tot_bytes
                     break
                 end
                 head_size = double(obj.raw(f_sync + 1));
-                if f_sync + head_size > obj.nbytes
+                if f_sync + head_size > tot_bytes
                     continue
                 end
                 csum_pos = f_sync + head_size - 2;
@@ -840,29 +846,36 @@ classdef ADCP < ADCP
                 if csum_calc ~= csum_read
                     continue
                 end
-                size_data = double(typecast(obj.raw(f_sync + 4 : f_sync + 5), 'uint16'));
-                if f_sync + head_size + size_data - 1 > obj.nbytes
+                size_data = double(typecast(obj.raw(...
+                    f_sync + 4 : f_sync + 5), 'uint16'));
+                if f_sync + head_size + size_data - 1 > tot_bytes
                     continue
                 end
-                csum_calc = obj.compute_checksum(f_sync + head_size, size_data);
-                csum_read = typecast(obj.raw(f_sync + 6: f_sync + 7), 'uint16');
+                csum_calc = obj.compute_checksum(f_sync + head_size,...
+                    size_data);
+                csum_read = typecast(obj.raw(f_sync + 6: f_sync + 7),...
+                    'uint16');
                 if csum_calc~=csum_read
                     continue
                 end
-                if c_ens > numel(obj.data_position)
-                    obj.data_position(numel(obj.data_position)*2) = nan;
-                    obj.data_header(numel(obj.data_header)*2) = nan;
-                    obj.data_size(numel(obj.data_size)*2) = nan;
+                if c_ens > est_size
+                    est_size = est_size*2;
+                    store_pos(est_size) = nan;
+                    store_head(est_size) = 0x00;
+                    store_size(est_size) = nan;
                 end
-                obj.data_position(c_ens) = f_sync + head_size;
-                obj.data_header(c_ens) = obj.raw(f_sync + 2);
-                obj.data_size(c_ens) = size_data;
+                store_pos(c_ens) = f_sync + head_size;
+                store_head(c_ens) = obj.raw(f_sync + 2);
+                store_size(c_ens) = size_data;
                 c_ens = c_ens + 1;
                 cur_pos = f_sync + head_size + size_data - 1;
             end
-            obj.data_position(c_ens:end) = [];
-            obj.data_header(c_ens:end) = [];
-            obj.data_size(c_ens:end) = [];
+            store_pos(c_ens:end) = [];
+            store_head(c_ens:end) = [];
+            store_size(c_ens:end) = [];
+            obj.data_position = store_pos;
+            obj.data_header = store_head;
+            obj.data_size =store_size;
         end
         function csum = compute_checksum(obj, start, size)
             n_shorts = floor(size/2);
