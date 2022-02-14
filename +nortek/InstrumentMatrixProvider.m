@@ -1,7 +1,7 @@
 classdef InstrumentMatrixProvider < InstrumentMatrixProvider
-    methods(Static, Access = protected)
-        function val = get_cart2beam_to_orient(tm)
-            val = tm;
+    methods(Access = protected)
+        function val = get_beam_orientation_matrix(obj, adcp)
+            val = obj.get_i2b_matrix(adcp);
             val = cat(4, val(:,:,:,1:2),...
                     cat(3,...
                     val(:,:,1,3), ...

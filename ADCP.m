@@ -500,8 +500,9 @@ classdef ADCP < handle
             if nargin < 2
                 dst=CoordinateSystem.Earth;
             end
-            tm=obj.xform(CoordinateSystem.Beam, dst, 'UseTilts', true); % minus since matrix for vel points to adcp
-            tm = obj.instrument_matrix_provider.cart2beam_to_orient(obj,tm);
+            tm=obj.xform(CoordinateSystem.Instrument, dst, 'Geometry', true); % minus since matrix for vel points to adcp
+            beam_mat = obj.instrument_matrix_provider.get_beam_orientation_matrix();
+            tm = matmult(beam_mat,tm, 3, 4);
             pos=tm.*obj.depth_cell_slant_range;
         end
         function pos=depth_cell_position(obj)

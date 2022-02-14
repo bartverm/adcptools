@@ -448,7 +448,7 @@ classdef ADCP < ADCP
                 src=obj.coordinate_system;
             end
             P=inputParser;
-            P.addParameter('UseTilts', false,@(x) isscalar(x) && islogical(x));
+            P.addParameter('Geometry', false,@(x) isscalar(x) && islogical(x));
             P.parse(varargin{:});
             
             tm = repmat(shiftdim(eye(4),-2),1,obj.nensembles);
@@ -488,10 +488,10 @@ classdef ADCP < ADCP
             
             % from higher than instrument to instrument
             cfilt = exp_cfilt & dst <= I & src > I;
-            if any(strcmp(P.UsingDefaults,'UseTilts'))
+            if any(strcmp(P.UsingDefaults,'Geometry'))
                 cpitch(~obj.tilts_used_in_transform)=0; % Take into account whether tilts where used when transforming back
                 croll(~obj.tilts_used_in_transform)=0; % Take into account whether tilts where used when transforming back
-            elseif ~P.Results.UseTilts
+            elseif ~P.Results.Geometry
                 cpitch(:)=0;
                 croll(:)=0;
             end

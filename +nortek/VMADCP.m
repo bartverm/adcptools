@@ -2,7 +2,7 @@ classdef VMADCP < nortek.ADCP & VMADCP
     properties(Dependent, SetAccess = protected)
         gnss_nbytes
         gnss_available_packets
-        gnss_ndata
+        gnss_nensembles
         gnss_time
         gnss_latitude
         gnss_longitude
@@ -22,6 +22,13 @@ classdef VMADCP < nortek.ADCP & VMADCP
         gnss_std_latitude
         gnss_std_longitude
         gnss_std_height
+        bt_nensembles
+        bt_nbeams
+        bt_time
+        bt_velocity_scale
+        bt_velocity
+        bt_coordinate_system
+        bt_depth
     end
     methods
         function obj = VMADCP(varargin)
@@ -40,7 +47,7 @@ classdef VMADCP < nortek.ADCP & VMADCP
                 obj.read_sigvm(search_string)
             end
         end
-        function val = get.gnss_ndata(obj)
+        function val = get.gnss_nensembles(obj)
             val = sum(obj.gnss_packet_id == nortek.AnppPacketId.SystemState);
         end
         function val = get.gnss_time(obj)
@@ -127,13 +134,75 @@ classdef VMADCP < nortek.ADCP & VMADCP
         function val = get.gnss_available_packets(obj)
             val = unique(obj.gnss_packet_id);
         end
+        function val = get_bt_filt(obj)
+            val = get_data_filt(obj, nortek.DataHeader.BottomTracking,...
+                obj.configuration_selector);
+        end
+        function val = get.bt_nensembles(obj)
+            filt = obj.get_bt_filt;
+            val = obj.get_nensembles(filt);
+        end
+        function val = get.bt_nbeams(obj)
+            filt = obj.get_bt_filt;
+            val = get_nbeams(obj,filt);
+        end
+
+        function val = get.bt_time(obj)
+            filt = obj.get_bt_filt;
+            val = obj.get_time(filt);
+        end
+
+        function val = get.bt_velocity_scale(obj)
+            filt = obj.get_bt_filt;
+            val = double(obj.get_scalar(60, 'int8', filt));
+        end
+
+        function val = get.bt_velocity(obj)
+             val = read_btfield(obj, 78, 'int32');
+             fbad = val == int32(10.^(-obj.bt_velocity_scale)*-9.9);
+             val = double(val) .* 10 .^(obj.bt_velocity_scale);
+             val(fbad) = nan;
+        end
+
+        function val = get.bt_coordinate_system(obj)
+
+        end
+
+        function val = get.bt_depth(obj)
+
+        end
+
     end
 
     methods(Access = protected)
+        function val = read_btfield(obj,offset, data_type)
+            filt = obj.get_bt_filt;
+            of = obj.data_position(filt);
+            of = reshape(of, 1, []) + offset;
+            siz = obj.sizeof(data_type);
+            nb = obj.get_nbeams(filt);
+            nc = ones(size(nb));
+            nfields = nc .* nb .* siz;
+            max_fields = max(nfields);
+            nens = obj.get_nensembles(filt);
+            of_add = cumsum(ones(max_fields,nens), 1)-1;
+            of = of + of_add;
+            of = of(of_add < nfields);
+            clearvars of_add
+            count_beams = cumsum(ones(max(nc), max(nb), nens), 2)-1;
+            count_cells = cumsum(ones(max(nc), max(nb), nens), 1)-1;
+            fgood_mat = count_beams < shiftdim(nb, -1) & ...
+                        count_cells < shiftdim(nc, -1);
+            clearvars count_beams count_cells
+            val = nan(max(nc), max(nb), nens);
+            val(fgood_mat) = typecast(obj.raw(of), data_type);
+            val = permute(val, [1, 3, 2]);
+        end
+
         function read_sigvm(obj, search_string)
             cur_files = dir(search_string);
             if isempty(cur_files)
-                error(['Could not find ' ,file_name])
+                error(['Could not find ' ,search_string])
             end
             cur_files([cur_files.isdir]) = [];
 

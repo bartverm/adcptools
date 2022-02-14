@@ -346,10 +346,11 @@ classdef ADCP < ADCP
             % only computed for version 3 burst or average data
             val = nan(size(obj.data_header));
             filt = obj.data_header == nortek.DataHeader.Burst |...
-                   obj.data_header == nortek.DataHeader.Average;
+                   obj.data_header == nortek.DataHeader.Average |...
+                   obj.data_header == nortek.DataHeader.BottomTracking;
             filt_ver = false(size(filt));
             ver = obj.get_burst_version(filt);
-            filt_ver(filt) = ver == 3;
+            filt_ver(filt) = ver == 3 | ver == 1; % 1 for bottom tracking
             tmp_val = get_scalar(obj, 68, 'uint32', filt_ver);
             val(filt_ver) = double(obj.get_bit(tmp_val, 16));
         end
@@ -415,8 +416,11 @@ classdef ADCP < ADCP
                 error('No velocity data in burst record')
             end
             offs = obj.burst_data_offset(nortek.BurstBit.Velocity, filt);
-            vel = double(obj.get_field(offs, 'int16', filt));
-            vel = vel .* 10.^obj.get_velocity_scale(filt);
+            vel = obj.get_field(offs, 'int16', filt);
+            sc = obj.get_velocity_scale(filt);
+            fbad = vel == int32(10.^(-sc)*-9.9); % -9.9 is bad
+            vel = double(vel) .* 10 .^sc;
+            vel(fbad) = nan;
 
             % coordinate transformation
             src = obj.coordinate_system;
@@ -918,8 +922,10 @@ classdef ADCP < ADCP
             of = reshape(of, 1, []);
             ver = obj.get_burst_version(filt);
             if numel(offset) == 2
-                of(ver == 2) = of(ver == 2) + offset(1);
-                of(ver == 3) = of(ver == 3) + offset(2);
+                ver3 = ver == 3 | ver == 1; % 1 is written in BT data
+                ver2 = ver == 2;
+                of(ver2) = of(ver2) + offset(1);
+                of(ver3) = of(ver3) + offset(2);
             else
                 if any(ver == 2)
                     error('Version 2 not supported by current data type')

@@ -81,8 +81,6 @@ classdef InstrumentMatrixProvider < matlab.mixin.Heterogeneous
         get_has_data(obj, adcp)
         get_i2b_matrix(obj, adcp)
         get_b2i_matrix(obj, adcp)
-    end
-    methods(Static, Access=protected, Abstract)
-        get_cart2beam_to_orient(matrix)
+        get_beam_orientation_matrix(obj, adcp)
     end
 end
