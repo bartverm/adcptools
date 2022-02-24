@@ -9,5 +9,8 @@ classdef InstrumentMatrixProvider < InstrumentMatrixProvider
                     val(:,:,3,3), ...
                     val(:,:,4,4)));
         end 
+        function val = get_vertical_range_to_cell(~,adcp)
+            val = (adcp.distmidfirstcell+reshape(0:max(adcp.ncells)-1,[],1).*adcp.cellsize);
+        end
     end
 end

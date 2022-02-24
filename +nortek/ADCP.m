@@ -213,6 +213,8 @@ classdef ADCP < ADCP
         %
         %   see also: nortek.ADCP
         sounder_echo
+
+        altimeter_distance
     end
     properties(Dependent, SetAccess = private, GetAccess = protected)
         active_configuration (:,1) double
@@ -235,6 +237,7 @@ classdef ADCP < ADCP
                 nortek.InstrumentMatrixFromBAngle];
             obj.heading_provider = nortek.HeadingInternal;
             obj.tilts_provider = nortek.TiltsInternal;
+            obj.timezone='UTC';
         end
 
         %%% SET AND GET METHODS
@@ -340,6 +343,10 @@ classdef ADCP < ADCP
 
         function val = get.sounder_nbeams(obj)
             val = ones(1,obj.sounder_nensembles);
+        end
+
+        function val = get.altimeter_distance(obj)
+            val = obj.get_altimeter_distance;
         end
        
         function val = get.active_configuration(obj)
@@ -571,7 +578,7 @@ classdef ADCP < ADCP
                 error('Echo sounder data not available')
             end
             offs = obj.burst_data_offset(nortek.BurstBit.EchoSounder, filt);
-            val = obj.get_field(offs, 'uint16', filt);
+            val = double(obj.get_field(offs, 'uint16', filt))*0.01;
         end
         function val = get_heading_internal(obj, filt)
             if nargin < 2
@@ -616,6 +623,14 @@ classdef ADCP < ADCP
             data_pos = obj.data_position(filt);
             val = double(obj.raw(data_pos));
         end
+        function val = get_altimeter_distance(obj,filt)
+            if nargin < 2
+                filt = obj.get_data_filt;
+            end
+            of = obj.burst_data_offset(nortek.BurstBit.Altimeter, filt);
+            val = double(get_scalar(obj,of,'single',filt));
+        end
+        
 
         %%% INHERITED ABSTRACT GET/SET METHODS
         function val = get_nbeams(obj, filt)
@@ -691,7 +706,8 @@ classdef ADCP < ADCP
             second = double(obj.get_scalar(13 * [1 1], 'uint8', filt) );
             msec = double(obj.get_scalar(14 * [1 1], 'uint16', filt) );
             msec = msec / 10;
-            val = datetime(year, month, day, hour, minute, second, msec);
+            val = datetime(year, month, day, hour, minute, second, msec,...
+                'TimeZone',obj.timezone);
         end
 
         function val = get_distmidfirstcell(obj, filt)
@@ -727,7 +743,7 @@ classdef ADCP < ADCP
                 error('Amplitude data not available in burst record')
             end
             offs = obj.burst_data_offset(nortek.BurstBit.Amplitude, filt);
-            val = obj.get_field(offs, 'uint8', filt);
+            val = double(obj.get_field(offs, 'uint8', filt))*.5;
         end
         function val = get_backscatter(obj)
         end
@@ -776,7 +792,7 @@ classdef ADCP < ADCP
             offs = zeros(1, obj.get_nensembles(filt));
             bv = obj.get_burst_version(filt);
             offs(bv == 2) = offs(bv == 2) + 68;
-            offs(bv == 3) = offs(bv == 3) + 76;
+            offs(bv == 3 | bv == 1) = offs(bv == 3 | bv == 1) + 76;
             nc = obj.get_ncells(filt);
             nc_sounder = obj.get_sounder_ncells(filt);
             nfields = obj.get_nbeams(filt) .* nc;

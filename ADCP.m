@@ -250,6 +250,8 @@ classdef ADCP < handle
         instrument_2_beam_matrix
 
         beam_orientation_matrix
+
+        vertical_range_to_cell
     end
     methods
         %%% Constuctor
@@ -338,10 +340,9 @@ classdef ADCP < handle
             val = obj.get_distmidfirstcell;
         end
         function rng=get.depth_cell_slant_range(obj)
-            tm = obj.instrument_2_beam_matrix;
-            beam_matr = obj.instrument_matrix_provider.cart2beam_to_orient(obj,tm);
-            beam_matr = beam_matr(:,:,:,3);
-            rng=(obj.distmidfirstcell+reshape(0:max(obj.ncells)-1,[],1).*obj.cellsize)./beam_matr;
+            beam_m = obj.instrument_matrix_provider.beam_orientation_matrix(obj);
+            beam_m(:,:,:,1:2)=[];
+            rng=obj.vertical_range_to_cell./beam_m;
         end
         function val = get.temperature(obj)
             val = obj.get_temperature;
@@ -369,6 +370,9 @@ classdef ADCP < handle
         end
         function val = get.instrument_2_beam_matrix(obj)
             val = obj.instrument_matrix_provider.i2b_matrix(obj);
+        end
+        function val = get.vertical_range_to_cell(obj)
+            val = obj.instrument_matrix_provider.vertical_range_to_cell(obj);
         end
         function bad=bad(obj,filter)
             % Mask for profiled data
@@ -500,9 +504,11 @@ classdef ADCP < handle
             if nargin < 2
                 dst=CoordinateSystem.Earth;
             end
-            tm=obj.xform(CoordinateSystem.Instrument, dst, 'Geometry', true); % minus since matrix for vel points to adcp
-            beam_mat = obj.instrument_matrix_provider.get_beam_orientation_matrix();
-            tm = matmult(beam_mat,tm, 3, 4);
+            tm=obj.xform(CoordinateSystem.Instrument, dst, 'Geometry', true);
+            tm(:,:,:,4)=[];
+            tm(:,:,4,:)=[];
+            beam_mat = obj.instrument_matrix_provider.beam_orientation_matrix(obj);
+            tm = helpers.matmult(beam_mat,tm, 3, 4);
             pos=tm.*obj.depth_cell_slant_range;
         end
         function pos=depth_cell_position(obj)

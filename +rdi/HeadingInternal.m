@@ -5,7 +5,6 @@ classdef HeadingInternal < HeadingProvider
         end
         function val=get_has_data(~,adcp)
             val = isfield(adcp.raw,'heading');
-            val = repmat(val, 1, adcp.nensembles);
         end
     end
 end

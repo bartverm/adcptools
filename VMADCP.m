@@ -77,8 +77,13 @@ classdef VMADCP < ADCP
             end
         end
         function val = get.slant_range_to_bed(obj)
-            bangle = obj.beam_angle;
-            val = obj.bt_vertical_range ./ cosd(bangle);
+            tm = obj.xform(CoordinateSystem.Instrument, CoordinateSystem.Earth);
+            tm(:,:,:,4) = [];
+            tm(:,:,4,:) = [];
+            beam_m = obj.instrument_matrix_provider.beam_orientation_matrix(obj);
+            tm = helpers.matmult(beam_m,tm,3,4);
+            tm(:,:,:,1:2)=[];
+            val = -obj.bt_vertical_range ./ tm;
         end
         function val = get.bt_vertical_range(obj)
             val = obj.get_bt_vertical_range;
@@ -109,6 +114,9 @@ classdef VMADCP < ADCP
         %   coordinate system
         %
         % see also: VMADCP
+            if nargin < 2
+                dst = obj.coordinate_system;
+            end
             btvel = obj.get_btvel(dst);
         end
         function pos=bed_offset(obj,dst)
@@ -124,8 +132,11 @@ classdef VMADCP < ADCP
             if nargin < 2 
                 dst=CoordinateSystem.Earth;
             end
-            tm=-obj.xform(CoordinateSystem.Beam, dst,'UseTilts',true);
+            tm =obj.xform(CoordinateSystem.Instrument, dst,'Geometry',true);
+            beam_m = obj.instrument_matrix_provider.beam_orientation_matrix(obj);
             tm(:,:,:,4)=[];
+            tm(:,:,4,:)=[];
+            tm = helpers.matmult(beam_m,tm);
             pos=tm.*obj.slant_range_to_bed;
         end
         function pos=bed_position(obj)
@@ -146,7 +157,7 @@ classdef VMADCP < ADCP
         function wl=get.water_level(obj)
             wl=obj.water_level_object.get_water_level(obj.time);
         end
-                function pos=depth_cell_position(obj)
+        function pos=depth_cell_position(obj)
             % Get the geographic position of the depth cells
             %
             %   pos = depth_cell_position(obj) returns the x, y and z coordinates of

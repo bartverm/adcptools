@@ -46,14 +46,17 @@ classdef VMADCP < nortek.ADCP & VMADCP
             if ~isempty(search_string)
                 obj.read_sigvm(search_string)
             end
+            obj.horizontal_position_provider =...
+                LatLonToUTM(nortek.LatLonFromGNSS);
         end
         function val = get.gnss_nensembles(obj)
             val = sum(obj.gnss_packet_id == nortek.AnppPacketId.SystemState);
         end
         function val = get.gnss_time(obj)
-            unix_time = double(get_gnss_scalar(obj, 4, 'uint32'))+...
+            unix_time = double(get_gnss_scalar(obj,...
+                nortek.AnppPacketId.SystemState, 4, 'uint32'))+...
                 double(get_gnss_scalar(obj,...
-                nortek.AnppPacketId.SystemState, 'uint32'))/1e6;
+                nortek.AnppPacketId.SystemState,8, 'uint32'))/1e6;
             val = datetime(unix_time,'ConvertFrom','posixtime','TimeZone','UTC'); % this goes wrong with leap seconds!
         end
         function val = get.gnss_latitude(obj)
@@ -165,11 +168,17 @@ classdef VMADCP < nortek.ADCP & VMADCP
         end
 
         function val = get.bt_coordinate_system(obj)
-
+            filt = get_bt_filt(obj);
+            val = get_coordinate_system(obj,filt);
         end
 
         function val = get.bt_depth(obj)
-
+            offset = ones(1,obj.bt_nensembles)*78;
+            offset = offset + obj.bt_nbeams * 4;
+            val = read_btfield(obj, offset, 'int32');
+            fbad = val == -1000;
+            val = double(val)/1000;
+            val(fbad) = nan;
         end
 
     end
@@ -234,18 +243,16 @@ classdef VMADCP < nortek.ADCP & VMADCP
                 end
                 ad2cp_files(cf) = dst(fad2cp);
             end
-            disp('reading gnss files...')
-            obj.read_gnss(gnss_files);
-            disp('reading ad2cp files...')
+            
+            disp('reading ad2cp data...')
             obj.read_ad2cp(ad2cp_files);
-
+            
+            disp('reading gnss data...')
+            obj.read_gnss(gnss_files);
 
             % cleanup temporary files
-            disp('cleaning up temporary files...')
             delete(fullfile(unzip_dest, '*'))
             rmdir(unzip_dest)
-
-            disp('done.')
         end
         function read_gnss(obj, files)
             obj.gnss_raw = obj.read_file(files);
@@ -321,9 +328,22 @@ classdef VMADCP < nortek.ADCP & VMADCP
             of = of(:);
             val = typecast(obj.gnss_raw(of), type);
         end
-        function val = get_btvel(obj)
+        function val = get_btvel(obj, dst)
+            if nargin < 2
+                dst=obj.coordinate_system;
+            end
+            val = permute(obj.bt_velocity, [2, 3, 1]);
+            val = interp1(obj.bt_time', val, obj.time,'nearest');
+            val = ipermute(val, [2 3 1]);
+             if nargin > 1 && ~all(dst == obj.coordinate_system)
+                tm=obj.xform(dst);
+                val = helpers.matmult(tm, val);
+             end
         end
-        function val = get_bt_vertical_range(obj)	% defined in VMADCP
+        function val = get_bt_vertical_range(obj)
+            val = permute(obj.bt_depth, [2 3 1]);
+            val = interp1(obj.bt_time', val, obj.time,'nearest');
+            val = ipermute(val, [2 3 1]);
         end
     end
     properties%(Access = protected)

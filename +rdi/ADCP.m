@@ -267,13 +267,13 @@ classdef ADCP < ADCP
         function obj=ADCP(varargin)
             obj = obj@ADCP(varargin{:});
             obj.type = rdi.ADCP_Type.Unknown;
-            obj.transformation_matrix_source = [
+            obj.instrument_matrix_provider = [
                 rdi.InstrumentMatrixFromCalibration; 
-                InstrumentMatrixFromBAngle
+                rdi.InstrumentMatrixFromBAngle
                 ];
             obj.heading_provider = [
                 rdi.HeadingProviderTFiles; 
-                HeadingProviderInternal
+                rdi.HeadingInternal
                 ];
             for ca=1:nargin
                 if isa(varargin{ca},'rdi.ADCP_Type')
@@ -466,7 +466,7 @@ classdef ADCP < ADCP
             % FORWARD
             % from lower than instrument to instrument
             cfilt = exp_cfilt & dst >= I & src < I;
-            tmptm=obj.transformation_matrix_source.b2i_matrix(obj);
+            tmptm=obj.instrument_matrix_provider.b2i_matrix(obj);
             tm(:,cfilt,:,:)=tmptm(:,cfilt,:,:);
             
             % from lower than ship to ship
@@ -502,7 +502,7 @@ classdef ADCP < ADCP
             
             % from higher than beam to beam
             cfilt = exp_cfilt & dst == B & src > B;
-            tmptm=obj.transformation_matrix_source.i2b_matrix(obj);
+            tmptm=obj.instrument_matrix_provider.i2b_matrix(obj);
             tm(:,cfilt,:,:)=helpers.matmult(...
                 tmptm(:,cfilt,:,:),...
                 tm(1,cfilt,:,:));

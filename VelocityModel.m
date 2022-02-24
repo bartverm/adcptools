@@ -134,6 +134,8 @@ classdef VelocityModel < handle
 
             [Mu, Mv, Mw]=deal(ones(numel(d_time),1));
         end
+    end
+    methods(Access=protected)
         function val=get_npars(~)
         % return number of parameters as a 3x1 row vector, with the number
         % of parameters for the x,y and z components, respectively.
