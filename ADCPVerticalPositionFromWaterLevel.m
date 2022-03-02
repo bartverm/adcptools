@@ -43,8 +43,8 @@ classdef ADCPVerticalPositionFromWaterLevel < ADCPVerticalPosition
 %             end
             val=obj.water_level.get_water_level(adcp.time)-obj.depth_transducer;
         end
-        function set_wl(obj, src, varargin)
-            obj.water_level=src.water_level_object;
+        function set_wl(obj, ~, prop_evt)
+            obj.water_level=prop_evt.AffectedObject.water_level_object;
         end
     end
 end
