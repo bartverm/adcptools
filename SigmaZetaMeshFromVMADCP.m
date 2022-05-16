@@ -186,7 +186,9 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
             
             % compute vertical limits of mesh
             minsigma=1-cosd(max(obj.vmadcp.beam_angle,[],'omitnan'));
-            maxz=max(vpos(:,:,:,3),[],'all','omitnan');
+            [~, ind] = min(seconds((obj.vmadcp.time - obj.time)).^2);
+            maxz = max(vpos(:,ind,:,3),[],'all','omitnan');
+%             maxz=obj.water_level;%max(vpos(:,:,:,3),[],'all','omitnan');
 
             % Check for bathymetry crossing the waterlevel
             wl=obj.water_level;

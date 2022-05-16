@@ -64,7 +64,7 @@ classdef TidalVelocityModel < VelocityModel
                     idx = idx + 1;
                 else
                     pars_h(:,idx) = sqrt(pars(:,idx).^2 + pars(:,idx+1).^2); % Amplitude of constituent
-                    pars_h(:,idx+1) = atan2(pars(:,idx+1), pars(:,idx));
+                    pars_h(:,idx+1) = atan2(pars(:,idx+1), pars(:,idx));     % Phase of constituent
                     %pars_h(:,idx+1) = atan(pars(:,idx+1)./pars(:,idx));
 
                     idx = idx + 2;
@@ -82,9 +82,6 @@ classdef TidalVelocityModel < VelocityModel
             vel = 0;
             cov_vel = 0;
         end
-
-        % TO DO: Add regularization procedure  to prevent NaNs and very 
-        % large amplitudes
 
 
     end

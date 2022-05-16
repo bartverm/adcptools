@@ -173,7 +173,13 @@ classdef VelocitySolver < handle
             % get velocity position, velocity data, and transformation
             % matrices to obtain earth velocity
             [vpos, vel_data, xform] = get_solver_input(obj);
+%             xform = xform*A; Find A.
+%             xs_form = obj.xs.xyz2snz_mat();
 
+%             for i = 1:size(xform, 2)
+%                 xform(1, i, :, :) = squeeze(xform(1, i, :, :))*xs_form;
+%             end
+%             xform = pagemtimes(xform, xs_form);
             % indices to match repeat transects with corresponsing mesh
             [idx_mesh, idx_ef] = obj.make_indices();
 
@@ -299,7 +305,7 @@ classdef VelocitySolver < handle
                 
                 % fit model for each cell
                 [t_pars, t_n_bvels, t_cov_pars] = cellfun( ...
-                    @obj.fit_model, ... % function to fit model
+                    @obj.fit_model_reg, ... % function to fit model -> Important: fit_model or fit_model_reg (Standard L2 regularization)
                     gather_dat{:}, ... % input data for fitting
                     'UniformOutput', false); % output is non-scalar
 
@@ -353,6 +359,54 @@ classdef VelocitySolver < handle
                 end
             end
         end
+
+        function [pars, cov_pars]=rotate_to_xs_pars(obj, orig_pars, orig_cov_pars)
+            % Rotates velocity to direction of cross-section
+            %
+            %   vel=obj.rotate_to_xs(orig_vel) Rotates the velocity orig_vel
+            %   to the direction of the cross-section.
+            %
+            %   [vel, cov]=obj.rotate_to_xs(orig_vel, orig_cov) also rotates
+            %   the covariance matrix
+            %
+            % See also: VelocitySolver, get_velocity
+            vm = obj.velocity_model;
+            if ~isa(vm, 'TidalVelocityModel')
+                [pars, cov_pars]=rotate_to_xs(obj, orig_pars, orig_cov_pars);
+                return
+            else
+                npars = vm.npars;
+            end
+            pars = orig_pars; % Phase
+            if nargin > 2
+                cov_pars = cell(size(orig_cov_pars));
+            end
+            cov_pars = orig_cov_pars;
+            assert(npars(1) == npars(2),'Current toolbox version: Horizontal constituents should be the same')
+%             idx_0 = [1, npars(1) + 1, sum(npars(1:2)) + 1]; % Indices of subtidal flow within pars
+%             idx_ut = [(idx_0(1)+1):1:(idx_0(2)-1), (idx_0(2)+1):1:(idx_0(3)-1)];
+            idx_u = 1:npars(1);
+            idx_v = (npars(1) + 1):sum(npars(1:2));
+            
+            [pars(:, idx_u), pars(:, idx_v)] = obj.xs.xy2sn_pars(orig_pars(:,idx_u), orig_pars(:,idx_v));
+
+
+%             for crp = 1:numel(orig_pars)
+%                 [vels, veln] = obj.xs.xy2sn_vel( ...
+%                     orig_pars{crp}(:, 1), ...
+%                     orig_pars{crp}(:, 2));
+%                 pars{crp} = [vels, veln, orig_pars{crp}(:, 3)];
+%                 if nargin > 2
+%                     Tsn = obj.xs.xy2sn_tens(orig_cov_pars{crp}(:, 1:2, 1:2));
+%                     cov_pars{crp} = cat(3, [Tsn, orig_cov_pars{crp}(:,3,1:2)],...
+%                         orig_cov_pars{crp}(:,:,3));
+%                 end
+%             end
+        end
+
+
+
+
     end
     methods(Static, Access=protected)
         function [model_pars, n_dat, cov_matrix] = fit_model(vel, varargin)
@@ -369,6 +423,32 @@ classdef VelocitySolver < handle
             end
             % fit model tot data
             [model_pars, ~, ~, cov_matrix] = lscov(model_mat, vel);
+
+        end
+
+
+        function [model_pars, n_dat, cov_matrix] = fit_model_reg(vel, varargin)
+        % This function fits the given model to the existing data
+
+            n_dat = numel(vel); % number of velocity data
+            model_mat = [varargin{:}];  % model matrix
+            n_pars = size(model_mat, 2); % number of model parameters
+            % handle rank deficient model matrices
+            model_pars = nan(n_pars, 1);
+            cov_matrix = nan(n_pars, n_pars);
+
+            if rank(model_mat) < n_pars
+                return
+            end
+            % fit model tot data
+            cn = cond(model_mat);
+            p=0;
+            if cn>100
+               disp(strcat('n_data = ', num2str(n_dat), 'while cond(A) = ', num2str(cn)))
+               p = 2;
+            end
+            G = p*eye(n_pars);
+            model_pars = (model_mat'*model_mat + G'*G)\model_mat'*vel;
         end
     end
     methods(Access=protected)
