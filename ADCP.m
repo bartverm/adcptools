@@ -195,7 +195,7 @@ classdef ADCP < handle
         %  HeadingProvider object which returns the heading of the ADCP.
         %
         % see also: ADCP
-        heading_provider(:,1) HeadingProvider = [HeadingProviderTFiles; HeadingProviderInternal];
+        heading_provider(:,1) HeadingProvider = [HeadingProviderTFiles; HeadingProviderHFiles; HeadingProviderInternal];
     end
     properties(Dependent, SetAccess=private)
         % ADCP/fileid read only property
@@ -566,7 +566,7 @@ classdef ADCP < handle
         end
         function c=get.cellsize(obj)
             if isfield(obj.raw,'sp_bin_space') %streampro leader support (space makes more sense than size, for the actual use. These seem always to match btw)
-                c=double(obj.raw.sp_bin_space)/1000;
+                c=double(obj.raw.sp_bin_space)/10000;
             else
                 c=double(obj.raw.binsize(obj.fileid))/100;
             end
@@ -591,7 +591,7 @@ classdef ADCP < handle
         end
         function db1=get.distmidfirstcell(obj)
             if isfield(obj.raw,'sp_mid_bin1') % streampro leader support (more accurate)
-                db1=double(obj.raw.sp_mid_bin1)/1000;
+                db1=double(obj.raw.sp_mid_bin1)/10000;
             else
                 db1=double(obj.raw.distmidbin1(obj.fileid))/100;
             end

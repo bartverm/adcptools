@@ -12,7 +12,9 @@ classdef HeadingProvider < matlab.mixin.Heterogeneous & handle
 %   Subclasses must implement the get_has_data and the get_heading methods.
 %
 %   see also: HeadingProviderInternal, HeadingProviderTFiles
-
+    properties
+        heading_misalignment (1,1) double {mustBeFinite, mustBeReal} = 0;
+    end
     methods (Sealed)
         function val=has_data(obj,adcp)
     % return whether heading data are available
@@ -41,10 +43,10 @@ classdef HeadingProvider < matlab.mixin.Heterogeneous & handle
     %
     % see also: HeadingProvider, ADCP
             if isscalar(obj)
-                val=obj.get_heading(adcp);
+                val=obj.get_heading(adcp) + obj.heading_misalignment;
             else
                 idx=find(obj.has_data(adcp),1,"first");
-                val=obj(idx).get_heading(adcp);
+                val=obj(idx).heading(adcp);
             end
         end
     end
