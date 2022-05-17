@@ -195,7 +195,7 @@ classdef ADCP < handle
         %  HeadingProvider object which returns the heading of the ADCP.
         %
         % see also: ADCP
-        heading_provider(:,1) HeadingProvider = [HeadingProviderTFiles; HeadingProviderInternal];
+        heading_provider(:,1) HeadingProvider = [HeadingProviderTFiles; HeadingProviderHFiles; HeadingProviderInternal];
     end
     properties(Dependent, SetAccess=private)
         % ADCP/fileid read only property
