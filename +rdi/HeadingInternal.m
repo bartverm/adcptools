@@ -4,7 +4,7 @@ classdef HeadingInternal < HeadingProvider
             val=double(adcp.raw.heading)/100;
         end
         function val=get_has_data(~,adcp)
-            val = isfield(adcp.raw,'heading');
+            val=all(strcmp(adcp.raw.sensource(:,5),'1'));
         end
     end
 end
