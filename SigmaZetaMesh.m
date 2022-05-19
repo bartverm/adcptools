@@ -37,6 +37,7 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
 %   water_level - the water level for the mesh
 %   time - time of the mesh
 %   ncells - number of cells in the mesh
+%   acells - area of cells in the mesh
 %   
 %   * Edge Position
 %   z_bottom_left - z-coordinate of the bottom-left edge
@@ -147,6 +148,8 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
         sig_bottom_right
         sig_top_right
         sig_center
+        area_cells
+        dn_cells
     end
     methods
         function val=get.x_left(obj)
@@ -242,6 +245,13 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
                  obj.z_top_left,...
                  obj.z_bottom_left]';
         end
+        function val=get.area_cells(obj)
+            val = [1/2.*(obj.n_patch(2,:)-obj.n_patch(1,:)).*(2.*(obj.z_patch(5,:) - obj.z_patch(2,:)) +...
+                obj.z_patch(4,:) + obj.z_patch(6,:) - obj.z_patch(3,:) - obj.z_patch(7,:))]';
+        end
+        function val=get.dn_cells(obj)
+            val = [obj.n_patch(3,:) - obj.n_patch(1,:)]';
+        end
         function mesh=mesh_at_water_level(obj,target_wl, constant_z)
             mesh(numel(target_wl))=SigmaZetaMesh;
             for cm=1:numel(mesh)
@@ -327,6 +337,88 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
             patch(obj.n_patch, obj.z_patch, plot_var(:));
             set(gca,'NextPlot',hold_stat);
         end
+
+
+        function plot_contour(obj,var)
+% Plot the mesh optionally colored with a variable
+%
+%   plot(obj) plots the mesh with the bed and water surface
+%
+%   plot(obj,var) plot the mesh and color the cells with the varibale var
+%
+%   see also: SigmaZetaMesh, plot3
+            if ~isscalar(obj)
+                for ce=1:numel(obj)
+                    subplot(numel(obj),1,ce)
+                    plot(obj(ce))
+                end
+                return
+            end
+            hold_stat=get(gca,'NextPlot');
+            plot(obj.nb_all,obj.zb_all,'k','Linewidth',2)
+            hold on
+            plot(obj.nw,obj.nw*0+obj.water_level,'b','Linewidth',2)
+            plot_var=nan(obj.ncells,1);
+            if nargin > 1
+                assert(numel(var)==obj.ncells, 'Variable to plot should have same number of elements as cells in the mesh');
+                plot_var=var;
+            end
+            [n,z] = meshgrid(obj.n_middle(obj.col_to_cell)', obj.z_center);
+            p  = griddata(obj.n_middle(obj.col_to_cell)',obj.z_center,plot_var,n,z);
+%             n = obj.n_middle(obj.col_to_cell)'; % Problem: 
+%             [n,z,p] = deal(obj.n_middle(obj.col_to_mat), obj.z_center(obj.cell_to_mat), plot_var(obj.cell_to_mat));
+%             contourf(n,z,p,'ShowText','on')
+            contourf(n,z,p, 'LineStyle', 'none', 'ShowText','on');
+%             clabel(c,h, 0)
+
+            set(gca,'NextPlot',hold_stat);
+        end
+
+        function plot_vec(obj,var)
+% Plot the mesh optionally colored with a variable, with an optional
+% superimposed quiver plot vector field
+%
+%   plot(obj) plots the mesh with the bed and water surface
+%
+%   plot(obj,var) plot the mesh and color the cells with the varibale var
+%   plot(obj, varx, vary, varz) plot the mesh and color the cells with the
+%   varibale varx, with arrows starting at mesh cells and having components
+%   vary and varz
+%
+%   see also: SigmaZetaMesh, plot3
+            if ~isscalar(obj)
+                for ce=1:numel(obj)
+                    subplot(numel(obj),1,ce)
+                    plot(obj(ce))
+                end
+                return
+            end
+            hold_stat=get(gca,'NextPlot');
+            plot(obj.nb_all,obj.zb_all,'k','Linewidth',2)
+            hold on
+            plot_var=nan(obj.ncells,3);
+            if nargin > 1
+                assert(size(var,1)==obj.ncells, 'Variable to plot should have same number of elements as cells in the mesh');
+                plot_var(:,1)=var(:,1);
+            end
+            if size(var,2) > 1
+%                 assert(numel(vary)==obj.ncells, 'Variable to plot should have same number of elements as cells in the mesh');
+                plot_var(:,2)=var(:,2);
+            end
+            if size(var,2) > 2
+%                 assert(numel(varz)==obj.ncells, 'Variable to plot should have same number of elements as cells in the mesh');
+                plot_var(:,3)=var(:,3);
+            end
+            patch(obj.n_patch, obj.z_patch, plot_var(:,1), 'LineStyle', 'None');
+            q=quiver(obj.n_middle(obj.col_to_cell)', obj.z_center, plot_var(:,2), plot_var(:,3), .2, 'k');
+%             q.ShowArrowHead = 'off';
+%             q.Marker = '.';
+            plot(obj.nw,obj.nw*0+obj.water_level,'b','Linewidth',2)
+            set(gca,'NextPlot',hold_stat);
+        end
+
+
+
         function [hpatch, hwater, hbed]=plot3(obj,var)
 % Plot the mesh optionally colored with a variable in 3D
 %

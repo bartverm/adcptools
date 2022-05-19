@@ -180,10 +180,12 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
             
             % compute vertical limits of mesh
             minsigma=1-cosd(max(obj.vmadcp.beam_angle,[],'omitnan'));
+            dt = (obj.vmadcp.time - obj.time);
             pitch = obj.vmadcp.pitch;
             roll = obj.vmadcp.roll;
-            fgood = pitch.^2 < 25 & roll.^2 < 25; % only use maximum z when tilts are lower < 5 degrees.
-            maxz=max(vpos(:,fgood,:,3),[],'all','omitnan');
+            fgood = find(pitch.^2 < 25 & roll.^2 < 25); % only use maximum z when tilts are lower < 5 degrees.
+            [~, ind] = min(seconds(dt(fgood)).^2);
+            maxz = max(vpos(:,ind(fgood(ind)),:,3),[],'all','omitnan');
 
             % Check for bathymetry crossing the waterlevel
             wl=obj.water_level;
