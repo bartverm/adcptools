@@ -161,7 +161,8 @@ classdef VMADCP < nortek.ADCP & VMADCP
         end
 
         function val = get.bt_velocity(obj)
-             val = read_btfield(obj, 78, 'int32');
+             offset = obj.get_bt_start_offset;
+             val = read_btfield(obj, offset, 'int32');
              fbad = val == int32(10.^(-obj.bt_velocity_scale)*-9.9);
              val = double(val) .* 10 .^(obj.bt_velocity_scale);
              val(fbad) = nan;
@@ -173,7 +174,7 @@ classdef VMADCP < nortek.ADCP & VMADCP
         end
 
         function val = get.bt_depth(obj)
-            offset = ones(1,obj.bt_nensembles)*78;
+            offset = obj.get_bt_start_offset;
             offset = offset + obj.bt_nbeams * 4;
             val = read_btfield(obj, offset, 'int32');
             fbad = val == -1000;
@@ -184,6 +185,11 @@ classdef VMADCP < nortek.ADCP & VMADCP
     end
 
     methods(Access = protected)
+        function off = get_bt_start_offset(obj)
+             filt = obj.get_bt_filt;
+             off = ones(1,obj.bt_nensembles)*78;
+             off(obj.get_burst_version(filt) == 9) = 86;
+        end
         function val = read_btfield(obj,offset, data_type)
             filt = obj.get_bt_filt;
             of = obj.data_position(filt);

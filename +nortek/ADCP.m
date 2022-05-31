@@ -357,7 +357,7 @@ classdef ADCP < ADCP
                    obj.data_header == nortek.DataHeader.BottomTracking;
             filt_ver = false(size(filt));
             ver = obj.get_burst_version(filt);
-            filt_ver(filt) = ver == 3 | ver == 1; % 1 for bottom tracking
+            filt_ver(filt) = ver == 3 | ver == 1 | ver == 9; % 1 for bottom tracking
             tmp_val = get_scalar(obj, 68, 'uint32', filt_ver);
             val(filt_ver) = double(obj.get_bit(tmp_val, 16));
         end
@@ -640,6 +640,11 @@ classdef ADCP < ADCP
             val = obj.get_scalar([34, 30], 'uint16', filt);
             val = double(obj.get_bit(val, 12, 15));
             val(obj.data_header(filt) == nortek.DataHeader.EchoSounder) = 1;
+
+            % HACK FOR V9 BOTTOM TRACK DATA
+            btfilt = reshape(obj.data_header(filt) == nortek.DataHeader.BottomTracking,1,[]) &...
+                obj.get_burst_version(filt) == 9;
+            val(btfilt) = 4; 
         end
         function val = get_nensembles(obj, filt)
             if nargin < 2
@@ -792,7 +797,7 @@ classdef ADCP < ADCP
             offs = zeros(1, obj.get_nensembles(filt));
             bv = obj.get_burst_version(filt);
             offs(bv == 2) = offs(bv == 2) + 68;
-            offs(bv == 3 | bv == 1) = offs(bv == 3 | bv == 1) + 76;
+            offs(bv == 3 | bv == 1 | bv == 9) = offs(bv == 3 | bv == 1 | bv == 9) + 76;
             nc = obj.get_ncells(filt);
             nc_sounder = obj.get_sounder_ncells(filt);
             nfields = obj.get_nbeams(filt) .* nc;
@@ -938,7 +943,7 @@ classdef ADCP < ADCP
             of = reshape(of, 1, []);
             ver = obj.get_burst_version(filt);
             if numel(offset) == 2
-                ver3 = ver == 3 | ver == 1; % 1 is written in BT data
+                ver3 = ver == 3 | ver == 1 | ver == 9; % 1 is written in BT data
                 ver2 = ver == 2;
                 of(ver2) = of(ver2) + offset(1);
                 of(ver3) = of(ver3) + offset(2);
