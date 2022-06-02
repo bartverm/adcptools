@@ -187,8 +187,14 @@ classdef VMADCP < nortek.ADCP & VMADCP
     methods(Access = protected)
         function off = get_bt_start_offset(obj)
              filt = obj.get_bt_filt;
-             off = ones(1,obj.bt_nensembles)*78;
-             off(obj.get_burst_version(filt) == 9) = 86;
+             off = obj.get_data_offset(filt);
+
+             % offset for v9 bt data, personal communication nortek: Jos
+             % van Heessen 6-2-2022
+             nbeams = obj.get_nbeams(filt);
+             add_off = nbeams*2;
+             filt9=obj.get_burst_version(filt) == 9;
+             off(filt9) = off(filt9) + add_off(filt9);
         end
         function val = read_btfield(obj,offset, data_type)
             filt = obj.get_bt_filt;

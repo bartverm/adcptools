@@ -354,7 +354,8 @@ classdef ADCP < ADCP
             val = nan(size(obj.data_header));
             filt = obj.data_header == nortek.DataHeader.Burst |...
                    obj.data_header == nortek.DataHeader.Average |...
-                   obj.data_header == nortek.DataHeader.BottomTracking;
+                   obj.data_header == nortek.DataHeader.BottomTracking|...
+                   obj.data_header == nortek.DataHeader.EchoSounder;
             filt_ver = false(size(filt));
             ver = obj.get_burst_version(filt);
             filt_ver(filt) = ver == 3 | ver == 1 | ver == 9; % 1 for bottom tracking
@@ -363,7 +364,7 @@ classdef ADCP < ADCP
         end
         function val = get.echo_sounder_index(obj)
             val = nan(size(obj.data_header));
-            filt = obj.data_header ~= nortek.DataHeader.String;
+            filt = obj.data_header == nortek.DataHeader.EchoSounder;
             tmp_val = get_scalar(obj,68, 'uint32', filt);
             val(filt) = double(obj.get_bit(tmp_val, 12, 15));
         end
@@ -637,14 +638,17 @@ classdef ADCP < ADCP
             if nargin < 2
                 filt = obj.get_data_filt;
             end
-            val = obj.get_scalar([34, 30], 'uint16', filt);
-            val = double(obj.get_bit(val, 12, 15));
+            val_bytes = obj.get_scalar([34, 30], 'uint16', filt);
+            val = double(obj.get_bit(val_bytes, 12, 15));
+            
+            % set to 1 for echo sounder data
             val(obj.data_header(filt) == nortek.DataHeader.EchoSounder) = 1;
-
-            % HACK FOR V9 BOTTOM TRACK DATA
+            
+            % read different bits for V9 bottom track data
+            val_v9 = double(obj.get_bit(val_bytes, 5, 7)); % personal correspondance nortek Jos van Heesen 6-2-2022
             btfilt = reshape(obj.data_header(filt) == nortek.DataHeader.BottomTracking,1,[]) &...
                 obj.get_burst_version(filt) == 9;
-            val(btfilt) = 4; 
+            val(btfilt) = val_v9(btfilt); 
         end
         function val = get_nensembles(obj, filt)
             if nargin < 2
@@ -666,8 +670,15 @@ classdef ADCP < ADCP
             if nargin < 2
                 filt = obj.get_data_filt;
             end
-            dat = obj.get_scalar([34, 30], 'uint16', filt);
-            dat = double(obj.get_bit(dat, 10, 11));
+            dat_bytes = obj.get_scalar([34, 30], 'uint16', filt);
+            dat = double(obj.get_bit(dat_bytes, 10, 11));
+
+            % read different bits for V9 bottom track data
+            val_v9 = double(obj.get_bit(dat_bytes, 3, 4)); % personal correspondance nortek Jos van Heesen 6-2-2022
+            btfilt = reshape(obj.data_header(filt) == nortek.DataHeader.BottomTracking,1,[]) &...
+                obj.get_burst_version(filt) == 9;
+            dat(btfilt) = val_v9(btfilt); 
+
             val(numel(dat))=CoordinateSystem.Beam;
             val(dat == 0) = CoordinateSystem.Earth;
             val(dat == 1) = CoordinateSystem.Instrument;
@@ -794,10 +805,7 @@ classdef ADCP < ADCP
             if nargin < 3
                 filt = obj.get_data_filt;
             end
-            offs = zeros(1, obj.get_nensembles(filt));
-            bv = obj.get_burst_version(filt);
-            offs(bv == 2) = offs(bv == 2) + 68;
-            offs(bv == 3 | bv == 1 | bv == 9) = offs(bv == 3 | bv == 1 | bv == 9) + 76;
+            offs = obj.get_data_offset(filt);
             nc = obj.get_ncells(filt);
             nc_sounder = obj.get_sounder_ncells(filt);
             nfields = obj.get_nbeams(filt) .* nc;
@@ -900,6 +908,14 @@ classdef ADCP < ADCP
                 csum = csum + double(obj.raw(start + size - 1));
             end
             csum = uint16(mod(csum, 65536));
+        end
+        function off = get_data_offset(obj, filt)
+            if nargin < 2
+                filt = obj.get_data_filt;
+            end
+            off = double(obj.get_scalar(1, 'uint8', filt));
+
+
         end
         function filt = get_sounder_filt(obj, conf_id, sounder_id)
             if nargin < 2 || ismepty(conf_id)
