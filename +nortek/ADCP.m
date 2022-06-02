@@ -103,6 +103,9 @@ classdef ADCP < ADCP
         %  see also: nortek.ADCP, available_echo_sounder
         echo_sounder_selector (:,1) double = 0
 
+        % Select the source for heading and tilt information
+        %
+        % see also: nortek.HeadTiltFromAHRS and nortek.HeadTiltInternal
         head_tilt_provider (:,1) nortek.HeadTiltProvider = nortek.HeadTiltFromAHRS
     end
     properties(Dependent, SetAccess = private)
@@ -215,6 +218,8 @@ classdef ADCP < ADCP
         sounder_echo
 
         altimeter_distance
+
+        correlation
     end
     properties(Dependent, SetAccess = private, GetAccess = protected)
         active_configuration (:,1) double
@@ -289,6 +294,9 @@ classdef ADCP < ADCP
 
         function val = get.number_altimeter_samples(obj)
             val = obj.get_number_altimeter_samples;
+        end
+        function val = get.correlation(obj)
+            val = obj.get_correlation;
         end
 
         function val=get.configuration_string(obj)
@@ -630,6 +638,13 @@ classdef ADCP < ADCP
             end
             of = obj.burst_data_offset(nortek.BurstBit.Altimeter, filt);
             val = double(get_scalar(obj,of,'single',filt));
+        end
+        function val = get_correlation(obj,filt)
+            if nargin < 2
+                filt = obj.get_data_filt;
+            end
+            of = obj.burst_data_offset(nortek.BurstBit.Correlation, filt);
+            val = double(get_field(obj, of, 'uint8', filt));
         end
         
 
