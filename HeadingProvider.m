@@ -46,6 +46,9 @@ classdef HeadingProvider < matlab.mixin.Heterogeneous & handle
                 val=obj.get_heading(adcp) + obj.heading_misalignment;
             else
                 idx=find(obj.has_data(adcp),1,"first");
+                if isempty(idx)
+                    error('Could not find heading data')
+                end
                 val=obj(idx).heading(adcp);
             end
         end
