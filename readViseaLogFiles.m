@@ -102,7 +102,10 @@ for c_type=1:numel(f_types)
             visea_time=reshape(interp1(visea_pos,visea_t,pos_log,'nearest','extrap'),[],1); % perform interpolation of vise time based on position in file
             % interpolate data to adcp time
             allf=fields(dat.(cur_type).(cfn));
-            near_idx=interp1(visea_time,1:numel(visea_time),timeadcp,'nearest','extrap');
+            visea_idx = 1:numel(visea_time);
+            [visea_time, un_idx] = unique(visea_time);
+            visea_idx = visea_idx(un_idx);
+            near_idx=interp1(visea_time,visea_idx,timeadcp,'nearest','extrap');
             for cfield=1:numel(allf)
                 dat.(cur_type).(cfn).(allf{cfield})=dat.(cur_type).(cfn).(allf{cfield})(near_idx,:);
             end
