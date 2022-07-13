@@ -129,7 +129,7 @@ classdef VelocitySolver < handle
 % Get input data for velocity solver
 %       [vpos, vdat, xform] = get_solver_input(obj) returns the velocity
 %       position, the velocity data, and the transformation matrix to get
-%       from the velcity data to veloicity components in earth coordinates.
+%       from the velocity data to velocity components in earth coordinates.
 %
 %       Subclasses should implement this function   
         [vpos, vdat, xform] = get_solver_input(obj)
@@ -149,9 +149,7 @@ classdef VelocitySolver < handle
             %   deviation in the velocity
             [pars, cov_pars, n_bvels] = get_parameters(obj);
             [vel, cov_vel] = deal(cell(numel(pars,1)));
-            idx_mesh = obj.make_indices();
             for crp = 1 : numel(pars)
-                cmesh = obj.mesh(idx_mesh(crp));
                 [vel{crp}, cov_vel{crp}] = ...
                     obj.velocity_model.get_velocity( ...
                     pars{crp}, ...
