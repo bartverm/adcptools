@@ -108,7 +108,7 @@ end
 logfiles=match_and_cat('.*\d{3}(GPS|com\d{1,2}).log');
 if ~isempty(logfiles)
     disp('Reading VISEA log files...')
-    outADCP.VISEA_log=readViseaLogFiles(outADCP,[path,DepName,'*.log']);
+    outADCP.VISEA_log=readViseaLogFiles(outADCP,[path,filesep,DepName,'*.log']);
 end
 
 %% Function to match regular expression in file names and concatenate the path to the result

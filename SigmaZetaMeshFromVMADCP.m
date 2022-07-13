@@ -155,9 +155,6 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
             mesh=SigmaZetaMesh;
             mesh.xs=obj.xs;
             mesh.time=obj.time;
-            % get velocity position and project on track
-            vpos = obj.vmadcp.depth_cell_position;
-            vpos(:,obj.filter.all_cells_bad(obj.vmadcp),:,:) = nan;
 
             % make n positions
             bpos=obj.vmadcp.bed_position();
@@ -186,12 +183,14 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
             
             % compute vertical limits of mesh
             minsigma=1-cosd(max(obj.vmadcp.beam_angle,[],'omitnan'));
-            dt = (obj.vmadcp.time - obj.time);
-            pitch = obj.vmadcp.pitch;
-            roll = obj.vmadcp.roll;
-            fgood = find(pitch.^2 < 25 & roll.^2 < 25); % only use maximum z when tilts are lower < 5 degrees.
-            [~, ind] = min(seconds(dt(fgood)).^2);
-            maxz = max(vpos(:,ind(fgood(ind)),:,3),[],'all','omitnan');
+            maxz = sum(...
+                interp1(obj.vmadcp.time', ...
+                [ obj.vmadcp.vertical_position; ...
+                  obj.vmadcp.distmidfirstcell; ...
+                  obj.vmadcp.cellsize ]', ...
+                obj.time) .* ...
+                [1 -1 .5]...
+                ); % i.e vertpos - distmidfirtcell + cellsize/2
 
             % Check for bathymetry crossing the waterlevel
             wl=obj.water_level;
@@ -209,6 +208,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
             
             % Check for lowest mesh elevation crossing max mesh level
             z_bot_mesh=zvec*(1-minsigma)+minsigma*wl;
+            
             fbnds=SigmaZetaMeshFromVMADCP.get_intersections(z_bot_mesh,maxz); % find intersections between minimum measurement level and maximum mesh level
             if isempty(fbnds)
                 error('SigmaZetaMeshFromVMADCP:get_mesh:MaxZBelowBed','Cannot create mesh since the maximum mesh level is lower than the minimum measurement level')
@@ -250,8 +250,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
             zb_all=zb_all(idx_unq);
             mesh.nb_all=nb_all;
             mesh.zb_all=zb_all;
-            
-                       
+                                 
             % create indices
             nz=max(1,ceil((maxz-minz_mid)/obj.deltaz)); % compute number of cells in each vertical
             max_num=max(nz); % get maximum number of cells in a vertical

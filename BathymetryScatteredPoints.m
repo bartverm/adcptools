@@ -71,6 +71,8 @@ classdef BathymetryScatteredPoints < Bathymetry
                     obj.interpolator=cur_arg;
                 elseif isa(cur_arg,'WaterLevel')
                     construct_water_level=false;
+                elseif isa(cur_arg,'double')
+                    obj.known = cur_arg;
                 else
                     warning('Bathymetry:unhadled_input',['Unhandled input of type: ', class(cur_arg)])
                 end
