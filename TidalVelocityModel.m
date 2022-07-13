@@ -64,7 +64,9 @@ classdef TidalVelocityModel < VelocityModel
                     idx = idx + 1;
                 else
                     pars_h(:,idx) = sqrt(pars(:,idx).^2 + pars(:,idx+1).^2); % Amplitude of constituent
-                    pars_h(:,idx+1) = atan2(pars(:,idx+1), pars(:,idx));     % Phase of constituent
+                    %pars_h(:,idx+1) = atan2(pars(:,idx+1), pars(:,idx));     % Phase of constituent
+                    pars_h(:,idx+1) = atan(pars(:,idx+1)./pars(:,idx));     % Phase of constituent
+
                     %pars_h(:,idx+1) = atan(pars(:,idx+1)./pars(:,idx));
 
                     idx = idx + 2;
