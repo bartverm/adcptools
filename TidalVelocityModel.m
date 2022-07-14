@@ -1,10 +1,55 @@
 classdef TidalVelocityModel < VelocityModel
+    % Velocity model to include tidal dynamics
+    %
+    %   TidalVelocityModel properties:
+    %   constituentsU - tidal constituents for x-component of velocity
+    %   constituentsV - tidal constituents for y-component of velocity
+    %   constituentsW - tidal constituents for z-component of velocity
+    %
+    %   TidalVelocityModel methods:
+    %   get_tidal_pars - compute the tidal amplitude and phase
+    %
+    %   see also: VelocityModel, TaylorExpandedVelocity
+
     properties
+        % TidalVelocityModel/constituentsU constituents for x-component of velocity
+        %
+        %   1xN row vector defining tidal constituents to be included in the model
+        %   for the x-component of the velocity. Every value given indicates the
+        %   period of the constituent to be included. For every given value, two
+        %   model parameters are fitted, which are the coefficients for the sin and
+        %   cos function. From those amplitude and phases are computed. A residual
+        %   is always included.
+        %
+        %   see also: TidalVelocityModel, constituentsV, constituentsW,
+        %               get_tidal_pars
         constituentsU(1,:) double {mustBeFinite, mustBePositive} = []
+
+        % TidalVelocityModel/constituentsV constituents for y-component of velocity
+        %
+        %   1xN row vector defining tidal constituents to be included in the model
+        %   for the y-component of the velocity. Every value given indicates the
+        %   period of the constituent to be included. For every given value, two
+        %   model parameters are fitted, which are the coefficients for the sin and
+        %   cos function. From those amplitude and phases are computed. A residual
+        %   is always included.
+        %
+        %   see also: TidalVelocityModel, constituentsU, constituentsW,
+        %               get_tidal_pars
         constituentsV(1,:) double {mustBeFinite, mustBePositive} = []
+
+        % TidalVelocityModel/constituentsW constituents for z-component of velocity
+        %
+        %   1xN row vector defining tidal constituents to be included in the model
+        %   for the z-component of the velocity. Every value given indicates the
+        %   period of the constituent to be included. For every given value, two
+        %   model parameters are fitted, which are the coefficients for the sin and
+        %   cos function. From those amplitude and phases are computed. A residual
+        %   is always included.
+        %
+        %   see also: TidalVelocityModel, constituentsU, constituentsV,
+        %               get_tidal_pars
         constituentsW(1,:) double {mustBeFinite, mustBePositive} = []
-
-
     end
 
     methods
@@ -43,49 +88,44 @@ classdef TidalVelocityModel < VelocityModel
         end
 
         function [pars_h, cov_pars_h] = get_tidal_pars(obj, pars, cov_pars)
-            % HJ 11-2-22
-            % This function was written to convert estimated harmonic
-            % component amplitudes to the standard form:
-            % u_n = A_n cos(omega_n t - phi_n) = a_n cos(omega_n t) + b_n
-            % sin(omega_n t)
-            % Yields A_n = sqrt(a_n^2 + b_n^2)
-            % and    phi_n = arctan(b_n / a_n)
+            % Compute tidal amplitude and phase from sin and cos coefficients
+            %
+            %   [pars_h, cov_pars_h] = get_tidal_pars(obj, pars, cov_pars) computes the
+            %   amplitude and phases based on the sin and cos coefficients:
+            %   u = A cos(omega t - phi) = a cos(omega t) + b sin(omega t) with:
+            %   A = sqrt(a^2 + b^2)
+            %   phi = arctan(b / a)
+            %
+            %   pars is an array holding the tidal model parameters as produced with
+            %   the VelocitySolver class.
+            %
+            %   cov_pars holds the covariance matrix of the model parameters.
+            %
+            %   see also: TidalVelocityModel, VelocitySolver
 
-            % TO DO: cov_pars_h - analytical formula
-
-            % [pars_h, cov_pars_h] = get_tidal_pars(obj, pars, cov_pars)
             npars = obj.npars;
             subtidal_idx = [1, npars(1) + 1, sum(npars(1:2)) + 1];
             pars_h = zeros(size(pars));
+            jac = zeros(size(cov_pars)); % jacobian of the transformation (subtidal independent of other under this transformations)
             idx = 1;
             while idx <= size(pars_h,2)
                 if ismember(idx, subtidal_idx)
                     pars_h(:,idx) = pars(:,idx);
+                    jac(:,idx,idx) = 1;
                     idx = idx + 1;
                 else
                     pars_h(:,idx) = sqrt(pars(:,idx).^2 + pars(:,idx+1).^2); % Amplitude of constituent
-                    %pars_h(:,idx+1) = atan2(pars(:,idx+1), pars(:,idx));     % Phase of constituent
                     pars_h(:,idx+1) = atan(pars(:,idx+1)./pars(:,idx));     % Phase of constituent
-
-                    %pars_h(:,idx+1) = atan(pars(:,idx+1)./pars(:,idx));
-
+                    jac(:,idx,idx) = pars(:,idx)./pars_h(:,idx);            % d(sqrt(a^2 + b^2))/da = a/A
+                    jac(:,idx, idx+1) = pars(:,idx+1)./pars_h(:,idx);       % d(sqrt(a^2 + b^2))/db = b/A
+                    jac(:,idx+1,idx) = -pars(:,idx+1)./pars_h(:,idx).^2;    % d(atan(b/a))/da = -b/A^2
+                    jac(:,idx+1,idx+1) = pars(:,idx)./pars_h(:,idx).^2;     % d(atan(b/a))/db = a/A^2
                     idx = idx + 2;
                 end
             end
-
-            cov_pars_h = cov_pars; %change this.
+            cov_pars_h = helpers.matmult(cov_pars,permute(jac,[1,3,2]),2,3);   % cov_pars * J'
+            cov_pars_h = helpers.matmult(jac,cov_pars_h,2,3);                  % J * (cov_pars * J')
         end
-
-        function [vel, cov_vel] = cloud2vel(obj, points, opts)
-            % HJ 2-3-22
-            % Evaluate velocities on point cloud simultaneously. Could
-            % maybe also be incorporated in VelocityModel
-            % TO BE WRITTEN
-            vel = 0;
-            cov_vel = 0;
-        end
-
-
     end
 
     methods(Access=protected)
