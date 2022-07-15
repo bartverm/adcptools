@@ -37,6 +37,7 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
 %   water_level - the water level for the mesh
 %   time - time of the mesh
 %   ncells - number of cells in the mesh
+%   acells - area of cells in the mesh
 %   
 %   * Edge Position
 %   z_bottom_left - z-coordinate of the bottom-left edge
@@ -147,6 +148,8 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
         sig_bottom_right
         sig_top_right
         sig_center
+        area_cells
+        dn_cells
     end
     methods
         function val=get.x_left(obj)
@@ -242,6 +245,13 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
                  obj.z_top_left,...
                  obj.z_bottom_left]';
         end
+        function val=get.area_cells(obj)
+            val = [1/2.*(obj.n_patch(2,:)-obj.n_patch(1,:)).*(2.*(obj.z_patch(5,:) - obj.z_patch(2,:)) +...
+                obj.z_patch(4,:) + obj.z_patch(6,:) - obj.z_patch(3,:) - obj.z_patch(7,:))]';
+        end
+        function val=get.dn_cells(obj)
+            val = [obj.n_patch(3,:) - obj.n_patch(1,:)]';
+        end
         function mesh=mesh_at_water_level(obj,target_wl, constant_z)
             mesh(numel(target_wl))=SigmaZetaMesh;
             for cm=1:numel(mesh)
@@ -327,6 +337,7 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
             patch(obj.n_patch, obj.z_patch, plot_var(:));
             set(gca,'NextPlot',hold_stat);
         end
+
         function [hpatch, hwater, hbed]=plot3(obj,var)
 % Plot the mesh optionally colored with a variable in 3D
 %
@@ -359,9 +370,7 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
             if nargout>1
                 hpatch=hpatch_tmp;
             end
-        end
-        
-        
+        end       
     end
     methods(Access=protected)
         function val=get_ncells(obj)

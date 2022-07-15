@@ -168,6 +168,7 @@ classdef XSection < handle
                 us = u * obj.direction_orthogonal(1) + v * obj.direction_orthogonal(2);
                 un = u * obj.direction(1) + v * obj.direction(2);
         end
+        
         function [u,v]=sn2xy_vel(obj,us,un)
             % Transform vectors from sn to xy coordinates
             %

@@ -14,7 +14,7 @@ classdef VelocityModel < handle
 %   VelocityModel methods:
 %   get_velocity - return velocity based on model parameters
 %
-%  see also: TaylorExpandedVelocity, VelocitySolver
+%  see also: TaylorExpandedVelocity, TidalVelocityModel, VelocitySolver
 
     properties(Dependent, SetAccess=private)
         % VelocityModel/npars (read only) number of parameteris in the model

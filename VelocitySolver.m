@@ -297,7 +297,7 @@ classdef VelocitySolver < handle
                 
                 % fit model for each cell
                 [t_pars, t_n_bvels, t_cov_pars] = cellfun( ...
-                    @obj.fit_model, ... % function to fit model
+                    @obj.fit_model, ... % function to fit model 
                     gather_dat{:}, ... % input data for fitting
                     'UniformOutput', false); % output is non-scalar
 
@@ -351,6 +351,7 @@ classdef VelocitySolver < handle
                 end
             end
         end
+
     end
     methods(Static, Access=protected)
         function [model_pars, n_dat, cov_matrix] = fit_model(vel, varargin)
@@ -367,6 +368,7 @@ classdef VelocitySolver < handle
             end
             % fit model tot data
             [model_pars, ~, ~, cov_matrix] = lscov(model_mat, vel);
+
         end
     end
     methods(Access=protected)
