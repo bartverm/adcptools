@@ -362,15 +362,14 @@ classdef VelocitySolver < handle
 
         function [pars, cov_pars]=rotate_to_xs_pars(obj, orig_pars, orig_cov_pars)
             % Rotates (tidal) parameters to direction of cross-section
-            %
-            %   If velocity_model = TidalVelocityModel, 
+            % If velocity_model = TidalVelocityModel, 
             %   pars = obj.rotate_to_xs_pars(orig_pars) Rotates the orig_pars
             %   to the direction of the cross-section.
             %
             %   [pars, cov_pars]=obj.rotate_to_xs(orig_vel, orig_cov) also rotates
             %   the covariance matrix
             %
-            % See also: VelocitySolver, get_velocity, get_tidal_pars
+            % See also: VelocitySolver, get_velocity
             if ~isa(obj.velocity_model, 'TidalVelocityModel')
                 [pars, cov_pars] = rotate_to_xs(obj, orig_pars, orig_cov_pars);
                 return
@@ -379,7 +378,7 @@ classdef VelocitySolver < handle
             end
             pars = orig_pars; % Phase is unaffected by rotation
             if nargin > 2
-                cov_pars = cell(size(orig_cov_pars)); %To do: XS rotation, impact on 
+                cov_pars = cell(size(orig_cov_pars));
             end
             cov_pars = orig_cov_pars;
             assert(npars(1) == npars(2),'Current toolbox version: Horizontal constituents should be the same')
@@ -387,7 +386,7 @@ classdef VelocitySolver < handle
 %             idx_ut = [(idx_0(1)+1):1:(idx_0(2)-1), (idx_0(2)+1):1:(idx_0(3)-1)];
             idx_u = 1:npars(1);
             idx_v = (npars(1) + 1):sum(npars(1:2));
-            % w is unaffected by lateral rotation.
+            % idx_w is unaffected by 
             [pars(:, idx_u), pars(:, idx_v)] = obj.xs.xy2sn_pars(orig_pars(:,idx_u), orig_pars(:,idx_v));
 
         end
