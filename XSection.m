@@ -209,54 +209,6 @@ classdef XSection < handle
             M=[obj.direction_orthogonal obj.direction];
             T=helpers.matmult(helpers.matmult(M,T_sn), M');
         end
-
-        function [us,un]=xy2sn_pars(obj, u, v)
-            % Transform parameter vectors as obtained as output from the 
-            % get_parameters function from xy to sn coordinates
-            %
-            %   [us,un]=xy2sn(obj,u,v) transform a vector with component 
-            %   (u,v) both in projected coordinates to the corresponding 
-            %   (s,n) locations with (us,un) components across and along 
-            %   the cross-section respectively.
-            %
-            %   see also: XSection, sn2xy_vel
-%                 validateattributes(u,{'numeric'},{});
-%                 validateattributes(v,{'numeric'},{});
-%                 assert(isequal(size(u),size(v)),'size of u and v should match')
-                us = u * obj.direction_orthogonal(1) + v * obj.direction_orthogonal(2);
-                un = u * obj.direction(1) + v * obj.direction(2);
-        end
-
-
-        function [u,v]=sn2xy_pars(obj, us, un)
-            % Transform parameter vectors as obtained as output from the 
-            % get_parameters function from xy to sn coordinates
-            %
-            %   [us,un]=xy2sn(obj,u,v) transform a vector with component 
-            %   (u,v) both in projected coordinates to the corresponding 
-            %   (s,n) locations with (us,un) components across and along 
-            %   the cross-section respectively.
-            %
-            %   see also: XSection, sn2xy_vel
-%                 validateattributes(u,{'numeric'},{});
-%                 validateattributes(v,{'numeric'},{});
-%                 assert(isequal(size(u),size(v)),'size of u and v should match')
-                u = obj.direction(1) * un + obj.direction_orthogonal(1) * us;
-                v = obj.direction(2) * un + obj.direction_orthogonal(2) * us;
-        end
-
-        function xs_mat=xyz2snz_mat(obj)
-            % Transform vectors from xy to sn coordinates
-            %
-            %   xs_mat=get_xs_mat(obj) get matrix 3x3 such that u(s,n,z) =
-            %   xs_mat*u(x,y,z)
-            %
-            %   see also: XSection, sn2xy_vel
-
-                xs_mat = [obj.direction_orthogonal(1), obj.direction_orthogonal(2), 0;
-                            obj.direction(1), obj.direction(2), 0;
-                            0, 0, 1];
-        end
         
         function varargout=plot(obj, scale)
             % Plot orthogonal and tangential vector at cross-section origin

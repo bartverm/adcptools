@@ -149,9 +149,7 @@ classdef VelocitySolver < handle
             %   deviation in the velocity
             [pars, cov_pars, n_bvels] = get_parameters(obj);
             [vel, cov_vel] = deal(cell(numel(pars,1)));
-            idx_mesh = obj.make_indices();
             for crp = 1 : numel(pars)
-                cmesh = obj.mesh(idx_mesh(crp));
                 [vel{crp}, cov_vel{crp}] = ...
                     obj.velocity_model.get_velocity( ...
                     pars{crp}, ...
@@ -173,13 +171,7 @@ classdef VelocitySolver < handle
             % get velocity position, velocity data, and transformation
             % matrices to obtain earth velocity
             [vpos, vel_data, xform] = get_solver_input(obj);
-%             xform = xform*A; Find A.
-%             xs_form = obj.xs.xyz2snz_mat();
 
-%             for i = 1:size(xform, 2)
-%                 xform(1, i, :, :) = squeeze(xform(1, i, :, :))*xs_form;
-%             end
-%             xform = pagemtimes(xform, xs_form);
             % indices to match repeat transects with corresponsing mesh
             [idx_mesh, idx_ef] = obj.make_indices();
 
@@ -305,7 +297,7 @@ classdef VelocitySolver < handle
                 
                 % fit model for each cell
                 [t_pars, t_n_bvels, t_cov_pars] = cellfun( ...
-                    @obj.fit_model, ... % function to fit model -> Important: fit_model or fit_model_reg (Standard L2 regularization)
+                    @obj.fit_model, ... % function to fit model 
                     gather_dat{:}, ... % input data for fitting
                     'UniformOutput', false); % output is non-scalar
 
@@ -360,41 +352,6 @@ classdef VelocitySolver < handle
             end
         end
 
-        function [pars, cov_pars]=rotate_to_xs_pars(obj, orig_pars, orig_cov_pars)
-            % Rotates (tidal) parameters to direction of cross-section
-            %
-            %   If velocity_model = TidalVelocityModel, 
-            %   pars = obj.rotate_to_xs_pars(orig_pars) Rotates the orig_pars
-            %   to the direction of the cross-section.
-            %
-            %   [pars, cov_pars]=obj.rotate_to_xs(orig_vel, orig_cov) also rotates
-            %   the covariance matrix
-            %
-            % See also: VelocitySolver, get_velocity, get_tidal_pars
-            if ~isa(obj.velocity_model, 'TidalVelocityModel')
-                [pars, cov_pars] = rotate_to_xs(obj, orig_pars, orig_cov_pars);
-                return
-            else
-                npars = obj.velocity_model.npars;
-            end
-            pars = orig_pars; % Phase is unaffected by rotation
-            if nargin > 2
-                cov_pars = cell(size(orig_cov_pars)); %To do: XS rotation, impact on 
-            end
-            cov_pars = orig_cov_pars;
-            assert(npars(1) == npars(2),'Current toolbox version: Horizontal constituents should be the same')
-%             idx_0 = [1, npars(1) + 1, sum(npars(1:2)) + 1]; % Indices of subtidal flow within pars
-%             idx_ut = [(idx_0(1)+1):1:(idx_0(2)-1), (idx_0(2)+1):1:(idx_0(3)-1)];
-            idx_u = 1:npars(1);
-            idx_v = (npars(1) + 1):sum(npars(1:2));
-            % w is unaffected by lateral rotation.
-            [pars(:, idx_u), pars(:, idx_v)] = obj.xs.xy2sn_pars(orig_pars(:,idx_u), orig_pars(:,idx_v));
-
-        end
-
-
-
-
     end
     methods(Static, Access=protected)
         function [model_pars, n_dat, cov_matrix] = fit_model(vel, varargin)
@@ -413,7 +370,6 @@ classdef VelocitySolver < handle
             [model_pars, ~, ~, cov_matrix] = lscov(model_mat, vel);
 
         end
-
     end
     methods(Access=protected)
         function [idx_mesh,idx_ef]=make_indices(obj)
