@@ -31,7 +31,7 @@ classdef LocationBasedVelocitySolver < VelocitySolver
     %   see also: VMADCP, Mesh, Bathymetry, XSection, Filter,
     %   VelocitySolver
     methods
-        function             obj=LocationBasedVelocitySolver(varargin)
+        function obj=LocationBasedVelocitySolver(varargin)
             obj=obj@VelocitySolver(varargin{:});
             for cnt_arg=1:nargin
                 cur_arg=varargin{cnt_arg};
@@ -44,10 +44,9 @@ classdef LocationBasedVelocitySolver < VelocitySolver
         end
     end
     methods(Access=protected)
-        function [vpos, vdat, xform] = get_solver_input(obj)
-            % Get velocity position and compute sigma coordinates
-            vpos=obj.adcp.depth_cell_position; % velocity positions
-            
+        function [vpos, vdat, xform, time] = get_solver_input(obj)
+            [vpos, ~, ~, time] = get_solver_input@Solver(obj);
+
             % get velocity data
             vdat = obj.adcp.water_velocity(CoordinateSystem.Beam); % get velocity data
 

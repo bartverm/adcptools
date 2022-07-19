@@ -46,9 +46,10 @@ classdef TimeBasedVelocitySolver < VelocitySolver
         end
     end
     methods(Access=protected)
-        function [vpos, vdat, xform] = get_solver_input(obj)
+        function [vpos, vdat, xform, time] = get_solver_input(obj)
+            [vpos, ~, ~, time] = get_solver_input@Solver(obj);
+
             % Get velocity position and compute sigma coordinates
-            vpos = obj.adcp.depth_cell_position; % velocity positions
             vpos = mean(vpos, 3, 'omitnan'); % average position of four beams
             vpos = repmat(vpos, [1, 1, 4, 1]); % replicate average position
 
@@ -59,6 +60,5 @@ classdef TimeBasedVelocitySolver < VelocitySolver
             xform = obj.adcp.xform(CoordinateSystem.Earth,CoordinateSystem.Earth); % get Earth to Earth transformation matrix
             xform(:,:,:,4)=[]; % remove Error velocity
         end
-
     end
 end

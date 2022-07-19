@@ -1,60 +1,32 @@
-classdef TidalVelocityModel < VelocityModel
+classdef TidalModel < DataModel
     % Velocity model to include tidal dynamics
     %
-    %   TidalVelocityModel properties:
-    %   constituentsU - tidal constituents for x-component of velocity
-    %   constituentsV - tidal constituents for y-component of velocity
-    %   constituentsW - tidal constituents for z-component of velocity
+    %   TidalModel properties:
+    %   constituents
     %
-    %   TidalVelocityModel methods:
+    %   TidalModel methods:
     %   get_tidal_pars - compute the tidal amplitude and phase
     %
-    %   see also: VelocityModel, TaylorExpandedVelocity
+    %   see also: DataModel, TaylorModel
 
     properties
-        % TidalVelocityModel/constituentsU constituents for x-component of velocity
+        % TidalModel/constituents constituents to fit data with
         %
-        %   1xN row vector defining tidal constituents to be included in the model
-        %   for the x-component of the velocity. Every value given indicates the
-        %   period of the constituent to be included. For every given value, two
-        %   model parameters are fitted, which are the coefficients for the sin and
-        %   cos function. From those amplitude and phases are computed. A residual
-        %   is always included.
+        %   MxN array defining tidal constituents to be included in the model
+        %   for data to be fitted. Every row is a different component, e.g. for
+        %   velocity: row 1 is x component, row 2 is y component and row 3 is z
+        %   component. For a scalar only one row is provided.
+        %   Columns represent different constituents. Zero or NaN values are
+        %   skipped. For every given value, two model parameters are fitted, which
+        %   are the coefficients for the sin and cos function. From those amplitude
+        %   and phases are computed. A residual component is always included.
         %
-        %   see also: TidalVelocityModel, constituentsV, constituentsW,
-        %               get_tidal_pars
-        constituentsU(1,:) double {mustBeFinite, mustBePositive} = []
-
-        % TidalVelocityModel/constituentsV constituents for y-component of velocity
-        %
-        %   1xN row vector defining tidal constituents to be included in the model
-        %   for the y-component of the velocity. Every value given indicates the
-        %   period of the constituent to be included. For every given value, two
-        %   model parameters are fitted, which are the coefficients for the sin and
-        %   cos function. From those amplitude and phases are computed. A residual
-        %   is always included.
-        %
-        %   see also: TidalVelocityModel, constituentsU, constituentsW,
-        %               get_tidal_pars
-        constituentsV(1,:) double {mustBeFinite, mustBePositive} = []
-
-        % TidalVelocityModel/constituentsW constituents for z-component of velocity
-        %
-        %   1xN row vector defining tidal constituents to be included in the model
-        %   for the z-component of the velocity. Every value given indicates the
-        %   period of the constituent to be included. For every given value, two
-        %   model parameters are fitted, which are the coefficients for the sin and
-        %   cos function. From those amplitude and phases are computed. A residual
-        %   is always included.
-        %
-        %   see also: TidalVelocityModel, constituentsU, constituentsV,
-        %               get_tidal_pars
-        constituentsW(1,:) double {mustBeFinite, mustBePositive} = []
+        %   see also: TidalModel, get_tidal_pars
+        constituents
     end
 
     methods
-        function [Mu, Mv, Mw] = get_model(obj, d_time, ~, ~, ~, ~) %What about spatial variation?
-            % HJ 11-2-22
+        function M = get_model(obj, d_time, ~, ~, ~, ~)
             % This model fits the following parameters to the velocity
             % within each cell:
             % u = u_0 + sum_n (a_n cos(2pi/T_n * t) + b_n sin(2pi/T_n * t))
@@ -65,26 +37,27 @@ classdef TidalVelocityModel < VelocityModel
             % Output:
             % Model matrices such that u = Mu*pars (roughly)
             npars = obj.npars;
+            ncomp = obj.ncomponents;
             d_secs = seconds(d_time);
 
-            Mu = ones(numel(d_time), npars(1));
-            for c = 1:numel(obj.constituentsU)
-                Mu(:,2*c) = cos(2*pi/obj.constituentsU(c) * hours(d_secs));
-                Mu(:,2*c + 1) = sin(2*pi/obj.constituentsU(c) * hours(d_secs));
+            max_pars = max(npars);
+            M = nan(numel(d_time), max_pars, ncomp);
+            M(:,1,:) = 1; %residual
+            for c_comp = 1:ncomp
+                n_const = sum(isfinite(obj.consituents(c_comp,:)) &...
+                    obj.constituents(c_comp,:)~=0);
+                for c_const = 1:n_const
+                    M(:,2*c,c_comp) = ...
+                        cos( ...
+                        2*pi/obj.constituents(c_comp,c_const) *...
+                        hours(d_secs) ...
+                        );
+                    M(:,2*c + 1,c_comp) = sin( ...
+                        2*pi/obj.constituents(c_comp,c_const) *...
+                        hours(d_secs) ...
+                        );
+                end
             end
-            Mv = ones(numel(d_time), npars(2));
-
-            for c = 1:numel(obj.constituentsV)
-                Mv(:,2*c) = cos(2*pi/obj.constituentsV(c) * hours(d_secs));
-                Mv(:,2*c + 1) = sin(2*pi/obj.constituentsV(c) * hours(d_secs));
-            end
-            Mw = ones(numel(d_time), npars(3));
-
-            for c = 1:numel(obj.constituentsW)
-                Mw(:,2*c) = cos(2*pi/obj.constituentsW(c) * hours(d_secs));
-                Mw(:,2*c + 1) = sin(2*pi/obj.constituentsW(c) * hours(d_secs));
-            end
-
         end
 
         function [pars_h, cov_pars_h] = get_tidal_pars(obj, pars, cov_pars)
@@ -97,11 +70,11 @@ classdef TidalVelocityModel < VelocityModel
             %   phi = arctan(b / a)
             %
             %   pars is an array holding the tidal model parameters as produced with
-            %   the VelocitySolver class.
+            %   the Solver class.
             %
             %   cov_pars holds the covariance matrix of the model parameters.
             %
-            %   see also: TidalVelocityModel, VelocitySolver
+            %   see also: TidalModel, Solver
 
             npars = obj.npars;
             subtidal_idx = [1, npars(1) + 1, sum(npars(1:2)) + 1];
@@ -130,9 +103,12 @@ classdef TidalVelocityModel < VelocityModel
 
     methods(Access=protected)
         function val = get_npars(obj)
-            val = [2*numel(obj.constituentsU) + 1, ...
-                2*numel(obj.constituentsV) + 1, ...
-                2*numel(obj.constituentsW) + 1];
+            nconsts = sum(isfinite(obj.constituents) &...
+                obj.constituents ~= 0);
+            val = obj.ncomponents + 2*nconsts;
+        end
+        function val = get_ncomponents(obj)
+            val = size(obj.components,1);
         end
     end
 

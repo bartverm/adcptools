@@ -1,134 +1,204 @@
-classdef TaylorExpandedVelocity < VelocityModel
+classdef TaylorModel < DataModel
 % Velocity model based on Taylor expansions.
 %
-%   TaylorExpandedVelocity properties:
+%   TaylorModel properties:
 %   s_order - expand to given orders in s coordinate
 %   n_order - expand to given orders in n coordinate
 %   z_order - expand to given orders in z coordinate
 %   sigma_order - expand to given orders in sigma coordinate
 %   time_order - expand to given orders in time
 %
-%   TaylorExpandedVelocity methods:
+%   TaylorModel methods:
 %   get_velocity - return velocity based on model parameters
 %
-%  see also: VelocityModel
+%  see also: DataModel
 
     properties
-        % TaylorExpandedVelocity/s-order order of expansion in s-direction
+        % TaylorModel/time-order order of expansion in time
         %
-        %   1x3 row vector holding non-negative integers that specify up
-        %   to which order the velocity should be expanded in the
-        %   s-direction for each of the three cartesian velocity components
-        %   [2 1 0] means expand x-velocity up to second order in
-        %   s-direction, y-velocity up to first order and z-velocity up to
-        %   0th order. For the x-velocity this results in three model
-        %   parameters (mean x-vel, dx-vel/ds, d^2 x_vel/ds^2), for the
-        %   y-velocity in two parameters (mean y-vel, dy-vel/dx) and for
-        %   z-velocity in 1 parameter (mean z-vel).
-        %
-        %   Default is: [0, 0, 0]
-        %
-        %   see also: TaylorExpandedVelocity, n_order, z_order,
-        %   sigma_order, time_order
-        s_order (1,3) double {...
-            mustBeFinite, mustBeInteger, mustBeNonnegative} = [0 0 0];
-
-        % TaylorExpandedVelocity/n-order order of expansion in n-direction
-        %
-        %   1x3 row vector holding non-negative integers that specify up
-        %   to which order the velocity should be expanded in the
-        %   n-direction for each of the three cartesian velocity
-        %   components. 
+        %   1xNCOMP row vector holding non-negative integers that specify up
+        %   to which order the velocity should be expanded with respect to 
+        %   time for each of the NCOMP components
+        %   components. Maximum order is 2
         %
         %   Default is: [0, 0, 0]
         %
         %   See for an example: s_order
         %
-        %   see also: TaylorExpandedVelocity, s_order, z_order,
-        %   sigma_order, time_order
-        n_order (1,3) double {...
-            mustBeFinite, mustBeInteger, mustBeNonnegative} = [0 0 0];
-
-        % TaylorExpandedVelocity/z-order order of expansion in z-direction
-        %
-        %   1x3 row vector holding non-negative integers that specify up
-        %   to which order the velocity should be expanded in the
-        %   z-direction for each of the three cartesian velocity
-        %   components. 
-        %
-        %   Default is: [0, 0, 0]
-        %
-        %   See for an example: s_order
-        %
-        %   see also: TaylorExpandedVelocity, s_order, n_order,
-        %   sigma_order, time_order        
-        z_order (1,3) double {...
-            mustBeFinite, mustBeInteger, mustBeNonnegative} = [0 0 0];
-
-        % TaylorExpandedVelocity/sigma-order order of expansion in sigma direction
-        %
-        %   1x3 row vector holding non-negative integers that specify up
-        %   to which order the velocity should be expanded in the
-        %   sigma-direction for each of the three cartesian velocity
-        %   components. 
-        %
-        %   Default is: [0, 0, 0]
-        %
-        %   See for an example: s_order
-        %
-        %   see also: TaylorExpandedVelocity, s_order, z_order,
-        %   n_order, time_order
-        sigma_order (1,3) double {...
-            mustBeFinite, mustBeInteger, mustBeNonnegative} = [0 0 0];
-
-        % TaylorExpandedVelocity/time-order order of expansion in time
-        %
-        %   1x3 row vector holding non-negative integers that specify up
-        %   to which order the velocity should be expanded in 
-        %   time for each of the three cartesian velocity
-        %   components. 
-        %
-        %   Default is: [0, 0, 0]
-        %
-        %   See for an example: s_order
-        %
-        %   see also: TaylorExpandedVelocity, s_order, z_order,
+        %   see also: TaylorModel, s_order, z_order,
         %   n_order, n_order
-        time_order (1,3) double {...
-            mustBeFinite, mustBeInteger, mustBeNonnegative} = [0 0 0];
+        time_order (1,:) double {...
+            mustBeFinite,...
+            mustBeInteger,...
+            mustBeNonnegative,...
+            mustBeLessThanOrEqual(time_order,2)...
+            } = [0 0 0];
+
+        % TaylorModel/s-order order of expansion in s direction
+        %
+        %   1xNCOMP row vector holding non-negative integers that specify up
+        %   to which order the velocity should be expanded with respect to 
+        %   s (accros cross section) for each of the NCOMP components
+        %   components. Maximum order is 2
+        %
+        %   Example:
+        %   If we would specify for s-order [2 1 0] and, n-order [2 2 0]
+        %   and for all the others [0 0 0] it means we want to expand the 
+        %   first component to the second order in the s variable and to
+        %   the second order in the n-direction. We get the following
+        %   parameters for the first component (say u):
+        %   u0 du/ds du/dn d^2u/ds^2 d^2u/dnds d^2u/dn^2 (6 parameters)
+        %   For the second component we expand second order to s and only
+        %   first order to n. We get the following parameters for the
+        %   second component (say v):
+        %   v0 dv/ds dv/dn d^2v/ds^2 (4 parameters)
+        %   Note the order in which parameters will be estimated!
+        %
+        %   Default is: [0, 0, 0]
+        %
+        %
+        %   see also: TaylorModel, s_order, z_order,
+        %   n_order, n_order  
+        s_order (1,:) double {...
+            mustBeFinite,...
+            mustBeInteger,...
+            mustBeNonnegative,...
+            mustBeLessThanOrEqual(s_order,2)...
+            } = [0 0 0];
+
+        % TaylorModel/n-order order of expansion in n direction
+        %
+        %   1xNCOMP row vector holding non-negative integers that specify up
+        %   to which order the velocity should be expanded with respect to 
+        %   n (along cross section) for each of the NCOMP components
+        %   components. Maximum order is 2
+        %
+        %   Default is: [0, 0, 0]
+        %
+        %   See for an example: s_order
+        %
+        %   see also: TaylorModel, s_order, z_order,
+        %   n_order, n_order
+        n_order (1,:) double {...
+            mustBeFinite,...
+            mustBeInteger,...
+            mustBeNonnegative,...
+            mustBeLessThanOrEqual(n_order,2)...
+            } = [0 0 0];
+
+        % TaylorModel/z-order order of expansion in z direction
+        %
+        %   1xNCOMP row vector holding non-negative integers that specify up
+        %   to which order the velocity should be expanded with respect to 
+        %   z (vertical) for each of the NCOMP components
+        %   components. Maximum order is 2
+        %
+        %   Default is: [0, 0, 0]
+        %
+        %   See for an example: s_order
+        %
+        %   see also: TaylorModel, s_order, z_order,
+        %   n_order, n_order        
+        z_order (1,:) double {...
+            mustBeFinite,...
+            mustBeInteger,...
+            mustBeNonnegative,...
+            mustBeLessThanOrEqual(z_order,2)...
+            } = [0 0 0];
+
+        % TaylorModel/sigma-order order of expansion in sigma
+        %
+        %   1xNCOMP row vector holding non-negative integers that specify up
+        %   to which order the velocity should be expanded with respect to 
+        %   sigma (normalized vertical) for each of the NCOMP components
+        %   components. Maximum order is 2
+        %
+        %   Default is: [0, 0, 0]
+        %
+        %   See for an example: s_order
+        %
+        %   see also: TaylorModel, s_order, z_order,
+        %   n_order, n_order        
+        sigma_order (1,:) double {...
+            mustBeFinite,...
+            mustBeInteger,...
+            mustBeNonnegative,...
+            mustBeLessThanOrEqual(sigma_order,2)...
+            } = [0 0 0];
 
     end
+    properties(Dependent, SetAccess=protected, GetAccess = public)
+        npars_per_order
+    end
     methods(Access = protected)
+        function check_components(obj)
+            assert(isequal(...
+                numel(obj.time_order),...
+                numel(obj.s_order),...
+                numel(obj.n_order),...
+                numel(obj.z_order),...
+                numel(obj.sigma_order)...
+                ),...
+                'TaylorModel:NonMatchingComponents',...
+                'Number of components in each expansion variable should be equal');
+        end
+        function val = get_ncomponents(obj)
+            obj.check_components();
+            val = numel(obj.n_order);
+        end
+        function val = lump_orders(obj)
+            obj.check_components();
+            val = [obj.time_order;...
+                   obj.s_order;...
+                   obj.n_order;...
+                   obj.z_order;...
+                   obj.sigma_order];
+        end
+
         function val = get_npars(obj)
-            val = ones(1,3);
-            val = val +...
-                obj.s_order +...
-                obj.n_order +...
-                obj.z_order +...
-                obj.sigma_order +...
-                obj.time_order;
+            val = obj.npars_per_order();
+            val = sum(val,1);
         end
     end
     methods
-        function [Mu, Mv, Mw]=get_model(obj, time, d_s, d_n, d_z, d_sigma)
-            Mu = obj.combine_expands(1, time, d_s, d_n, d_z, d_sigma);
-            Mv = obj.combine_expands(2, time, d_s, d_n, d_z, d_sigma);
-            Mw = obj.combine_expands(3, time, d_s, d_n, d_z, d_sigma);
+        function val = get.npars_per_order(obj)
+            lo = obj.lump_orders();
+            nc = obj.ncomponents;
+            no1 = sum(lo>0,1); % number of order 1 parameters
+            no2 = sum(lo>1,1); % number of order 2 parameter
+            val = [ones(1,nc);... % zero order always included
+                   no1;...        % first order terms
+                   (no2.^2+no2)/2]; % second order independent terms: 1+2+...+N = (N^2 + N)/2
         end
-        function M = combine_expands(obj, dim, time, d_s, d_n, d_z, d_sigma)
-            M= [ones(numel(time),1),...
-                obj.taylor_expand(time,obj.time_order(dim)),...
-                obj.taylor_expand(d_s,obj.s_order(dim)),...
-                obj.taylor_expand(d_n,obj.n_order(dim)),...
-                obj.taylor_expand(d_z,obj.z_order(dim)),...
-                obj.taylor_expand(d_sigma,obj.sigma_order(dim))];
-        end
-    end
-    methods (Static)
-        function M = taylor_expand(var, ord)
-            nin = numel(var);
-            M = cumprod(repmat(reshape(var, [], 1), 1, ord), 2)./... % (x-x0)^n
-                cumprod( cumsum( ones( nin, ord), 2), 2); % n!
+        function M=get_model(obj, time, d_s, d_n, d_z, d_sigma)
+            np_per_ord = obj.npars_per_order;
+            max_np = max(obj.npars);
+            nc = obj.ncomponents;
+            lo = obj.lump_orders;
+            M = nan(numel(time), max_np, nc);
+            dev_vec = [time, d_s, d_n, d_z, d_sigma]; % deviatoric vector (x - a) for first order terms
+            dev_vec_sq = helpers.matmult(dev_vec,...
+                permute(dev_vec,[1 3 2]),2,3); %(x - a)^T(x-a) for second order terms
+            
+            pidx = cumsum(np_per_ord,1); % parameter indices in M
+            for c_comp = 1:obj.ncomponents
+                M(:,1,c_comp) = 1; % zero-th order
+
+                M(:,2:pidx(2,c_comp),c_comp)=...
+                    dev_vec(:,lo(:,c_comp)>0); % first order terms
+                
+                idx2 = pidx(2,c_comp)+1; % start index for order 2 terms
+                n_sec = sum(lo(:,c_comp)>1,1);
+                coeff = (2-eye(n_sec))/2; % coefficients (1/2 for diagonal elements, others 1)
+                psec = find(lo(:,c_comp)>1); % index of paramaters to expand to second order
+                for co = 1:n_sec 
+                    for ci = co:n_sec
+                        M(:,idx2,c_comp) = coeff(co,ci)*...
+                            dev_vec_sq(:,psec(co),psec(ci));
+                        idx2 = idx2 + 1;
+                    end
+                end
+            end
         end
     end
 end

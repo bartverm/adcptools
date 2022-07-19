@@ -231,15 +231,17 @@ classdef Solver < handle
 
                 % combine velocity input to earth matrix with velocity
                 % model
-                assert(isequal(size(cur_xform,2),size(M,3)),...
+                assert(size(cur_xform,2)<=size(M,3),...
                     'Solver:WrongNComponents',...
-                    'Number of component in transformation matrix and model matrix do not match')
-    
+                    'More component in transformation matrix than in model matrix')
+                
+                ncomp = size(cur_xform,2); % number of component in transformation matrix
+                npars(ncomp+1:end)=[]; % only keep number of parameters for component in transformation matrix
                 cur_xformM = nan(size(cur_xform,1), sum(npars));
                 cum_pars= cumsum([0 npars]);
                 for ccomp = 1 : size(cur_xform,2)
                     cur_xformM(:,cum_pars(ccomp)+1:cum_pars(ccomp+1)) = ...
-                        M(:,:,ccomp).*cur_xform(:,ccomp);
+                        M(:,1:npars(ccomp),ccomp).*cur_xform(:,ccomp);
                 end
                 cur_xform = cur_xformM;
 
