@@ -1,4 +1,4 @@
-classdef VelocitySolver < Solver
+classdef VelocitySolver < ADCPDataSolver
     % Abstract base class to solve ADCP repeat transect velocity data
     %
     %   Subclasses should implement the get_solver_input method.
@@ -41,7 +41,7 @@ classdef VelocitySolver < Solver
             %   measured within a mesh cell (this is determined by the Mesh class) are
             %   averaged.
             %
-            %   [vel,std] = get_velocity(obj) also returns the standard
+            %   [vel,cov_vel] = get_velocity(obj) also returns the standard
             %   deviation in the velocity
             if nargin == 1
                 [pars, cov_pars, n_bvels] = get_parameters(obj);
@@ -52,14 +52,10 @@ classdef VelocitySolver < Solver
                         'Please pass no input other than object, or as many inputs as required outputs')
                 end
             end
-
-            [vel, cov_vel] = deal(cell(numel(pars,1)));
-            for crp = 1 : numel(pars)
-                [vel{crp}, cov_vel{crp}] = ...
-                    obj.data_model.get_velocity( ...
-                    pars{crp}, ...
-                    cov_pars{crp});
-            end
+            [vel, cov_vel] = ...
+                obj.data_model.get_data( ...
+                pars, ...
+                cov_pars);
         end
 
 
@@ -75,20 +71,14 @@ classdef VelocitySolver < Solver
         %   the covariance matrix
         %
         % See also: VelocitySolver, get_velocity
-            vel = cell(size(orig_vel));
+            [vels, veln] = obj.xs.xy2sn_vel( ...
+                orig_vel(:, 1), ...
+                orig_vel(:, 2));
+            vel = [vels, veln, orig_vel(:, 3)];
             if nargin > 2
-                cov = cell(size(orig_cov));
-            end
-            for crp = 1:numel(orig_vel)
-                [vels, veln] = obj.xs.xy2sn_vel( ...
-                    orig_vel{crp}(:, 1), ...
-                    orig_vel{crp}(:, 2));
-                vel{crp} = [vels, veln, orig_vel{crp}(:, 3)];
-                if nargin > 2
-                    Tsn = obj.xs.xy2sn_tens(orig_cov{crp}(:, 1:2, 1:2));
-                    cov{crp} = cat(3, [Tsn, orig_cov{crp}(:,3,1:2)],...
-                        orig_cov{crp}(:,:,3));
-                end
+                Tsn = obj.xs.xy2sn_tens(orig_cov(:, 1:2, 1:2));
+                cov = cat(3, [Tsn, orig_cov(:,3,1:2)],...
+                    orig_cov(:,:,3));
             end
         end
 

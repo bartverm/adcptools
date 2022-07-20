@@ -30,13 +30,6 @@ classdef Solver < handle
 
 
     properties
-        % Solver/adcp
-        %
-        %   Scalar VMADCP object holding the adcp data to compute the velocity
-        %
-        %   see also: Solver, VMADCP
-        adcp (1,1) VMADCP
-
         % Solver/mesh mesh on which velocity is solved
         %
         %   Mesh object defining the mesh on which the data is to be
@@ -47,7 +40,7 @@ classdef Solver < handle
         %   Default value is SigmaZetaMesh
         %
         %   see also: Solver, Mesh
-        mesh (1,:) Mesh = SigmaZetaMesh;
+        mesh (1,1) Mesh = SigmaZetaMesh;
 
         % Solver/bathy
         %
@@ -68,15 +61,6 @@ classdef Solver < handle
         %   see also: Solver, XSection
         xs (1,1) XSection
 
-
-        % Solver/ensemble_filter
-        %
-        %   Ensemble filters defining repeat crossings to be processed
-        %
-        %   see also: Solver, EnsembleFilter
-        ensemble_filter (1,:) EnsembleFilter
-
-
         % Solver/data_model
         %
         %   Velocity model to use when solving for velocity
@@ -86,26 +70,16 @@ classdef Solver < handle
     end
     methods
         function obj=Solver(varargin)
-            has_vmadcp=false;
             has_mesh=false;
-            has_bathy=false;
-            has_xs=false;
             has_model=false;
             for cnt_arg=1:nargin
                 cur_arg=varargin{cnt_arg};
-                if isa(cur_arg,'VMADCP')
-                    has_vmadcp=true;
-                    obj.adcp=cur_arg;
-                elseif isa(cur_arg, 'Mesh')
+                if isa(cur_arg, 'Mesh')
                     has_mesh=true;
                     obj.mesh=cur_arg;
                 elseif isa(cur_arg, 'Bathymetry')
-                    has_bathy=true;
                     obj.bathy=cur_arg;
-                elseif isa(cur_arg,'Filter')
-                    obj.ensemble_filter=cur_arg;
                 elseif isa(cur_arg,'XSection')
-                    has_xs=true;
                     obj.xs=cur_arg;
                 elseif isa(cur_arg,'DataModel')
                     has_model=true;
@@ -114,15 +88,6 @@ classdef Solver < handle
             end
             if ~has_mesh
                 error('You must provide a Mesh object upon construction of a Solver object')
-            end
-            if ~has_vmadcp
-                error('You must provide a VMADCP object upon construction of a Solver object')
-            end
-            if ~has_bathy
-                obj.bathy=BathymetryScatteredPoints(obj.adcp);
-            end
-            if ~has_xs
-                obj.xs=XSection(obj.adcp);
             end
             if ~has_model
                 obj.data_model=DataModel;
@@ -142,168 +107,130 @@ classdef Solver < handle
 
             % get velocity position, velocity data, and transformation
             % matrices to obtain earth velocity
-            [vpos, vel_data, xform, time] = get_solver_input(obj);
-
-            % indices to match repeat transects with corresponsing mesh
-            [idx_mesh, idx_ef] = obj.make_indices();
+            [vpos, dat, xform, time, wl] = get_solver_input(obj);
 
             %%% compute s,n and sigma coordinates
             % get velocity position transverse to cross section
-            [s_pos, n_pos] = obj.xs.xy2sn(vpos(:,:,:,1), vpos(:,:,:,2));
+            [s_pos, n_pos] = obj.xs.xy2sn(vpos(:,1), vpos(:,2));
 
             % get bed elevation at velocity position. This could optionally
             % be done with the bed detection at the beam.
-            zb_pos = obj.bathy.get_bed_elev(vpos(:,:,:,1), vpos(:,:,:,2));
+            zb_pos = obj.bathy.get_bed_elev(vpos(:,1), vpos(:,2));
 
             % compute sigma coordinate of velocities
-            sig_pos = (vpos(:,:,:,3) - zb_pos) ./...
-                (obj.adcp.water_level - zb_pos);
+            z_pos=vpos(:,3);
+            sig_pos = (z_pos - zb_pos) ./...
+                (wl - zb_pos);
 
-            % Initialize output
-            pars = cell(numel(idx_ef),1);
-            cov_pars = cell(numel(idx_ef),1);
-            n_vels = cell(numel(idx_ef),1);
+            % create filter selecting finite input
+            fgood = find(isfinite(n_pos) & isfinite(sig_pos) &...
+                isfinite(dat) & all(isfinite(xform), 2));
 
-            % Loop over repeat transects
-            for crp = 1:numel(idx_ef)
+            % find mesh cell input data belongs to
+            cmesh = obj.mesh;
+            cell_idx = cmesh.index(n_pos(fgood), sig_pos(fgood));
 
-                % get selection of data of current repeat transect and
-                % replicate singleton dimensions to get uniform dimensions
-                % of inputs
-                ens_filt = ~obj.ensemble_filter(idx_ef(crp)).bad_ensembles;
-                cur_n = n_pos(:, ens_filt, :);
-                cur_s = s_pos(:, ens_filt, :);
-                cur_t = time(:, ens_filt, :);
-                cur_t = repmat(cur_t, ...
-                    size(vel_data, 1), 1, size(vel_data, 3));
-                cur_sig = sig_pos(:, ens_filt, :);
-                cur_vel = vel_data(:, ens_filt, :);
-                cur_z = vpos(:, ens_filt, :, 3);
-                cur_xform = xform(:, ens_filt, :, :);
-                cur_xform = repmat(cur_xform,...
-                    [size(vel_data, 1), 1, 1, 1]);
+            % combine filter selecting finite input with filter
+            % selecting data that belongs has a correspoding mesh cell
+            % and filter input data accordingly
+            fgood_idx = isfinite(cell_idx);
+            cell_idx = cell_idx(fgood_idx);
+            fgood = fgood(fgood_idx);
+            dat = dat(fgood);
+            xform = xform(fgood,:);
+            n_pos = n_pos(fgood);
+            s_pos = s_pos(fgood);
+            z_pos = z_pos(fgood);
+            time = time(fgood);
+            sig_pos = sig_pos(fgood);
 
-                % vectorize all input, at this point we don't care which
-                % data were collected together
-                cur_n = reshape(cur_n, [], 1);
-                cur_s = reshape(cur_s, [], 1);
-                cur_t = reshape(cur_t, [], 1);
-                cur_sig = reshape(cur_sig, [], 1);
-                cur_vel = reshape(cur_vel, [], 1);
-                cur_z = reshape(cur_z, [], 1);
-                cur_xform = reshape(cur_xform, [], size(cur_xform,4));
+            % compute velocity model input
+            n_center = reshape(...
+                cmesh.n_middle(cmesh.col_to_cell), [], 1);
+            n_pos = n_pos - n_center(cell_idx); % delta_n
+            z_pos = z_pos - cmesh.z_center(cell_idx); % delta_z
+            sig_pos = sig_pos - cmesh.sig_center(cell_idx); % delta_sig
+            time = time - cmesh.time; % delta time
+            time = seconds(time);
 
-                % create filter selecting finite input
-                fgood = find(isfinite(cur_n) & isfinite(cur_sig) &...
-                    isfinite(cur_vel) & all(isfinite(cur_xform), 2));
+            % get model matrices
+            M = obj.data_model.get_model(...
+                time, s_pos, n_pos, z_pos, sig_pos);
+            npars = obj.data_model.npars;
 
-                % find mesh cell input data belongs to
-                cmesh = obj.mesh(idx_mesh(crp));
-                cell_idx = cmesh.index(cur_n(fgood), cur_sig(fgood));
-
-                % combine filter selecting finite input with filter
-                % selecting data that belongs has a correspoding mesh cell
-                % and filter input data accordingly
-                fgood_idx = isfinite(cell_idx);
-                cell_idx = cell_idx(fgood_idx);
-                fgood = fgood(fgood_idx);
-                cur_vel = cur_vel(fgood);
-                cur_xform = cur_xform(fgood,:);
-                cur_n = cur_n(fgood);
-                cur_s = cur_s(fgood);
-                cur_z = cur_z(fgood);
-                cur_t = cur_t(fgood);
-                cur_sig = cur_sig(fgood);
-
-                % compute velocity model input
-                n_center = reshape(...
-                    cmesh.n_middle(cmesh.col_to_cell), [], 1);
-                cur_n = cur_n - n_center(cell_idx); % delta_n
-                cur_z = cur_z - cmesh.z_center(cell_idx); % delta_z
-                cur_sig = cur_sig - cmesh.sig_center(cell_idx); % delta_sig
-                cur_t = cur_t - cmesh.time; % delta time
-                cur_t = seconds(cur_t);
-
-                % get model matrices
-                M = obj.data_model.get_model(...
-                    cur_t, cur_s, cur_n, cur_z, cur_sig);
-                npars = obj.data_model.npars;
-
-                % combine velocity input to earth matrix with velocity
-                % model
-                assert(size(cur_xform,2)<=size(M,3),...
-                    'Solver:WrongNComponents',...
-                    'More component in transformation matrix than in model matrix')
-                
-                ncomp = size(cur_xform,2); % number of component in transformation matrix
-                npars(ncomp+1:end)=[]; % only keep number of parameters for component in transformation matrix
-                cur_xformM = nan(size(cur_xform,1), sum(npars));
-                cum_pars= cumsum([0 npars]);
-                for ccomp = 1 : size(cur_xform,2)
-                    cur_xformM(:,cum_pars(ccomp)+1:cum_pars(ccomp+1)) = ...
-                        M(:,1:npars(ccomp),ccomp).*cur_xform(:,ccomp);
-                end
-                cur_xform = cur_xformM;
-
-                %%% combine velocity input with transformation matrices and
-                %%% prepare data to be combined in one cell element per
-                %%% mesh cell
-                cur_dat = [cur_vel cur_xform];
-                % number of columns in model matrix + one for velocity
-                % component
-                ndat=size(cur_dat,2);
-                % make an index to map each model matrix parameter to a
-                % column in output cell array
-                dat_idx = cumsum(ones(size(cell_idx, 1), ndat), 2);
-                cell_idx = repmat(cell_idx, ndat, 1);
-                cur_dat = reshape(cur_dat, [], 1);
-                dat_idx = reshape(dat_idx, [], 1);
-
-
-                % gather data in cell array: every row corresponds to a
-                % mesh cell, every column to a model parameter. First
-                % column holds velocity component
-                gather_dat = accumarray({cell_idx,dat_idx},... % indices
-                    cur_dat,... % velocity and model matrices
-                    [obj.mesh(idx_mesh(crp)).ncells,ndat],... % output size
-                    @(x) {x},... % function collecting data in cell
-                    {},... % value to fill when no data is avilable
-                    false);  % output not sparse
-
-                % reorganize gathered data into columns, which are
-                % inputs to the model fitting function
-                gather_dat = num2cell(gather_dat, 1);
-
-                % fit model for each cell
-                [t_pars, t_n_bvels, t_cov_pars] = cellfun( ...
-                    @obj.fit_model, ... % function to fit model
-                    gather_dat{:}, ... % input data for fitting
-                    'UniformOutput', false); % output is non-scalar
-
-                % replace empty cell elements with array with NaN values
-                f_empty = cellfun(@isempty, t_pars);
-                t_pars(f_empty) = {nan(ndat - 1, 1)};
-                t_cov_pars(f_empty) = {nan(ndat - 1, ndat - 1)};
-
-
-                %%% construct matrix from output cell array
-                % reshape to allow subsequent concatenation
-                t_cov_pars = cellfun( ...
-                    @(x) shiftdim(x, -1), ...
-                    t_cov_pars, ...
-                    'UniformOutput',false);
-                t_pars = cellfun( ...
-                    @(x) shiftdim(x, -1), ...
-                    t_pars, ...
-                    'UniformOutput',false);
-                pars{crp} = vertcat(t_pars{:});
-                cov_pars{crp} = vertcat(t_cov_pars{:});
-                n_vels{crp} = vertcat(t_n_bvels);
+            % combine velocity input to earth matrix with velocity
+            % model
+            assert(size(xform,2)<=size(M,3),...
+                'Solver:WrongNComponents',...
+                'More component in transformation matrix than in model matrix')
+            
+            ncomp = size(xform,2); % number of component in transformation matrix
+            npars(ncomp+1:end)=[]; % only keep number of parameters for component in transformation matrix
+            xformM = nan(size(xform,1), sum(npars));
+            cum_pars= cumsum([0 npars]);
+            for ccomp = 1 : size(xform,2)
+                xformM(:,cum_pars(ccomp)+1:cum_pars(ccomp+1)) = ...
+                    M(:,1:npars(ccomp),ccomp).*xform(:,ccomp);
             end
-        end
+            xform = xformM;
 
+            %%% combine velocity input with transformation matrices and
+            %%% prepare data to be combined in one cell element per
+            %%% mesh cell
+            dat = [dat xform];
+            % number of columns in model matrix + one for velocity
+            % component
+            ndat=size(dat,2);
+            % make an index to map each model matrix parameter to a
+            % column in output cell array
+            dat_idx = cumsum(ones(size(cell_idx, 1), ndat), 2);
+            cell_idx = repmat(cell_idx, ndat, 1);
+            dat = reshape(dat, [], 1);
+            dat_idx = reshape(dat_idx, [], 1);
+
+
+            % gather data in cell array: every row corresponds to a
+            % mesh cell, every column to a model parameter. First
+            % column holds velocity component
+            gather_dat = accumarray({cell_idx,dat_idx},... % indices
+                dat,... % velocity and model matrices
+                [obj.mesh.ncells,ndat],... % output size
+                @(x) {x},... % function collecting data in cell
+                {},... % value to fill when no data is avilable
+                false);  % output not sparse
+
+            % reorganize gathered data into columns, which are
+            % inputs to the model fitting function
+            gather_dat = num2cell(gather_dat, 1);
+
+            % fit model for each cell
+            [t_pars, t_n_bvels, t_cov_pars] = cellfun( ...
+                @obj.fit_model, ... % function to fit model
+                gather_dat{:}, ... % input data for fitting
+                'UniformOutput', false); % output is non-scalar
+
+            % replace empty cell elements with array with NaN values
+            f_empty = cellfun(@isempty, t_pars);
+            t_pars(f_empty) = {nan(ndat - 1, 1)};
+            t_cov_pars(f_empty) = {nan(ndat - 1, ndat - 1)};
+
+
+            %%% construct matrix from output cell array
+            % reshape to allow subsequent concatenation
+            t_cov_pars = cellfun( ...
+                @(x) shiftdim(x, -1), ...
+                t_cov_pars, ...
+                'UniformOutput',false);
+            t_pars = cellfun( ...
+                @(x) shiftdim(x, -1), ...
+                t_pars, ...
+                'UniformOutput',false);
+            pars = vertcat(t_pars{:});
+            cov_pars = vertcat(t_cov_pars{:});
+            n_vels = vertcat(t_n_bvels{:});
+        end
     end
-    methods (Access=protected)
+    methods (Abstract, Access=protected)
         % Get input data for velocity solver
         %       [vpos, vdat, xform, time] = get_solver_input(obj) returns the velocity
         %       position, the velocity data, the transformation matrix  to get
@@ -311,13 +238,9 @@ classdef Solver < handle
         %       coordinates and the time of the data
         %
         %       Subclasses should implement this function
-        function [vpos, vdat, xform, time] = get_solver_input(obj)
-            vpos = obj.adcp.depth_cell_position; % velocity positions
-            vdat = [];
-            xform = [];
-            time = obj.adcp.time;
-        end
+        [vpos, vdat, xform, time, wl] = get_solver_input(obj)
     end
+
 
     methods(Static, Access=protected)
         function [model_pars, n_dat, cov_matrix] = fit_model(vel, varargin)
@@ -334,7 +257,6 @@ classdef Solver < handle
             end
             % fit model tot data
             [model_pars, ~, ~, cov_matrix] = lscov(model_mat, vel);
-
         end
     end
     methods(Access=protected)
@@ -352,6 +274,4 @@ classdef Solver < handle
             end
         end
     end
-
-
 end

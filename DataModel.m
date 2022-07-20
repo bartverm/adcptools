@@ -39,23 +39,23 @@ classdef DataModel < handle
     end
     methods
 
-        function [vel, cov_vel] = get_velocity(obj, pars, cov_pars, d_time, d_s, d_n, d_z, d_sigma)
-        % Compute velocity from model parameters.
+        function [dat, cov_dat] = get_data(obj, pars, cov_pars, d_time, d_s, d_n, d_z, d_sigma)
+        % Compute data values from model parameters.
         %
-        %   vel = get_velocity(obj, pars) computes velocity based on model
+        %   dat = get_data(obj, pars) computes data based on model
         %   parameters. 
         %
-        %   [vel, cov_vel] = get_velocity(obj, pars, cov_pars) also compute
-        %   covariance matrix of velocity based on covariance of model
+        %   [dat, cov_dat] = get_data(obj, pars, cov_pars) also compute
+        %   covariance matrix of data based on covariance of model
         %   parameters.
         %   
-        %   [vel, cov_vel] = get_velocity(obj, pars, cov_pars, d_time, d_s, 
+        %   [dat, cov_dat] = get_velocity(obj, pars, cov_pars, d_time, d_s, 
         %       d_n, d_z, d_sigma) optionally specify the coordinate
-        %       offsets at which velocities will be computed. These default
+        %       offsets at which data will be computed. These default
         %       to zeros if not given. They are all column vectors with
         %       same number of rows as the rows in pars.
         %
-        %   see also: VelocitySolver   
+        %   see also: DataModel, Solver
 
             t_var=zeros(size(pars,1),1);
             mult=ones(size(t_var));
@@ -101,18 +101,11 @@ classdef DataModel < handle
             M=Mnew;
 
             % apply model to obtain vel (permutations for use of pagemtimes)
-            M = permute(M,[2, 3 ,1]);
-            pars = permute(pars, [2, 3, 1]);
-            vel = pagemtimes(M,pars);
+            dat = helpers.matmult(M,pars);
 
             % apply model to obtain covariance matrix
-            cov_pars = permute(cov_pars, [2, 3, 1]);
-            cov_vel = pagemtimes(cov_pars,'none', M,'transpose');
-            cov_vel = pagemtimes(M, cov_vel);
-
-            % transform output back to format of inputs
-            vel = ipermute(vel, [2, 3, 1]);
-            cov_vel = ipermute(cov_vel, [2, 3, 1]);
+            cov_dat = helpers.matmult(cov_pars, permute(M,[1,3,2]));
+            cov_dat = helpers.matmult(M, cov_dat);
         end
         
         function val=get.npars(obj)

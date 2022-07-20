@@ -44,8 +44,8 @@ classdef LocationBasedVelocitySolver < VelocitySolver
         end
     end
     methods(Access=protected)
-        function [vpos, vdat, xform, time] = get_solver_input(obj)
-            [vpos, ~, ~, time] = get_solver_input@Solver(obj);
+        function [vpos, vdat, xform, time, wl] = get_solver_input(obj)
+            [vpos, ~, ~, time, wl] = get_solver_input@ADCPDataSolver(obj);
 
             % get velocity data
             vdat = obj.adcp.water_velocity(CoordinateSystem.Beam); % get velocity data
@@ -53,8 +53,10 @@ classdef LocationBasedVelocitySolver < VelocitySolver
             % get transformation matrix
             xform = obj.adcp.xform(CoordinateSystem.Beam,CoordinateSystem.Earth); % get Earth to Beam transformation matrix
             xform(:,:,:,4)=[]; % remove Error velocity to beam transformation
+            
+            % filter and vectorize
+            [vdat, xform] = obj.filter_and_vectorize(vdat, xform);
         end
-
     end
 
 end

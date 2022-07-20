@@ -46,8 +46,8 @@ classdef TimeBasedVelocitySolver < VelocitySolver
         end
     end
     methods(Access=protected)
-        function [vpos, vdat, xform, time] = get_solver_input(obj)
-            [vpos, ~, ~, time] = get_solver_input@Solver(obj);
+        function [vpos, vdat, xform, time, wl] = get_solver_input(obj)
+            [vpos, ~, ~, time, wl] = get_solver_input@ADCPDataSolver(obj);
 
             % Get velocity position and compute sigma coordinates
             vpos = mean(vpos, 3, 'omitnan'); % average position of four beams
@@ -59,6 +59,9 @@ classdef TimeBasedVelocitySolver < VelocitySolver
             % get transformation matrix
             xform = obj.adcp.xform(CoordinateSystem.Earth,CoordinateSystem.Earth); % get Earth to Earth transformation matrix
             xform(:,:,:,4)=[]; % remove Error velocity
+
+            % filter and vectorize
+            [vdat, xform] = obj.filter_and_vectorize(vdat, xform);
         end
     end
 end
