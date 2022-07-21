@@ -32,19 +32,6 @@ classdef TimeBasedVelocitySolver < VelocitySolver
     %
     %   see also: VMADCP, Mesh, Bathymetry, XSection, Filter,
     %   VelocitySolver
-    methods
-        function obj=TimeBasedVelocitySolver(varargin)
-            obj=obj@VelocitySolver(varargin{:});
-            for cnt_arg=1:nargin
-                cur_arg=varargin{cnt_arg};
-                if isa(cur_arg, 'VMADCP') || isa(cur_arg, 'Mesh') || isa(cur_arg,'Bathymetry') || isa(cur_arg, 'Filter') || isa(cur_arg, 'XSection')
-                    continue
-                else
-                    warning(['Unhandled input of type: ', class(cur_arg), ' on construction of TimeBasedVelocitySolver object'])
-                end
-            end
-        end
-    end
     methods(Access=protected)
         function [vpos, vdat, xform, time, wl] = get_solver_input(obj)
             [vpos, ~, ~, time, wl] = get_solver_input@ADCPDataSolver(obj);

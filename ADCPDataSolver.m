@@ -24,23 +24,28 @@ classdef ADCPDataSolver < Solver
                 cur_arg=varargin{cnt_arg};
                 if isa(cur_arg,'VMADCP')
                     has_vmadcp=true;
-                    obj.adcp=cur_arg;
+                    var = 'adcp';
                 elseif isa(cur_arg, 'Bathymetry')
                     has_bathy=true;
+                    continue
                 elseif isa(cur_arg,'Filter')
-                    obj.ensemble_filter=cur_arg;
+                    var = 'ensemble_filter';
                 elseif isa(cur_arg,'XSection')
                     has_xs=true;
+                    continue
+                else 
+                    continue
                 end
+                obj.assign_var(var, cur_arg)
             end
-            if ~has_vmadcp
-                error('You must provide a VMADCP object upon construction of a Solver object')
+
+            if ~has_bathy && has_vmadcp
+                B=BathymetryScatteredPoints(obj.adcp);
+                obj.assign_var('bathy',B);
             end
-            if ~has_bathy
-                obj.bathy=BathymetryScatteredPoints(obj.adcp);
-            end
-            if ~has_xs
-                obj.xs=XSection(obj.adcp);
+            if ~has_xs && has_vmadcp
+                XS=XSection(obj.adcp);
+                obj.assign_var('xs',XS);
             end
         end
 

@@ -39,7 +39,7 @@ classdef DataModel < handle
     end
     methods
 
-        function [dat, cov_dat] = get_data(obj, pars, cov_pars, d_time, d_s, d_n, d_z, d_sigma)
+        function [dat, cov_dat, n_bvels] = get_data(obj, pars, cov_pars, n_bvels, d_time, d_s, d_n, d_z, d_sigma)
         % Compute data values from model parameters.
         %
         %   dat = get_data(obj, pars) computes data based on model
@@ -59,29 +59,29 @@ classdef DataModel < handle
 
             t_var=zeros(size(pars,1),1);
             mult=ones(size(t_var));
-            if nargin < 4
+            if nargin < 5
                 d_time = t_var; 
             else 
                 if isscalar(d_time)
                     d_time = repmat(d_time, size(pars, 1), 1);
                 end
             end
-            if nargin < 5
+            if nargin < 6
                 d_s = t_var; 
             else 
                 d_s = d_s .* mult; 
             end
-            if nargin < 6
+            if nargin < 7
                 d_n = t_var; 
             else 
                 d_n = d_n .* mult; 
             end
-            if nargin < 7
+            if nargin < 8
                 d_z = t_var;  
             else 
                 d_z = d_z .* mult; 
             end
-            if nargin < 8
+            if nargin < 9
                 d_sigma = t_var;  
             else 
                 d_sigma = d_sigma .* mult; 
@@ -104,8 +104,10 @@ classdef DataModel < handle
             dat = helpers.matmult(M,pars);
 
             % apply model to obtain covariance matrix
-            cov_dat = helpers.matmult(cov_pars, permute(M,[1,3,2]));
-            cov_dat = helpers.matmult(M, cov_dat);
+            if nargout > 1
+                cov_dat = helpers.matmult(cov_pars, permute(M,[1,3,2]));
+                cov_dat = helpers.matmult(M, cov_dat);
+            end
         end
         
         function val=get.npars(obj)

@@ -32,7 +32,7 @@ classdef VelocitySolver < ADCPDataSolver
 
     methods
 
-        function [vel, cov_vel, n_bvels] = get_velocity(obj, pars, cov_pars, n_bvels)
+        function varargout = get_velocity(obj, varargin)
             %   Get velocity from model parameters
             %
             %   vel=get_velocity(obj) computes the velocity in the mesh cells by using
@@ -43,19 +43,8 @@ classdef VelocitySolver < ADCPDataSolver
             %
             %   [vel,cov_vel] = get_velocity(obj) also returns the standard
             %   deviation in the velocity
-            if nargin == 1
-                [pars, cov_pars, n_bvels] = get_parameters(obj);
-            end
-            if nargin > 1
-                if nargin - 1 < nargout
-                    error('VelocitySolver:WrongInputNumber',...
-                        'Please pass no input other than object, or as many inputs as required outputs')
-                end
-            end
-            [vel, cov_vel] = ...
-                obj.data_model.get_data( ...
-                pars, ...
-                cov_pars);
+            varargout = cell(1,nargout);
+            [varargout{:}] = obj.get_data(varargin{:});
         end
 
 
@@ -71,14 +60,21 @@ classdef VelocitySolver < ADCPDataSolver
         %   the covariance matrix
         %
         % See also: VelocitySolver, get_velocity
-            [vels, veln] = obj.xs.xy2sn_vel( ...
-                orig_vel(:, 1), ...
-                orig_vel(:, 2));
-            vel = [vels, veln, orig_vel(:, 3)];
+            xs = [obj.xs];
+            u = cellfun(@(x) x(:,1),orig_vel,'UniformOutput',false);
+            v = cellfun(@(x) x(:,2),orig_vel,'UniformOutput',false);
+            [vels, veln] = xs.xy2sn_vel( ...
+                u, ...
+                v);
+            vel = cellfun(@(a,b,c) [a,b,c(:,3)], vels, veln, orig_vel, ...
+                'UniformOutput',false);
             if nargin > 2
-                Tsn = obj.xs.xy2sn_tens(orig_cov(:, 1:2, 1:2));
-                cov = cat(3, [Tsn, orig_cov(:,3,1:2)],...
-                    orig_cov(:,:,3));
+                Trot = cellfun(@(x) x(:,1:2,1:2), orig_cov, ...
+                    'UniformOutput',false);
+                Tsn = xs.xy2sn_tens(Trot);
+                cov = cellfun(@(a,b) cat(3, [a, b(:,3,1:2)],...
+                    b(:,:,3)),Tsn,orig_cov, ...
+                    'UniformOutput',false);
             end
         end
 

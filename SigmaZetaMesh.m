@@ -246,11 +246,11 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
                  obj.z_bottom_left]';
         end
         function val=get.area_cells(obj)
-            val = [1/2.*(obj.n_patch(2,:)-obj.n_patch(1,:)).*(2.*(obj.z_patch(5,:) - obj.z_patch(2,:)) +...
-                obj.z_patch(4,:) + obj.z_patch(6,:) - obj.z_patch(3,:) - obj.z_patch(7,:))]';
+            val = (1/2.*(obj.n_patch(2,:)-obj.n_patch(1,:)).*(2.*(obj.z_patch(5,:) - obj.z_patch(2,:)) +...
+                obj.z_patch(4,:) + obj.z_patch(6,:) - obj.z_patch(3,:) - obj.z_patch(7,:)))';
         end
         function val=get.dn_cells(obj)
-            val = [obj.n_patch(3,:) - obj.n_patch(1,:)]';
+            val = (obj.n_patch(3,:) - obj.n_patch(1,:))';
         end
         function mesh=mesh_at_water_level(obj,target_wl, constant_z)
             mesh(numel(target_wl))=SigmaZetaMesh;
@@ -370,6 +370,7 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
             if nargout>1
                 hpatch=hpatch_tmp;
             end
+            view(30,30)
         end       
     end
     methods(Access=protected)

@@ -1,4 +1,4 @@
-classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
+classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArrayOnConstruct
 % Generates a SigmaZetaMesh based on VMADCP data
 %
 %   obj=SigmaZetaFromaVMADCP() constructs a default object
@@ -93,7 +93,8 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
         water_level
     end
     methods
-        function obj=SigmaZetaMeshFromVMADCP(varargin)   
+        function obj=SigmaZetaMeshFromVMADCP(varargin)
+            obj = obj@helpers.ArrayOnConstruct(varargin{:});
             construct_bathymetry=true;
             construct_xs=true;
             construct_filter=true;
@@ -103,41 +104,58 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
                 cur_arg=varargin{count_arg};
                 if isa(cur_arg,'VMADCP')
                     has_vmadcp=true;
-                    obj.vmadcp=cur_arg;
+                    var_name='vmadcp';
                 elseif isa(cur_arg,'Bathymetry')
                     construct_bathymetry=false;
-                    obj.bathymetry=cur_arg;
+                    var_name='bathymetry';
                 elseif isa(cur_arg,'XSection')
                     construct_xs=false;
-                    obj.xs=cur_arg;
+                    var_name='xs';
                 elseif isa(cur_arg,'EnsembleFilter')
                     construct_filter=false;
-                    obj.filter=cur_arg;
+                    var_name='filter';
                 elseif isa(cur_arg,'datetime')
-                    obj.time=cur_arg;
+                    var_name='time';
                     construct_time=false;
                 else
                     warning(['Unhandled input of type: ',class(cur_arg)])
+                    continue
                     % warning here
                 end
+                obj.assign_var(var_name,cur_arg);
             end
+
             if ~has_vmadcp
-                error('Please pass a VMADCP object upon construction')
+                return
             end
+            vm = [obj.vmadcp];
+
+            cell_vm = num2cell(vm);
+            scalar_vm = vm;
+            if ~isscalar(cell_vm) && isequal(cell_vm{:})
+                scalar_vm = vm(1);
+            end
+            
             if construct_bathymetry
-                obj.bathymetry=BathymetryScatteredPoints(obj.vmadcp);
+                B=BathymetryScatteredPoints(scalar_vm);
+                obj.assign_var('bathy',B);
             end
             if construct_xs
-                obj.xs=XSection(obj.vmadcp);
+                obj.assign_var('xs',XSection(scalar_vm));
             end
             if construct_filter
-                obj.filter=EnsembleFilter(obj.vmadcp);
+                obj.assign_var('filter',EnsembleFilter(scalar_vm));
             end
             if construct_time
-                t=obj.vmadcp.time;
-                t(obj.filter.all_cells_bad(obj.vmadcp))=[];
-                obj.time=mean(t,"all","omitnan");
+                t={vm.time};
+                ef=[obj.filter];
+                ef={ef.bad_ensembles};
+                ef = cellfun(@not,ef,"UniformOutput",false);
+                t = cellfun(@(a,b) mean(a(b),"all","omitnat"),t,ef,'UniformOutput',false);
+                obj.assign_var('time',t);
             end
+
+
         end
         function val=get.water_level(obj)
             val=obj.vmadcp.water_level_object.get_water_level(obj.time);
@@ -152,6 +170,18 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
 %   the highest depth cell in the data.
 %
 %   see also: SigmaZetaMeshFromVMADCP, SigmaZetaMesh, VMADCP
+
+            % handle call from array
+            if ~isscalar(obj)
+                siz_obj = size(obj);
+                siz_obj = num2cell(siz_obj);
+                mesh(siz_obj{:})=SigmaZetaMesh;
+                for co = 1:numel(obj)
+                    mesh(co)=obj(co).get_mesh();
+                end
+                return
+            end
+
             mesh=SigmaZetaMesh;
             mesh.xs=obj.xs;
             mesh.time=obj.time;

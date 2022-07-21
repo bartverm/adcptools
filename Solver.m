@@ -1,4 +1,4 @@
-classdef Solver < handle
+classdef Solver < helpers.ArrayOnConstruct & helpers.ArrayMethods
     % Abstract base class to solve ADCP repeat transect velocity data
     %
     %   Subclasses should implement the get_solver_input method.
@@ -59,38 +59,32 @@ classdef Solver < handle
         %   cross-section based on the track of the VMADCP data in adcp
         %
         %   see also: Solver, XSection
-        xs (1,1) XSection
+        xs (1,1) XSection = XSection
 
         % Solver/data_model
         %
         %   Velocity model to use when solving for velocity
         %
         %   see also: Solver, DataModel
-        data_model (1,1) DataModel
+        data_model (1,1) DataModel = DataModel
     end
     methods
         function obj=Solver(varargin)
-            has_mesh=false;
-            has_model=false;
+            obj = obj@helpers.ArrayOnConstruct(varargin{:})
             for cnt_arg=1:nargin
                 cur_arg=varargin{cnt_arg};
                 if isa(cur_arg, 'Mesh')
-                    has_mesh=true;
-                    obj.mesh=cur_arg;
+                    var = 'mesh';
                 elseif isa(cur_arg, 'Bathymetry')
-                    obj.bathy=cur_arg;
+                    var = 'bathy';
                 elseif isa(cur_arg,'XSection')
-                    obj.xs=cur_arg;
+                    var = 'xs';
                 elseif isa(cur_arg,'DataModel')
-                    has_model=true;
-                    obj.data_model=cur_arg;
+                    var = 'data_model';
+                else 
+                    continue
                 end
-            end
-            if ~has_mesh
-                error('You must provide a Mesh object upon construction of a Solver object')
-            end
-            if ~has_model
-                obj.data_model=DataModel;
+                obj.assign_var(var,cur_arg);
             end
         end
 
@@ -104,6 +98,11 @@ classdef Solver < handle
             %   components used for the computation.
             %
             % see also: Solver, get_velocity, Mesh, VMADCP
+
+            if ~isscalar(obj)
+                [pars, cov_pars, n_vels] = obj.array_support('get_parameters');
+                return
+            end
 
             % get velocity position, velocity data, and transformation
             % matrices to obtain earth velocity
@@ -229,6 +228,37 @@ classdef Solver < handle
             cov_pars = vertcat(t_cov_pars{:});
             n_vels = vertcat(t_n_bvels{:});
         end
+
+        function [varargout] = get_data(obj, varargin)
+            %   Get data from model parameters
+            %
+            %   vel=get_data(obj) 
+            %
+            %   [vel,cov_vel] = get_data(obj) 
+
+            % Handle non-scalar call
+            varargout = cell(1,nargout);
+            if ~isscalar(obj)
+                [varargout{:}] = obj.array_support('get_data',varargin{:});
+                return
+            end
+
+            % scalar call
+            if nargin == 1
+                varargin = cell(1,3);
+                [varargin{:}] = get_parameters(obj);
+            end
+            if nargin > 1
+                if nargin - 1 < nargout
+                    error('VelocitySolver:WrongInputNumber',...
+                        'Please pass no input other than object, or as many inputs as required outputs')
+                end
+            end
+            varargout = cell(1,nargout);
+            [varargout{:}] = ...
+                obj.data_model.get_data(varargin{:});
+        end
+
     end
     methods (Abstract, Access=protected)
         % Get input data for velocity solver

@@ -1,4 +1,4 @@
-classdef XSection < handle
+classdef XSection < handle & helpers.ArrayMethods
     % Defines a cross-section
     %
     %   obj=XSection() Construct default cross-section
@@ -88,7 +88,7 @@ classdef XSection < handle
         function set.direction_orthogonal(obj,val)
             obj.direction=[-val(2); val(1)];
         end
-        function [s,n,us,un]=xy2sn(obj,x,y,u,v)
+        function [varargout]=xy2sn(obj,x,y,u,v)
             % Transform points and vectors from xy to sn coordinates
             %
             %   [s, n] = xy2sn(obj,x,y) transforms the projected point coordinates
@@ -101,6 +101,7 @@ classdef XSection < handle
             %   components across and along the cross-section respectively.
             %
             %   see also: XSection, sn2xy
+
             if nargout == 0
                 return
             elseif nargin == 5
@@ -111,16 +112,29 @@ classdef XSection < handle
                 error('Function takes either 3 or 5 inputs')
             end
             
+            argin = {x, y};
+            if nargin > 3
+                argin = [argin {u, v}];
+            end
+
+            if ~isscalar(obj)
+                varargout = obj.array_support(@XSection.xy2sn,argin{:});
+                return
+            end
+
+            
             validateattributes(x,{'numeric'},{});
             validateattributes(y,{'numeric'},{});
             assert(isequal(size(x),size(y)),'size of x and y should match')
             s = (x - obj.origin(1)) * obj.direction_orthogonal(1) + (y - obj.origin(2)) * obj.direction_orthogonal(2);
             n = (x - obj.origin(1)) * obj.direction(1) + (y - obj.origin(2)) * obj.direction(2);
-            if has_vel
+            varargout = {s,n};
+            if has_vel && nargout > 2
                 [us,un]=obj.xy2sn_vel(u,v);
+                varargout = {us, un};
             end
         end
-        function [x, y, u, v]=sn2xy(obj, s, n, us, un)
+        function varargout=sn2xy(obj, s, n, us, un)
             % Transform points and vectors from sn to xy coordinates
             %
             %   [x, y] = sn2xy(obj,s,n) transforms the point coordinates
@@ -142,15 +156,26 @@ classdef XSection < handle
                 error('Function takes either 3 or 5 inputs')
             end
             
-            if has_vel
+            argin = {s, n};
+            if nargin > 3
+                argin = [argin {us, un}];
             end
+
+            if ~isscalar(obj)
+                varargout = obj.array_support(@XSection.sn2xy,argin{:});
+                return
+            end
+
+            
             validateattributes(s,{'numeric'},{});
             validateattributes(n,{'numeric'},{});
             assert(isequal(size(s),size(n)),'size of x and y should match')
             x = obj.origin(1) + obj.direction(1) * n + obj.direction_orthogonal(1) * s;
             y = obj.origin(2) + obj.direction(2) * n + obj.direction_orthogonal(2) * s;
+            varargout = {x, y};
             if has_vel
                 [u,v]=obj.sn2xy_vel(us,un);
+                varargout = [varargout, {u, v}];
             end
         end
         function [us,un]=xy2sn_vel(obj,u,v)
@@ -162,11 +187,19 @@ classdef XSection < handle
             %   the cross-section respectively.
             %
             %   see also: XSection, sn2xy_vel
-                validateattributes(u,{'numeric'},{});
-                validateattributes(v,{'numeric'},{});
-                assert(isequal(size(u),size(v)),'size of u and v should match')
-                us = u * obj.direction_orthogonal(1) + v * obj.direction_orthogonal(2);
-                un = u * obj.direction(1) + v * obj.direction(2);
+            argin = {u, v};
+
+            if ~isscalar(obj)
+                [us, un] = obj.array_support('xy2sn_vel',argin{:});
+                return
+            end
+
+    
+            validateattributes(u,{'numeric'},{});
+            validateattributes(v,{'numeric'},{});
+            assert(isequal(size(u),size(v)),'size of u and v should match')
+            us = u * obj.direction_orthogonal(1) + v * obj.direction_orthogonal(2);
+            un = u * obj.direction(1) + v * obj.direction(2);
         end
         
         function [u,v]=sn2xy_vel(obj,us,un)
@@ -177,11 +210,17 @@ classdef XSection < handle
             %   corresponding (u, v) components in x and y direction
             %
             %   see also: XSection, xy2sn_vel
-                validateattributes(us,{'numeric'},{});
-                validateattributes(un,{'numeric'},{});
-                assert(isequal(size(us),size(un)),'size of u and v should match')
-                u = obj.direction(1) * un + obj.direction_orthogonal(1) * us;
-                v = obj.direction(2) * un + obj.direction_orthogonal(2) * us;
+
+            if ~isscalar(obj)
+                [u, v] = obj.array_support('sn2xy_vel',us,un);
+                return
+            end
+
+            validateattributes(us,{'numeric'},{});
+            validateattributes(un,{'numeric'},{});
+            assert(isequal(size(us),size(un)),'size of u and v should match')
+            u = obj.direction(1) * un + obj.direction_orthogonal(1) * us;
+            v = obj.direction(2) * un + obj.direction_orthogonal(2) * us;
         end
         function Tsn=xy2sn_tens(obj,T)
             % Transform tesnors from xy to sn coordinates
@@ -190,6 +229,12 @@ classdef XSection < handle
             %   components. T has dimenions (Nx2x2).
             %
             %   see also: XSection, sn2xy_tens
+
+            if ~isscalar(obj)
+                Tsn = obj.array_support('xy2sn_tens',T);
+                return
+            end
+
             siz_T=size(T);
             assert(isequal(siz_T(end), siz_T(end-1),2), 'Size of trailing two dimensions of T must be equal to two')
             M=[obj.direction_orthogonal'; obj.direction'];
@@ -206,6 +251,11 @@ classdef XSection < handle
             %   coordinates. T has dimenions (Nx2x2).
             %
             %   see also: XSection, xy2sn_tens
+            if ~isscalar(obj)
+                T = obj.array_support('sn2xy_tens',T_sn);
+                return
+            end
+
             M=[obj.direction_orthogonal obj.direction];
             T=helpers.matmult(helpers.matmult(M,T_sn), M');
         end
@@ -221,13 +271,12 @@ classdef XSection < handle
             %   h = plot(...) returns the handle to the quivers
             %
             %   see also: XSection
+            argin = {};
+            if nargin > 1
+                argin = [argin {scale}];
+            end
             if ~isscalar(obj)
-                hold_stat=get(gca,'nextplot');
-                hold on
-                for co=1:numel(obj)
-                    obj(co).plot;
-                end
-                set(gca,'NextPlot',hold_stat)
+                varargout = obj.plot_array('plot',argin{:});
                 return
             end
             if nargin < 2
