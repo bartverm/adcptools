@@ -1,4 +1,4 @@
-classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
+classdef SigmaZetaMesh < Mesh & helpers.ArraySupport
 % Defines a sigma-z mesh
 %   
 %   The SigmaZetaMesh should be generated with a SigmaZetaMeshGenerator.
@@ -310,7 +310,7 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
                 idx(fincell) = cc;
             end
         end
-        function plot(obj,var)
+        function varargout = plot(obj,varargin)
 % Plot the mesh optionally colored with a variable
 %
 %   plot(obj) plots the mesh with the bed and water surface
@@ -318,27 +318,52 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
 %   plot(obj,var) plot the mesh and color the cells with the varibale var
 %
 %   see also: SigmaZetaMesh, plot3
+            varargout = cell(1,nargout);
             if ~isscalar(obj)
-                for ce=1:numel(obj)
-                    subplot(numel(obj),1,ce)
-                    plot(obj(ce))
-                end
+                [varargout{:}] = obj.run_method('plot', varargin{:});
                 return
             end
-            hold_stat=get(gca,'NextPlot');
-            plot(obj.nb_all,obj.zb_all,'k','Linewidth',2)
-            hold on
-            plot(obj.nw,obj.nw*0+obj.water_level,'b','Linewidth',2)
+        
             plot_var=nan(obj.ncells,1);
-            if nargin > 1
-                assert(numel(var)==obj.ncells, 'Variable to plot should have same number of elements as cells in the mesh');
-                plot_var=var;
+            get_gca = true;
+            for ca = 1:numel(varargin)
+                carg = varargin{ca};
+                if isa(carg,'double')
+                    assert(size(plot_var,1)==obj.ncells,...
+                        'SigmaZetaMesh:PlotVarWrongNRows',...
+                        'Variable to plot should have same number of rows as cells in the mesh');
+                    assert(ismember(size(plot_var,2),[1 3]),...
+                        'SigmaZetaMesh:PlotVarWrongNCols',...
+                        'Variable to plot should have either one or three columns')
+                    plot_var = carg;
+                elseif isa(carg,'matlab.graphics.axis.Axes')
+                    assert(isscalar(carg),...
+                        'SigmaZetaMesh:AxHandleNotScalar',...
+                        'Only supports scalar axis handle')
+                    ax = carg;
+                    get_gca = false;
+                end
             end
-            patch(obj.n_patch, obj.z_patch, plot_var(:));
-            set(gca,'NextPlot',hold_stat);
+            if get_gca
+                ax = gca;
+            end
+            hold_stat=get(ax,'NextPlot');
+            hbed = plot(ax,obj.nb_all,obj.zb_all,'k','Linewidth',2);
+            set(ax,'NextPlot','add')
+            hwater = plot(ax,obj.nw,obj.nw*0+obj.water_level,'b','Linewidth',2);
+            hmesh = patch(ax,obj.n_patch, obj.z_patch, plot_var(:,1));
+            varargout = {hbed, hwater, hmesh};
+            if size(plot_var,2)==3
+                hquiv = quiver(ax, obj.n_middle(obj.col_to_cell)',...
+                    obj.z_center, plot_var(:,2), plot_var(:,3),...
+                    'Color','k');
+                varargout = [varargout, {hquiv}];
+                shading(ax,'flat')
+            end
+            set(ax,'NextPlot',hold_stat);
         end
 
-        function [hpatch, hwater, hbed]=plot3(obj,var)
+        function varargout=plot3(obj,varargin)
 % Plot the mesh optionally colored with a variable in 3D
 %
 %   plot3(obj) plots the mesh with the bed and water surface
@@ -346,30 +371,53 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
 %   plot3(obj,var) plot the mesh and color the cells with the varibale var
 %
 %   see also: SigmaZetaMesh, plot
+            varargout = cell(1,nargout);
             if ~isscalar(obj)
-                hold_stat=get(gca,'NextPlot');
-                hold on
-                for ce=1:numel(obj)
-                    plot3(obj(ce))
-                end
-                set(gca,'NextPlot',hold_stat);
+                [varargout{:}] = obj.run_method('plot3', varargin{:});
                 return
-            end
-            hold_stat=get(gca,'NextPlot');
-            hbed=plot3(obj.xb_all,obj.yb_all,obj.zb_all, 'k', 'Linewidth',2);
-            hold on
-            hwater=plot3(obj.xw,obj.yw,obj.water_level+obj.xw*0, 'b', 'Linewidth',2);
+            end        
             plot_var=nan(obj.ncells,1);
-            if nargin > 1
-                assert(numel(var)==obj.ncells, 'Variable to plot should have same number of elements as cells in the mesh');
-                plot_var=var;
+            get_gca = true;
+            for ca = 1:numel(varargin)
+                carg = varargin{ca};
+                if isa(carg,'double')
+                    assert(size(plot_var,1)==obj.ncells,...
+                        'SigmaZetaMesh:PlotVarWrongNRows',...
+                        'Variable to plot should have same number of rows as cells in the mesh');
+                    assert(ismember(size(plot_var,2),[1 3]),...
+                        'SigmaZetaMesh:PlotVarWrongNCols',...
+                        'Variable to plot should have either one or three columns')
+                    plot_var = carg;
+                elseif isa(carg,'matlab.graphics.axis.Axes')
+                    assert(isscalar(carg),...
+                        'SigmaZetaMesh:AxHandleNotScalar',...
+                        'Only supports scalar axis handle')
+                    ax = carg;
+                    get_gca = false;
+                end
             end
-            hpatch_tmp=patch(obj.x_patch,obj.y_patch, obj.z_patch,plot_var(:));
-            set(gca,'NextPlot',hold_stat);
-            set(gca,'DataAspectRatio',[5 5 1])
-            if nargout>1
-                hpatch=hpatch_tmp;
+            if get_gca
+                ax = gca;
             end
+            hold_stat=get(ax,'NextPlot');
+            hbed=plot3(ax,obj.xb_all,obj.yb_all,obj.zb_all, 'k', 'Linewidth',2);
+            set(ax,'NextPlot','add')
+            hwater=plot3(ax,obj.xw,obj.yw,obj.water_level+obj.xw*0, 'b', 'Linewidth',2);
+            hmesh=patch(ax,obj.x_patch,obj.y_patch, obj.z_patch,plot_var(:,1));
+            varargout = {hbed, hwater, hmesh};
+            if size(plot_var,2)==3
+                hquiv = quiver3(ax, obj.x_middle(obj.col_to_cell)',...
+                    obj.y_middle(obj.col_to_cell)',...
+                    obj.z_center,...
+                    plot_var(:,1),...
+                    plot_var(:,2), ...
+                    plot_var(:,3),...
+                    'Color','k');
+                varargout = [varargout, {hquiv}];
+                shading(ax,'flat')
+            end
+            set(ax,'NextPlot',hold_stat);
+            set(ax,'DataAspectRatio',[5 5 1])
             view(30,30)
         end       
     end

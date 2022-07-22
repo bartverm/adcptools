@@ -1,4 +1,4 @@
-classdef XSection < handle & helpers.ArrayMethods
+classdef XSection < handle & helpers.ArraySupport
     % Defines a cross-section
     %
     %   obj=XSection() Construct default cross-section
@@ -118,7 +118,7 @@ classdef XSection < handle & helpers.ArrayMethods
             end
 
             if ~isscalar(obj)
-                varargout = obj.array_support(@XSection.xy2sn,argin{:});
+                varargout = obj.run_method('xy2sn',argin{:});
                 return
             end
 
@@ -162,7 +162,7 @@ classdef XSection < handle & helpers.ArrayMethods
             end
 
             if ~isscalar(obj)
-                varargout = obj.array_support(@XSection.sn2xy,argin{:});
+                varargout = obj.run_method('sn2xy',argin{:});
                 return
             end
 
@@ -190,7 +190,7 @@ classdef XSection < handle & helpers.ArrayMethods
             argin = {u, v};
 
             if ~isscalar(obj)
-                [us, un] = obj.array_support('xy2sn_vel',argin{:});
+                [us, un] = obj.run_method('xy2sn_vel',argin{:});
                 return
             end
 
@@ -212,7 +212,7 @@ classdef XSection < handle & helpers.ArrayMethods
             %   see also: XSection, xy2sn_vel
 
             if ~isscalar(obj)
-                [u, v] = obj.array_support('sn2xy_vel',us,un);
+                [u, v] = obj.run_method('sn2xy_vel',us,un);
                 return
             end
 
@@ -231,7 +231,7 @@ classdef XSection < handle & helpers.ArrayMethods
             %   see also: XSection, sn2xy_tens
 
             if ~isscalar(obj)
-                Tsn = obj.array_support('xy2sn_tens',T);
+                Tsn = obj.run_method('xy2sn_tens',T);
                 return
             end
 
@@ -252,7 +252,7 @@ classdef XSection < handle & helpers.ArrayMethods
             %
             %   see also: XSection, xy2sn_tens
             if ~isscalar(obj)
-                T = obj.array_support('sn2xy_tens',T_sn);
+                T = obj.run_method('sn2xy_tens',T_sn);
                 return
             end
 

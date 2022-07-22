@@ -1,4 +1,4 @@
-classdef Solver < helpers.ArrayOnConstruct & helpers.ArrayMethods
+classdef Solver < helpers.ArraySupport
     % Abstract base class to solve ADCP repeat transect velocity data
     %
     %   Subclasses should implement the get_solver_input method.
@@ -70,7 +70,7 @@ classdef Solver < helpers.ArrayOnConstruct & helpers.ArrayMethods
     end
     methods
         function obj=Solver(varargin)
-            obj = obj@helpers.ArrayOnConstruct(varargin{:})
+            obj = obj@helpers.ArraySupport(varargin{:})
             for cnt_arg=1:nargin
                 cur_arg=varargin{cnt_arg};
                 if isa(cur_arg, 'Mesh')
@@ -84,7 +84,7 @@ classdef Solver < helpers.ArrayOnConstruct & helpers.ArrayMethods
                 else 
                     continue
                 end
-                obj.assign_var(var,cur_arg);
+                obj.assign_property(var,cur_arg);
             end
         end
 
@@ -100,7 +100,7 @@ classdef Solver < helpers.ArrayOnConstruct & helpers.ArrayMethods
             % see also: Solver, get_velocity, Mesh, VMADCP
 
             if ~isscalar(obj)
-                [pars, cov_pars, n_vels] = obj.array_support('get_parameters');
+                [pars, cov_pars, n_vels] = obj.run_method('get_parameters');
                 return
             end
 
@@ -239,7 +239,7 @@ classdef Solver < helpers.ArrayOnConstruct & helpers.ArrayMethods
             % Handle non-scalar call
             varargout = cell(1,nargout);
             if ~isscalar(obj)
-                [varargout{:}] = obj.array_support('get_data',varargin{:});
+                [varargout{:}] = obj.run_method('get_data',varargin{:});
                 return
             end
 

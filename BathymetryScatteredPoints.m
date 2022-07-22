@@ -56,7 +56,7 @@ classdef BathymetryScatteredPoints < Bathymetry
             siz = size(obj);
             siz = num2cell(siz);
             int(siz{:}) = LoessNNInterpolator;
-            obj.assign_var('interpolator',int); % make sure interpolators are different for array
+            obj.assign_property('interpolator',int); % make sure interpolators are different for array
             addlistener(obj,'known','PostSet',@obj.set_interpolator_known);
             addlistener(obj,'interpolator','PostSet',@obj.set_interpolator_known);
             construct_from_vmadcp=false;
@@ -94,7 +94,7 @@ classdef BathymetryScatteredPoints < Bathymetry
                 obj.known_from_vmadcp(vadcp,filter)
             end
             if construct_water_level
-                obj.assign_var('water_level', vadcp.water_level_object);
+                obj.assign_property('water_level', vadcp.water_level_object);
             end
         end
         function z=get_bed_elev(obj,x,y)
@@ -126,7 +126,7 @@ classdef BathymetryScatteredPoints < Bathymetry
                 filt = isfin & ~filter(cc).all_cells_bad(vmadcp);
                 var{cc}= [xpos(filt)';ypos(filt)';zpos(filt)'];
             end
-            obj.assign_var('known',var);
+            obj.assign_property('known',var);
         end
         function plot_residuals(obj)
 % Plots the residuals at the input points

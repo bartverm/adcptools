@@ -1,4 +1,4 @@
-classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArrayOnConstruct
+classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
 % Generates a SigmaZetaMesh based on VMADCP data
 %
 %   obj=SigmaZetaFromaVMADCP() constructs a default object
@@ -94,7 +94,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArrayOnConst
     end
     methods
         function obj=SigmaZetaMeshFromVMADCP(varargin)
-            obj = obj@helpers.ArrayOnConstruct(varargin{:});
+            obj = obj@helpers.ArraySupport(varargin{:});
             construct_bathymetry=true;
             construct_xs=true;
             construct_filter=true;
@@ -122,7 +122,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArrayOnConst
                     continue
                     % warning here
                 end
-                obj.assign_var(var_name,cur_arg);
+                obj.assign_property(var_name,cur_arg);
             end
 
             if ~has_vmadcp
@@ -138,13 +138,13 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArrayOnConst
             
             if construct_bathymetry
                 B=BathymetryScatteredPoints(scalar_vm);
-                obj.assign_var('bathy',B);
+                obj.assign_property('bathy',B);
             end
             if construct_xs
-                obj.assign_var('xs',XSection(scalar_vm));
+                obj.assign_property('xs',XSection(scalar_vm));
             end
             if construct_filter
-                obj.assign_var('filter',EnsembleFilter(scalar_vm));
+                obj.assign_property('filter',EnsembleFilter(scalar_vm));
             end
             if construct_time
                 t={vm.time};
@@ -152,10 +152,8 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArrayOnConst
                 ef={ef.bad_ensembles};
                 ef = cellfun(@not,ef,"UniformOutput",false);
                 t = cellfun(@(a,b) mean(a(b),"all","omitnat"),t,ef,'UniformOutput',false);
-                obj.assign_var('time',t);
+                obj.assign_property('time',t);
             end
-
-
         end
         function val=get.water_level(obj)
             val=obj.vmadcp.water_level_object.get_water_level(obj.time);
@@ -173,12 +171,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArrayOnConst
 
             % handle call from array
             if ~isscalar(obj)
-                siz_obj = size(obj);
-                siz_obj = num2cell(siz_obj);
-                mesh(siz_obj{:})=SigmaZetaMesh;
-                for co = 1:numel(obj)
-                    mesh(co)=obj(co).get_mesh();
-                end
+                mesh = obj.run_method('get_mesh');
                 return
             end
 

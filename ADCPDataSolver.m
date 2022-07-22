@@ -36,16 +36,16 @@ classdef ADCPDataSolver < Solver
                 else 
                     continue
                 end
-                obj.assign_var(var, cur_arg)
+                obj.assign_property(var, cur_arg)
             end
 
             if ~has_bathy && has_vmadcp
                 B=BathymetryScatteredPoints(obj.adcp);
-                obj.assign_var('bathy',B);
+                obj.assign_property('bathy',B);
             end
             if ~has_xs && has_vmadcp
                 XS=XSection(obj.adcp);
-                obj.assign_var('xs',XS);
+                obj.assign_property('xs',XS);
             end
         end
 

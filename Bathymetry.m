@@ -1,4 +1,4 @@
-classdef Bathymetry < helpers.ArrayOnConstruct
+classdef Bathymetry < helpers.ArraySupport
 % Abstract class defining how bathymetry is provided to ADCPtools
 %
 %   Subclasses need to implement the 'get_bed_level' method
@@ -39,11 +39,11 @@ classdef Bathymetry < helpers.ArrayOnConstruct
     end
     methods
         function obj=Bathymetry(varargin)
-            obj = obj@helpers.ArrayOnConstruct(varargin{:});
+            obj = obj@helpers.ArraySupport(varargin{:});
             for count_var=1:nargin
                 cvar=varargin{count_var};
                 if isa(cvar,'WaterLevel')
-                    obj.assign_var('water_level',cvar);
+                    obj.assign_property('water_level',cvar);
                 end
             end
         end
