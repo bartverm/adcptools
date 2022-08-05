@@ -370,9 +370,7 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
             if nargout>1
                 hpatch=hpatch_tmp;
             end
-        end
-        
-        
+        end       
     end
     methods(Access=protected)
         function val=get_ncells(obj)
