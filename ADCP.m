@@ -504,15 +504,15 @@ classdef ADCP < handle
             file_id=obj.raw.FileNumber;
         end
         function cs=get.coordinate_system(obj)
-            csnum=reshape(bin2dec(obj.raw.corinfo(obj.fileid,4:5)),1,[]);
+            csnum=reshape(bin2dec(obj.raw.corinfo(4:5,:)'),1,[]);
             cs(1,obj.nensembles)=CoordinateSystem.Beam;
             cs(csnum==2)=CoordinateSystem.Instrument;
             cs(csnum==1)=CoordinateSystem.Ship;
             cs(csnum==3)=CoordinateSystem.Earth;
         end
         function ang=get.beam_angle(obj)
-            ang=double(obj.raw.HADCPbeamangle(obj.fileid));
-            ang_sys=reshape(bin2dec(obj.raw.sysconf(obj.fileid,9:10)),1,[]);
+            ang=double(obj.raw.HADCPbeamangle);
+            ang_sys=reshape(bin2dec(obj.raw.sysconf(9:10,:)'),1,[]);
             ang(ang==0 & ang_sys==0)=15;
             ang(ang==0 & ang_sys==2)=20;
             ang(ang==0 & ang_sys==3)=30;
@@ -529,46 +529,46 @@ classdef ADCP < handle
             head=obj.heading_provider.heading(obj);
         end
         function ha=get.headalign(obj)
-            ha=double(obj.raw.headalign(obj.fileid))/100;
+            ha=double(obj.raw.headalign)/100;
         end
         function conv=get.convexity(obj)
-            conv=reshape(bin2dec(obj.raw.sysconf(obj.fileid,4)),1,[]);
+            conv=reshape(bin2dec(obj.raw.sysconf(4,:)'),1,[]);
             conv(conv==0)=-1;
         end
         function up=get.is_upward(obj)
-            up=reshape(bin2dec(obj.raw.sysconf(obj.fileid,8))==1,1,[]);
+            up=reshape(bin2dec(obj.raw.sysconf(8,:)')==1,1,[]);
         end
         function nens=get.nensembles(obj)
             nens=size(obj.fileid,2);
         end
         function tf=get.tilts_used_in_transform(obj)
-            tf=reshape(bin2dec(obj.raw.corinfo(obj.fileid,3)),1,[])==1;
+            tf=reshape(bin2dec(obj.raw.corinfo(3,:)'),1,[])==1;
         end
         function tf=get.bin_mapping_used(obj)
-            tf=reshape(bin2dec(obj.raw.corinfo(obj.fileid,1)),1,[])==1;
+            tf=reshape(bin2dec(obj.raw.corinfo(1,:)'),1,[])==1;
         end
         function tf=get.three_beam_solutions_used(obj)
-            tf=reshape(bin2dec(obj.raw.corinfo(obj.fileid,2)),1,[])==1;
+            tf=reshape(bin2dec(obj.raw.corinfo(2,:)'),1,[])==1;
         end
         
         function nb=get.nbeams(obj)
-            nb=double(obj.raw.usedbeams(obj.fileid));
+            nb=double(obj.raw.usedbeams);
         end
         function blank=get.blanking(obj)
-            blank=double(obj.raw.blnk(obj.fileid))/100;
+            blank=double(obj.raw.blnk)/100;
         end
         function l=get.lengthxmitpulse(obj)
             if isfield(obj.raw,'sp_transmit_length') % streampro leader support
                 l=double(obj.raw.sp_transmit_length)/1000;
             else
-                l=double(obj.raw.lngthtranspulse(obj.fileid))/100;
+                l=double(obj.raw.lngthtranspulse)/100;
             end
         end
         function c=get.cellsize(obj)
             if isfield(obj.raw,'sp_bin_space') %streampro leader support (space makes more sense than size, for the actual use. These seem always to match btw)
                 c=double(obj.raw.sp_bin_space)/10000;
             else
-                c=double(obj.raw.binsize(obj.fileid))/100;
+                c=double(obj.raw.binsize)/100;
             end
         end
         function val=get.temperature(obj)
@@ -578,7 +578,7 @@ classdef ADCP < handle
             val=double(obj.raw.salinity);
         end
         function val=get.bandwidth(obj)
-            val=double(obj.raw.bandwidth(obj.fileid));
+            val=double(obj.raw.bandwidth);
         end
         function val=get.pressure(obj)
             funderflow=obj.raw.pressure>3e9;
@@ -593,12 +593,12 @@ classdef ADCP < handle
             if isfield(obj.raw,'sp_mid_bin1') % streampro leader support (more accurate)
                 db1=double(obj.raw.sp_mid_bin1)/10000;
             else
-                db1=double(obj.raw.distmidbin1(obj.fileid))/100;
+                db1=double(obj.raw.distmidbin1)/100;
             end
         end
 
         function n=get.ncells(obj)
-            n=double(obj.raw.nbins(obj.fileid));
+            n=double(obj.raw.nbins);
         end
         function rng=get.depth_cell_slant_range(obj)
             bangle=obj.beam_angle;

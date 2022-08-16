@@ -63,7 +63,7 @@ else
     nargoutchk(0,1)
 end
 inp=inputParser;                                                           % Create an object of the InputParser class
-inp.addRequired('files',@(x) (iscellstr(x) | ischar(x)));                  % Add the required variable 'files' and check for right format
+inp.addRequired('files',@(x) (isstring(x) | iscellstr(x) | ischar(x)));                  % Add the required variable 'files' and check for right format
 inp.addOptional('flags','vhcpbexa',@ischar);                                % Add the optional argument 'flags' and check for right format
 inp.parse(files,varargin{:});                                              % Parse input
 
@@ -101,7 +101,7 @@ for cntfile=1:nfiles                                                       % Loo
         enscnt=enscnt+1;                                                   %Increase ensemble counter with one
         fileid(enscnt)=fid;%#ok<AGROW>                                     %Store fileid for each ensemble  
         EnsStart{enscnt}=headpos;%#ok<AGROW>                               %Store starting position of ensemble %#ok<AGROW> 
-        [NDataTypes{enscnt},DataOffset{enscnt},DataHeader{enscnt}]=...
+        [~,DataOffset{enscnt},DataHeader{enscnt}]=...
             readhead(fid,headpos);%#ok<AGROW>                              %Read info about where to find which data %#ok<AGROW> 
     end
     if ~any(fileid==fid)                                                   %If no valid ensembles are found in current file
@@ -130,17 +130,30 @@ dataout.FileNumber=fileid;
 %interrupting the pinging. If the Fixed leaders of the files differ a
 %warning is generated. Take care concatenating files with different
 %settings!!! All setting will be recorded once for each file
-for cntfiles=1:nValidFiles
-    dataout.FileNumber(fileid==ValidFilesId(cntfiles))=cntfiles;           %Record in output which ensembles belong to which FL setting field
-    firstens=find(fileid==ValidFilesId(cntfiles),1);                       %Determine which ensemble is the first for the current file
-    posFL=EnsStart{firstens}+...
-        DataOffset{firstens}(DataHeader{firstens}(:,1)==0,1);              %Locate the fixed leader
-    readFL(ValidFilesId(cntfiles),posFL,cntfiles);                         %Call function to read the fixed leader
+
+
+dataout = initFL(nens, dataout);
+for cntens=1:nens
+    Ndatablock=find(DataHeader{cntens}(:,1)==0, 1);
+    if isempty(Ndatablock)
+        continue
+    else
+        fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
+        dataout = readFL(fileid(cntens),fpos,cntens, dataout);
+    end
 end
-if ~CheckFL(nValidFiles)                                                   % If configuration in fixed leader changes
-    warning('readADCP:ConfigChange',...                                   % Generate warning
-        'The configuration seems to change between files. \n Using readADCP on files with different configuration is not recommended, but will still work') 
-end
+
+% for cntfiles=1:nValidFiles
+%     dataout.FileNumber(fileid==ValidFilesId(cntfiles))=cntfiles;           %Record in output which ensembles belong to which FL setting field
+%     firstens=find(fileid==ValidFilesId(cntfiles),1);                       %Determine which ensemble is the first for the current file
+%     posFL=EnsStart{firstens}+...
+%         DataOffset{firstens}(DataHeader{firstens}(:,1)==0,1);              %Locate the fixed leader
+%     readFL(ValidFilesId(cntfiles),posFL,cntfiles);                         %Call function to read the fixed leader
+% end
+% if ~CheckFL(nValidFiles)                                                   % If configuration in fixed leader changes
+%     warning('readADCP:ConfigChange',...                                   % Generate warning
+%         'The configuration seems to change between files. \n Using readADCP on files with different configuration is not recommended, but will still work') 
+% end
 %% Preallocate and read data
 
 disp('Reading data...')
@@ -528,49 +541,48 @@ for cntDataType=1:NDataTypes
 end
 
 % Function to read the fixed leader
-function readFL(fid,fpos,filenum)
-global dataout
+function dataout = readFL(fid, fpos, cntens, dataout)
 fseek(fid,fpos,-1);
 LeadID=fread(fid,2,'*uint8');
 if any(LeadID~=[0;0])
     error('readADCP:readFL:wrongID','Fixed Leader ID seems to be wrong')
 end
-dataout.firmver(filenum)=fread(fid,1,'*uint8');                                 %Firmware version
-dataout.firmrev(filenum)=fread(fid,1,'*uint8');                                 %Firmware revision
-dataout.sysconf(filenum,:)=num2str(fread(fid,16,'*ubit1'))';                      %System configuration (see manual for explanation)
-dataout.sysconfstr{filenum}=sysinterp(dataout.sysconf(filenum,:));                     %Interprete system configuration
-dataout.SymData(filenum)=fread(fid,1,'*uint8');                                 %Flag for Real or Symulated data (0 for real data)
-dataout.LagLength(filenum)=fread(fid,1,'*uint8');                               %Time period between sound pulses
-dataout.usedbeams(filenum)=fread(fid,1,'*uint8');                               %Number of used beams
-dataout.nbins(filenum)=fread(fid,1,'*uint8');                                   %number of bins (1-128)
-dataout.pingperens(filenum)=fread(fid,1,'*uint16');                             %pings per ensemble (0-16384)
-dataout.binsize(filenum)=fread(fid,1,'*uint16');                                %bin size in cm (1-6400)
-dataout.blnk(filenum)=fread(fid,1,'*uint16');                                   %blanking in cm (0-9999)
+dataout.firmver(cntens)=fread(fid,1,'*uint8');                                 %Firmware version
+dataout.firmrev(cntens)=fread(fid,1,'*uint8');                                 %Firmware revision
+dataout.sysconf(:,cntens)=num2str(fread(fid,16,'*ubit1'));                      %System configuration (see manual for explanation)
+dataout.sysconfstr{cntens}=sysinterp(dataout.sysconf(:,cntens));                     %Interprete system configuration
+dataout.SymData(cntens)=fread(fid,1,'*uint8');                                 %Flag for Real or Symulated data (0 for real data)
+dataout.LagLength(cntens)=fread(fid,1,'*uint8');                               %Time period between sound pulses
+dataout.usedbeams(cntens)=fread(fid,1,'*uint8');                               %Number of used beams
+dataout.nbins(cntens)=fread(fid,1,'*uint8');                                   %number of bins (1-128)
+dataout.pingperens(cntens)=fread(fid,1,'*uint16');                             %pings per ensemble (0-16384)
+dataout.binsize(cntens)=fread(fid,1,'*uint16');                                %bin size in cm (1-6400)
+dataout.blnk(cntens)=fread(fid,1,'*uint16');                                   %blanking in cm (0-9999)
 fseek(fid,1,0);                                                            %skip data processing mode (always one)
-dataout.minthrsh(filenum)=fread(fid,1,'*uint8');                                %Minimum threshold correlation in counts (1-256)
-dataout.ncodrep(filenum)=fread(fid,1,'*uint8');                                 %Code repetitions in transmit pulse in counts (1-256)
-dataout.minpercgood(filenum)=fread(fid,1,'*uint8');                             %Minimum percentage of good pings in one ensemble (1-100)
-dataout.maxerrvel(filenum)=fread(fid,1,'*uint16');                              %Maximum value of error velocity in mm/s (1-5000 mm/s)
-dataout.Tbetweenpng(filenum)=fread(fid,1,'uint8=>uint16')*6000+...
+dataout.minthrsh(cntens)=fread(fid,1,'*uint8');                                %Minimum threshold correlation in counts (1-256)
+dataout.ncodrep(cntens)=fread(fid,1,'*uint8');                                 %Code repetitions in transmit pulse in counts (1-256)
+dataout.minpercgood(cntens)=fread(fid,1,'*uint8');                             %Minimum percentage of good pings in one ensemble (1-100)
+dataout.maxerrvel(cntens)=fread(fid,1,'*uint16');                              %Maximum value of error velocity in mm/s (1-5000 mm/s)
+dataout.Tbetweenpng(cntens)=fread(fid,1,'uint8=>uint16')*6000+...
     fread(fid,1,'uint8=>uint16')*100+fread(fid,1,'uint8=>uint16');         %Time between two pings in cs (reading min, secs and cs)
-dataout.corinfo(filenum,:)=num2str(fread(fid,8,'*ubit1'))';                       %Coordinate information (see manual for explanation)
-dataout.corstr{filenum}=corinterpr(dataout.corinfo(filenum,:));                        %Interprete coordinate information
-dataout.headalign(filenum)=fread(fid,1,'*int16');                               %Head physical alignment correction in 0.01 degrees (-179.99 to 180.00)
-dataout.headbias(filenum)=fread(fid,1,'*int16');                                %Head magnetic bias correction in 0.01 degrees (-179.99 to 180.00)
-dataout.sensource(filenum,:)=num2str(fread(fid,8,'*ubit1'))';                     %Sensor source information (see manual for explanation)
-dataout.senavail(filenum,:)=num2str(fread(fid,8,'*ubit1'))';                      %Sensor availability info  (see manual for explanation)
-dataout.distmidbin1(filenum)=fread(fid,1,'*uint16');                            %Distance to middle of first bin in cm (0-65535)
-dataout.lngthtranspulse(filenum)=fread(fid,1,'*uint16');                        %Length of the transmitted pulse in cm (0-65535)
-dataout.watrefbins(filenum,:)=fread(fid,2,'*uint8')';                              %Vector with begin and end bin for averaging to determine Water layer reference (1-128)
-dataout.mintarget(filenum)=fread(fid,1,'*uint8');                               %Minimum for false target rejection in counts(0-255)
-dataout.lowlattrig(filenum)=fread(fid,1,'*uint8');                              %Skip CX-command setting
-dataout.distpulse(filenum)=fread(fid,1,'*uint16');                              %Distance between pulse repetitions in cm (0-65535) dependent on WM command
-dataout.cpuserial(filenum,:)=fread(fid,8,'*uint8')';                               %CPU serial number
-dataout.bandwidth(filenum)=fread(fid,1,'*uint16');                              %Bandwidth (WB command)
-dataout.syspower(filenum)=fread(fid,1,'*uint8');                                %System power in counts (CQ-command, only affects 75 and 150 KHz systems)
-dataout.basefreqid(filenum)=fread(fid,1,'*uint8');                              %Base frequency index (only for Navigators)
-dataout.serial(filenum,:)=fread(fid,4,'*uint8')';                                  %ADCP serial number (REMUS only)
-dataout.HADCPbeamangle(filenum)=fread(fid,1,'*uint8');                          %Beam angle, only for HADCP's
+dataout.corinfo(:,cntens)=num2str(fread(fid,8,'*ubit1'));                       %Coordinate information (see manual for explanation)
+dataout.corstr{cntens}=corinterpr(dataout.corinfo(:,cntens));                        %Interprete coordinate information
+dataout.headalign(cntens)=fread(fid,1,'*int16');                               %Head physical alignment correction in 0.01 degrees (-179.99 to 180.00)
+dataout.headbias(cntens)=fread(fid,1,'*int16');                                %Head magnetic bias correction in 0.01 degrees (-179.99 to 180.00)
+dataout.sensource(:,cntens)=num2str(fread(fid,8,'*ubit1'));                     %Sensor source information (see manual for explanation)
+dataout.senavail(:,cntens)=num2str(fread(fid,8,'*ubit1'));                      %Sensor availability info  (see manual for explanation)
+dataout.distmidbin1(cntens)=fread(fid,1,'*uint16');                            %Distance to middle of first bin in cm (0-65535)
+dataout.lngthtranspulse(cntens)=fread(fid,1,'*uint16');                        %Length of the transmitted pulse in cm (0-65535)
+dataout.watrefbins(:,cntens)=fread(fid,2,'*uint8');                              %Vector with begin and end bin for averaging to determine Water layer reference (1-128)
+dataout.mintarget(cntens)=fread(fid,1,'*uint8');                               %Minimum for false target rejection in counts(0-255)
+dataout.lowlattrig(cntens)=fread(fid,1,'*uint8');                              %Skip CX-command setting
+dataout.distpulse(cntens)=fread(fid,1,'*uint16');                              %Distance between pulse repetitions in cm (0-65535) dependent on WM command
+dataout.cpuserial(:,cntens)=fread(fid,8,'*uint8');                               %CPU serial number
+dataout.bandwidth(cntens)=fread(fid,1,'*uint16');                              %Bandwidth (WB command)
+dataout.syspower(cntens)=fread(fid,1,'*uint8');                                %System power in counts (CQ-command, only affects 75 and 150 KHz systems)
+dataout.basefreqid(cntens)=fread(fid,1,'*uint8');                              %Base frequency index (only for Navigators)
+dataout.serial(:,cntens)=fread(fid,4,'*uint8');                                  %ADCP serial number (REMUS only)
+dataout.HADCPbeamangle(cntens)=fread(fid,1,'*uint8');                          %Beam angle, only for HADCP's
 
 %Read velocity
 function V=readVEL(fid,fpos,nbins)
@@ -918,6 +930,44 @@ dataout.VTG.mode(hasdata)=datvtg.mode;
 
 %%          PREALLOCATION FUNCTIONS
 
+function dataout = initFL(nens, dataout)
+dataout.firmver=zeros(1,nens,'uint8');                                 %Firmware version
+dataout.firmrev=zeros(1,nens,'uint8');                                 %Firmware revision
+dataout.sysconf=repmat('0',[16, nens]);                      %System configuration (see manual for explanation)
+dataout.sysconfstr=cell(1,nens);                     %Interprete system configuration
+dataout.SymData=zeros(1,nens,'uint8');                                 %Flag for Real or Symulated data (0 for real data)
+dataout.LagLength=zeros(1,nens,'uint8');                               %Time period between sound pulses
+dataout.usedbeams=zeros(1,nens,'uint8');                               %Number of used beams
+dataout.nbins=zeros(1,nens,'uint8');                                   %number of bins (1-128)
+dataout.pingperens=zeros(1,nens,'uint16');                             %pings per ensemble (0-16384)
+dataout.binsize=zeros(1,nens,'uint16');                                %bin size in cm (1-6400)
+dataout.blnk=zeros(1,nens,'uint16');                                   %blanking in cm (0-9999)
+dataout.minthrsh=zeros(1,nens,'uint8');                                %Minimum threshold correlation in counts (1-256)
+dataout.ncodrep=zeros(1,nens,'uint8');                                 %Code repetitions in transmit pulse in counts (1-256)
+dataout.minpercgood=zeros(1,nens,'uint8');                             %Minimum percentage of good pings in one ensemble (1-100)
+dataout.maxerrvel=zeros(1,nens,'uint16');                              %Maximum value of error velocity in mm/s (1-5000 mm/s)
+dataout.Tbetweenpng=zeros(1,nens,'uint16');
+dataout.corinfo=repmat('0',[8, nens]);                       %Coordinate information (see manual for explanation)
+dataout.corstr=cell(1,nens);
+dataout.headalign=zeros(1,nens,'int16');                               %Head physical alignment correction in 0.01 degrees (-179.99 to 180.00)
+dataout.headbias=zeros(1,nens,'int16');                                %Head magnetic bias correction in 0.01 degrees (-179.99 to 180.00)
+dataout.sensource=repmat('0',[8, nens]);                     %Sensor source information (see manual for explanation)
+dataout.senavail=repmat('0',[8, nens]);                      %Sensor availability info  (see manual for explanation)
+dataout.distmidbin1=zeros(1,nens,'uint16');                            %Distance to middle of first bin in cm (0-65535)
+dataout.lngthtranspulse=zeros(1,nens,'uint16');                        %Length of the transmitted pulse in cm (0-65535)
+dataout.watrefbins=zeros(2,nens,'uint8');                              %Vector with begin and end bin for averaging to determine Water layer reference (1-128)
+dataout.mintarget=zeros(1,nens,'uint8');                               %Minimum for false target rejection in counts(0-255)
+dataout.lowlattrig=zeros(1,nens,'uint8');                              %Skip CX-command setting
+dataout.distpulse=zeros(1,nens,'uint16');                              %Distance between pulse repetitions in cm (0-65535) dependent on WM command
+dataout.cpuserial=zeros(8,nens,'uint8');                               %CPU serial number
+dataout.bandwidth=zeros(1,nens,'uint16');                              %Bandwidth (WB command)
+dataout.syspower=zeros(1,nens,'uint8');                                %System power in counts (CQ-command, only affects 75 and 150 KHz systems)
+dataout.basefreqid=zeros(1,nens,'uint8');                              %Base frequency index (only for Navigators)
+dataout.serial=zeros(4,nens,'uint8');                                  %ADCP serial number (REMUS only)
+dataout.HADCPbeamangle=zeros(1,nens,'uint8');                          %Beam angle, only for HADCP's
+
+
+
 %Initialize Variable leader
 function initVL(nens)
 global dataout
@@ -1084,7 +1134,7 @@ dataout.HDT.heading=nan(1,nens,'single');
 % Function to interpret system id
 function sysstr=sysinterp(sysid)
     sysstrtemp='';
-    switch sysid(1:3)
+    switch sysid(1:3)'
         case '000'
             sysstrtemp=[sysstrtemp,'75 KHz System'];
         case '100'
@@ -1103,7 +1153,7 @@ function sysstr=sysinterp(sysid)
     else
         sysstrtemp=[sysstrtemp,', Convex beam pattern'];
     end
-    switch sysid(5:6)
+    switch sysid(5:6)'
         case '00'
         sysstrtemp=[sysstrtemp,', Sensor configuration #1'];
         case '10'
@@ -1121,7 +1171,7 @@ function sysstr=sysinterp(sysid)
     else
         sysstrtemp=[sysstrtemp,', Down facing beam'];
     end
-    switch sysid(9:10)
+    switch sysid(9:10)'
         case '00'
         sysstrtemp=[sysstrtemp,', Beam angle: 15E'];
         case '10'
@@ -1131,7 +1181,7 @@ function sysstr=sysinterp(sysid)
         case '01'
         sysstrtemp=[sysstrtemp,', Unknown beam angle'];
     end
-    switch sysid(13:16)
+    switch sysid(13:16)'
         case '0010'
             sysstrtemp=[sysstrtemp,', 4 Beam Janus configuration'];
         case '1010'
@@ -1144,7 +1194,7 @@ sysstr=sysstrtemp;
 % Function to interprete coordinate information (bits are reversed wrt manual of ADCP)
 function corstr=corinterpr(corid)
             corstrtemp='';
-            switch corid(4:5)
+            switch corid(4:5)'
                 case '00'
                     corstrtemp=[corstrtemp,'Beam Coordinates Used'];
                 case '10'

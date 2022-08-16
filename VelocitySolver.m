@@ -82,6 +82,7 @@ classdef VelocitySolver < handle
     end
     methods
         function obj=VelocitySolver(varargin)
+            obj.ensemble_filter = EnsembleFilter;
             has_vmadcp=false;
             has_mesh=false;
             has_bathy=false;

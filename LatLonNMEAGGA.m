@@ -13,7 +13,12 @@ classdef LatLonNMEAGGA < LatLonProvider
         end
         function [lat, lon]=get_lat_lon(~,adcp)
            dt=adcp.raw.NMEAGGA.deltaT; % get time offset of GPS data
-           [~,fmin]=min(abs(dt),[],2); % find closest GPS data for each ensemble
+           fbad = ~isfinite(adcp.raw.NMEAGGA.Lat) |...
+               ~isfinite(adcp.raw.NMEAGGA.Long) |...
+               adcp.raw.NMEAGGA.Lat == 0 |...
+               adcp.raw.NMEAGGA.Long == 0;
+           dt(fbad) = nan;
+           [~,fmin]=min(abs(dt),[],2,"omitnan"); % find closest GPS data for each ensemble
            fidx=sub2ind(size(adcp.raw.NMEAGGA.Lat),(1:size(adcp.raw.NMEAGGA.Lat,1))',fmin); % transform to linear index
            lat=reshape(adcp.raw.NMEAGGA.Lat(fidx),1,[]);
            lon=reshape(adcp.raw.NMEAGGA.Long(fidx),1,[]);
