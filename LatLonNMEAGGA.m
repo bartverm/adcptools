@@ -9,22 +9,26 @@ classdef LatLonNMEAGGA < LatLonProvider
     methods(Access=protected)
         function tf=get_has_data(~,adcp)
             tf= isfield(adcp.raw,'NMEAGGA') && ...
-                all(isfield(adcp.raw.NMEAGGA,{'Lat','Long','deltaT'}));
+                all(isfield(adcp.raw.NMEAGGA,{...
+                'Lat', 'Long', 'deltaT', 'SN', 'EW'}));
         end
         function [lat, lon]=get_lat_lon(~,adcp)
            dt=adcp.raw.NMEAGGA.deltaT; % get time offset of GPS data
-           fbad = ~isfinite(adcp.raw.NMEAGGA.Lat) |...
-               ~isfinite(adcp.raw.NMEAGGA.Long) |...
-               adcp.raw.NMEAGGA.Lat == 0 |...
-               adcp.raw.NMEAGGA.Long == 0;
+           lat = adcp.raw.NMEAGGA.Lat;
+           fsouth = strcmpi(adcp.raw.NMEAGGA.SN,'S');
+           lat(fsouth) = -lat(fsouth);
+           lon = adcp.raw.NMEAGGA.Long;
+           fwest = strcmpi(adcp.raw.NMEAGGA.EW,'W');
+           lon(fwest) = - lon(fwest); 
+           fbad = ~isfinite(lat) |...
+               ~isfinite(lon) |...
+               lat == 0 |...
+               lon == 0;
            dt(fbad) = nan;
            [~,fmin]=min(abs(dt),[],2,"omitnan"); % find closest GPS data for each ensemble
-           fidx=sub2ind(size(adcp.raw.NMEAGGA.Lat),(1:size(adcp.raw.NMEAGGA.Lat,1))',fmin); % transform to linear index
-           lat=reshape(adcp.raw.NMEAGGA.Lat(fidx),1,[]);
-           lon=reshape(adcp.raw.NMEAGGA.Long(fidx),1,[]);
-           fbad=lat==0 & lon==0;
-           lat(fbad)=nan;
-           lon(fbad)=nan;
+           fidx=sub2ind(size(dt),(1:size(dt,1))',fmin); % transform to linear index
+           lat=reshape(lat(fidx),1,[]);
+           lon=reshape(lon(fidx),1,[]);
         end
     end
 end
