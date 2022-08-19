@@ -39,7 +39,7 @@ function adcpnmea = readNMEAADCP(inadcp,nmeafilename)
 
 inp=inputParser;                                                           % Create an object of the InputParser class
 inp.addRequired('inadcp',@isstruct);                                       % Add required input inadcp
-inp.addRequired('nmeafilename',@(x) (iscellstr(x) | ischar(x)));           % Add the required variable 'mmeafilename' and check for right format
+inp.addRequired('nmeafilename',@(x) (isstring(x) | iscellstr(x) | ischar(x)));           % Add the required variable 'mmeafilename' and check for right format
 inp.parse(inadcp,nmeafilename);                                            % Parse input
 if ischar(nmeafilename)
     nmeafilename=cellstr(nmeafilename);                                    % Change character array to cell
@@ -64,7 +64,7 @@ lines=cell(size(innmea));
 hastime=false(size(innmea));
 for cntmsg=1:length(nmeamsgs)                                              % Loop for all messages
     curmsg=nmeamsgs{cntmsg};                                               % store name of current message
-    for cntfile=1:length(innmea);                                          % Loop for all files
+    for cntfile=1:length(innmea)                                          % Loop for all files
         if isempty(innmea(cntfile).(curmsg))                               % If current message is empty in this file
             continue                                                       % Continue to next file
         end
@@ -134,7 +134,7 @@ if any(hastime)
             if abs(dtstart-dtend)>(5/24/60/60)
                 warning('readNMEAADCP2:highDT','Time difference between adcp clock and UTCtime is changing too much, something might be wrong') 
             end
-            dt=nanmean([dtstart,dtend]);
+            dt=mean([dtstart,dtend],'omitnan');
         end
        timeV{cntfile}=datevec(datenum(timeV{cntfile})+dt);
     end
@@ -237,11 +237,11 @@ else                                                           % If there is no 
                     IsInEns=innmea(cntfiles).(actmsg).lineid>rdenstmp(frdens) & innmea(cntfiles).(actmsg).lineid<rdenstmp(frdens+1);               % Search which values are generated between this ensemble and the previous one
                     if any(strcmp(actdt,{'heading','pitch','roll'}))
                         adcpnmea.(actmsg).(actdt)(matchEnsADCP,:)=atan2(...
-                        sind(nanmean(innmea(cntfiles).(actmsg).(actdt)(IsInEns,:),1)),...
-                        cosd(nanmean(innmea(cntfiles).(actmsg).(actdt)(IsInEns,:),1)))/pi*180;% average all the data for this ensemble    
+                        sind(mean(innmea(cntfiles).(actmsg).(actdt)(IsInEns,:),1,'omitnan')),...
+                        cosd(mean(innmea(cntfiles).(actmsg).(actdt)(IsInEns,:),1,'omitnan')))/pi*180;% average all the data for this ensemble    
                     else
                         adcpnmea.(actmsg).(actdt)(matchEnsADCP,:)=...
-                        nanmean(innmea(cntfiles).(actmsg).(actdt)(IsInEns,:),1);% average all the data for this ensemble    
+                        mean(innmea(cntfiles).(actmsg).(actdt)(IsInEns,:),1,'omitnan');% average all the data for this ensemble    
                     end
                 end    
             end
