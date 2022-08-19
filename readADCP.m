@@ -125,6 +125,9 @@ dataout.FileNumber=fileid;
 for cntfiles=1:nValidFiles
     dataout.FileNumber(fileid==ValidFilesId(cntfiles))=cntfiles;           %Record in output which ensembles belong to which FL setting field
 end
+
+disp('Reading data...')
+
 %% Read the fixed leader
 %FixedLeader is assumed to be the same for the whole data file and is read
 %only for the first ensemble. This is usually true as it will only change 
@@ -158,7 +161,7 @@ end
 % end
 %% Preallocate and read data
 
-disp('Reading data...')
+
 nbins=max(dataout.nbins);                                                  %Find largest amount of bins in order to make matrices in which all data fits
 AllHeaders=vertcat(DataHeader{:});                                         %Put all data headers in one vector
 AllHeaders(AllHeaders(:,1)~=8226,2)=65535;
