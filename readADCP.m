@@ -122,7 +122,9 @@ end
 disp(['Found ',num2str(nens),' valid ensebles'])                           % Display total number of valid ensembles
 clear enscnt
 dataout.FileNumber=fileid;
-
+for cntfiles=1:nValidFiles
+    dataout.FileNumber(fileid==ValidFilesId(cntfiles))=cntfiles;           %Record in output which ensembles belong to which FL setting field
+end
 %% Read the fixed leader
 %FixedLeader is assumed to be the same for the whole data file and is read
 %only for the first ensemble. This is usually true as it will only change 
@@ -133,13 +135,13 @@ dataout.FileNumber=fileid;
 
 
 dataout = initFL(nens, dataout);
-for cntens=1:nens
-    Ndatablock=find(DataHeader{cntens}(:,1)==0, 1);
+for cntens = 1:nens
+    Ndatablock = find(DataHeader{cntens}(:,1) == 0, 1);
     if isempty(Ndatablock)
         continue
     else
-        fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
-        dataout = readFL(fileid(cntens),fpos,cntens, dataout);
+        fpos = EnsStart{cntens} + DataOffset{cntens}(Ndatablock);
+        dataout = readFL(fileid(cntens), fpos, cntens, dataout);
     end
 end
 
