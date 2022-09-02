@@ -788,7 +788,7 @@ classdef ADCP < ADCP
                 if isempty(cur_files)
                     error(['Could not find ' ,file_name])
                 end
-            elseif iscellstr(file_name)
+            elseif iscellstr(file_name) || isstring(file_name)
                 for cf = numel(file_name):-1:1
                     tmp_file = dir(file_name{cf});
                     if isempty(tmp_file)
