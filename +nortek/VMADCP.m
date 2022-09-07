@@ -48,6 +48,12 @@ classdef VMADCP < nortek.ADCP & VMADCP
             end
             obj.horizontal_position_provider =...
                 LatLonToUTM(nortek.LatLonFromGNSS);
+            obj.heading_provider = [
+                nortek.HeadingFromGNSS;...
+                obj.heading_provider];
+            obj.tilts_provider = [
+                nortek.TiltsFromGNSS;...
+                obj.tilts_provider];
         end
         function val = get.gnss_nensembles(obj)
             val = sum(obj.gnss_packet_id == nortek.AnppPacketId.SystemState);

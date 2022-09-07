@@ -102,11 +102,6 @@ classdef ADCP < ADCP
         %
         %  see also: nortek.ADCP, available_echo_sounder
         echo_sounder_selector (:,1) double = 0
-
-        % Select the source for heading and tilt information
-        %
-        % see also: nortek.HeadTiltFromAHRS and nortek.HeadTiltInternal
-        head_tilt_provider (:,1) nortek.HeadTiltProvider = nortek.HeadTiltFromAHRS
     end
     properties(Dependent, SetAccess = private)
         % Available data types in ad2cp file. Column vector of type:
@@ -240,8 +235,12 @@ classdef ADCP < ADCP
             obj.instrument_matrix_provider = [...
                 nortek.InstrumentMatrixFromConfString;...
                 nortek.InstrumentMatrixFromBAngle];
-            obj.heading_provider = nortek.HeadingInternal;
-            obj.tilts_provider = nortek.TiltsInternal;
+            obj.heading_provider = [
+                nortek.HeadingFromAHRS;...
+                nortek.HeadingInternal];
+            obj.tilts_provider = [
+                nortek.TiltsFromAHRS;
+                nortek.TiltsInternal];
             obj.timezone='UTC';
         end
 
@@ -279,7 +278,29 @@ classdef ADCP < ADCP
             val = obj.get_roll_internal;
         end
         function val = get.head_tilt(obj)
-            val = obj.head_tilt_provider.head_tilt_matrix(obj);
+            pitch = obj.pitch;
+            roll = obj.roll;
+            heading = obj.heading-90;
+            zr=zeros(size(heading));
+            on=ones(size(heading));
+            sh = sind(heading);
+            ch = cosd(heading);
+            sp = sind(pitch);
+            cp = cosd(pitch);
+            sr = sind(roll);
+            cr = cosd(roll);
+            th = cat(3,...
+                cat(4,  ch,  sh, zr, zr),...
+                cat(4, -sh,  ch, zr, zr),...
+                cat(4,  zr,  zr, on, zr),...
+                cat(4,  zr,  zr, zr, on));
+            tp = cat(3,...
+                cat(4,  cp,  -sp.*sr, -cr.*sp, zr),...
+                cat(4,  zr,       cr,     -sr, zr),...
+                cat(4,  sp,   sr.*cp,  cp.*cr, zr),...
+                cat(4,  zr,       zr,      zr, on));
+            val = helpers.matmult(th,tp);
+
         end
         function val = get.blanking(obj)
             val = obj.get_blanking;
