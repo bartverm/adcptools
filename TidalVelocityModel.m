@@ -15,45 +15,46 @@ classdef TidalVelocityModel < VelocityModel
         % TidalVelocityModel/constituentsU constituents for x-component of velocity
         %
         %   1xN row vector defining tidal constituents to be included in the model
-        %   for the x-component of the velocity. Every value given indicates the
-        %   period of the constituent to be included. For every given value, two
-        %   model parameters are fitted, which are the coefficients for the sin and
-        %   cos function. From those amplitude and phases are computed. A residual
+        %   for the x-component of the velocity. Every string given indicates the
+        %   name of the constituent to be included. For every given value, two
+        %   model parameters are fitted, which are the coefficients for the cos and
+        %   sin functions. From those amplitude and phases are computed. A residual
         %   is always included.
         %
         %   see also: TidalVelocityModel, constituentsV, constituentsW,
         %               get_tidal_pars
-        constituentsU(1,:) double {mustBeFinite, mustBePositive} = []
+        constituentsU(1,:) cell = {};
 
         % TidalVelocityModel/constituentsV constituents for y-component of velocity
         %
         %   1xN row vector defining tidal constituents to be included in the model
-        %   for the y-component of the velocity. Every value given indicates the
-        %   period of the constituent to be included. For every given value, two
-        %   model parameters are fitted, which are the coefficients for the sin and
-        %   cos function. From those amplitude and phases are computed. A residual
+        %   for the y-component of the velocity. Every string given indicates the
+        %   name of the constituent to be included. For every given value, two
+        %   model parameters are fitted, which are the coefficients for the cos and
+        %   sin functions. From those amplitude and phases are computed. A residual
         %   is always included.
         %
         %   see also: TidalVelocityModel, constituentsU, constituentsW,
         %               get_tidal_pars
-        constituentsV(1,:) double {mustBeFinite, mustBePositive} = []
+        constituentsV(1,:) cell = {};
 
         % TidalVelocityModel/constituentsW constituents for z-component of velocity
         %
         %   1xN row vector defining tidal constituents to be included in the model
-        %   for the z-component of the velocity. Every value given indicates the
-        %   period of the constituent to be included. For every given value, two
-        %   model parameters are fitted, which are the coefficients for the sin and
-        %   cos function. From those amplitude and phases are computed. A residual
+        %   for the z-component of the velocity. Every string given indicates the
+        %   name of the constituent to be included. For every given value, two
+        %   model parameters are fitted, which are the coefficients for the cos and
+        %   sin functions. From those amplitude and phases are computed. A residual
         %   is always included.
         %
         %   see also: TidalVelocityModel, constituentsU, constituentsV,
         %               get_tidal_pars
-        constituentsW(1,:) double {mustBeFinite, mustBePositive} = []
+        constituentsW(1,:) cell = {};
+
     end
 
     methods
-        function [Mu, Mv, Mw] = get_model(obj, d_time, ~, ~, ~, ~) %What about spatial variation?
+        function [Mu, Mv, Mw] = get_model(obj, d_time, d_s, d_n, d_z, d_sigma)
             % This model fits the following parameters to the velocity
             % within each cell:
             % u = u_0 + sum_n (a_n cos(2pi/T_n * t) + b_n sin(2pi/T_n * t))
@@ -63,25 +64,30 @@ classdef TidalVelocityModel < VelocityModel
             % d_time IN HOURS
             % Output:
             % Model matrices such that u = Mu*pars (roughly)
-            npars = obj.npars;
+            npars = [2*numel(obj.constituentsU) + 1, ...
+                2*numel(obj.constituentsV) + 1, ...
+                2*numel(obj.constituentsW) + 1];
             d_secs = seconds(d_time);
+            Tu = obj.const_to_periods(obj.constituentsU);
+            Tv = obj.const_to_periods(obj.constituentsV);
+            Tw = obj.const_to_periods(obj.constituentsW);
 
             Mu = ones(numel(d_time), npars(1));
             for c = 1:numel(obj.constituentsU)
-                Mu(:,2*c) = cos(2*pi/obj.constituentsU(c) * hours(d_secs));
-                Mu(:,2*c + 1) = sin(2*pi/obj.constituentsU(c) * hours(d_secs));
+                Mu(:,2*c) = cos(2*pi/Tu(c) * hours(d_secs));
+                Mu(:,2*c + 1) = sin(2*pi/Tu(c) * hours(d_secs));
             end
             Mv = ones(numel(d_time), npars(2));
 
             for c = 1:numel(obj.constituentsV)
-                Mv(:,2*c) = cos(2*pi/obj.constituentsV(c) * hours(d_secs));
-                Mv(:,2*c + 1) = sin(2*pi/obj.constituentsV(c) * hours(d_secs));
+                Mv(:,2*c) = cos(2*pi/Tv(c) * hours(d_secs));
+                Mv(:,2*c + 1) = sin(2*pi/Tv(c) * hours(d_secs));
             end
             Mw = ones(numel(d_time), npars(3));
 
             for c = 1:numel(obj.constituentsW)
-                Mw(:,2*c) = cos(2*pi/obj.constituentsW(c) * hours(d_secs));
-                Mw(:,2*c + 1) = sin(2*pi/obj.constituentsW(c) * hours(d_secs));
+                Mw(:,2*c) = cos(2*pi/Tw(c) * hours(d_secs));
+                Mw(:,2*c + 1) = sin(2*pi/Tw(c) * hours(d_secs));
             end
 
         end
@@ -125,6 +131,42 @@ classdef TidalVelocityModel < VelocityModel
             cov_pars_h = helpers.matmult(cov_pars,permute(jac,[1,3,2]),2,3);   % cov_pars * J'
             cov_pars_h = helpers.matmult(jac,cov_pars_h,2,3);                  % J * (cov_pars * J')
         end
+    end
+
+    methods(Static)
+        function T= const_to_periods(constituents)
+            T = [];
+            for i = 1:numel(constituents)
+                name = constituents{i};
+                switch name
+                    case 'M2'
+                        t = 12.4206012;
+                    case 'S2'
+                        t = 12;
+                    case 'N2'
+                        t = 12.65834751;
+                    case 'K1'
+                        t = 23.93447213;
+                    case 'M4'
+                        t = 6.210300601;
+                    case 'O1'
+                        t = 25.81933871;
+                    case 'M6'
+                        t = 4.140200401;
+                    case 'MK3'
+                        t = 8.177140247;
+                    case 'S4'
+                        t = 6;
+                    case 'MN4'
+                        t = 6.269173724;
+                    otherwise
+                        error('Unknown tidal constituent')
+                end
+                T(i) = t;
+            end
+        end
+
+
     end
 
     methods(Access=protected)
