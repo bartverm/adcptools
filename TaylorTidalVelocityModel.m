@@ -180,7 +180,7 @@ classdef TaylorTidalVelocityModel < TidalVelocityModel & TaylorVelocityModel
 
         end
 
-        function [p, pu, pv, pw] = get_parameter_names(obj)
+        function obj = get_parameter_names(obj)
             pu = tidal_columns(obj, 'u'); npu = length(pu);
             pv = tidal_columns(obj, 'v'); npv = length(pv);
             pw = tidal_columns(obj, 'w'); npw = length(pw);
@@ -222,9 +222,9 @@ classdef TaylorTidalVelocityModel < TidalVelocityModel & TaylorVelocityModel
                     end
                 end
             end
-            pu = p(1:obj.npars(1));
-            pv = p(obj.npars(1)+1:obj.npars(1) + obj.npars(2));
-            pw = p(obj.npars(1) + obj.npars(2) + 1:end);
+%             pu = p(1:obj.npars(1));
+%             pv = p(obj.npars(1)+1:obj.npars(1) + obj.npars(2));
+%             pw = p(obj.npars(1) + obj.npars(2) + 1:end);
             obj.names = p;
         end
 

@@ -452,18 +452,18 @@ classdef VelocitySolver < handle
                     b{k} = vertcat(bj{:});%
                     M{k} = spblkdiag(Mj{:});
                     %                     p(:,1) = vertcat(pj{:}); % cell-based inversion
-                    lc = 100;
+                    lc = .1;
 %                     p(:,k) = M{k}\b{k}; % global, direct inversion
                     %
                     Mp = M{k}'*M{k};
 
                     A = Mp + lc*Cp;
 
-                    alpha = max(sum(abs(A),2)./diag(A))-2;
+                    alpha = max(sum(abs(A),2)./diag(Mp))-2;
                     opts = struct('michol','on','type','ict','droptol',1e-3,'diagcomp',alpha);
-                    L = ichol(A, opts);
+                    L = ichol(Mp, opts);
 
-                    p(:,k) = pcg(A, M{k}'*b{k}, 1e-6, size(A,2),L,L'); % global, iterative inversion
+                    p(:,k) = pcg(Mp+l*speye(size(Mp)), M{k}'*b{k}, 1e-6, size(Mp,2),L,L'); % global, iterative inversion
                 end
                 % Mean estimated parameter vector
                 pk = mean(p, 2);

@@ -59,18 +59,18 @@ classdef VaryingWaterLevel < WaterLevel
         function M = get_model(obj)
             % Fitting tidal constituents to waterlevel
             npars = 2*numel(obj.constituents) + 1;
-            d_hours = (datenum(obj.time)-datenum(obj.time(1)))*24;
+            d_secs = datenum(obj.time);
             T = const_to_periods(obj.constituents);
-            M = ones(numel(d_hours), npars);
-            for c = 1:numel(obj.constituents)
-                M(:,2*c) = cos(2*pi/T(c) * d_hours);
-                M(:,2*c + 1) = sin(2*pi/T(c) * d_hours);
+            M = ones(numel(d_time), npars);
+            for c = 1:numel(obj.constituentsU)
+                M(:,2*c) = cos(2*pi/T(c) * hours(d_secs));
+                M(:,2*c + 1) = sin(2*pi/T(c) * hours(d_secs));
             end
         end
 
         function obj = get_parameters(obj)
             M = obj.get_model();
-            obj.parameters = (M'*M)\M'*obj.water_level';
+            obj.parameters = (M'*M)*M'*obj.water_level';
             obj.names = obj.get_names();
         end
 

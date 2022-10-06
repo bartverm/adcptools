@@ -319,10 +319,7 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
             n = obj.n_middle(cell_idx);
             sig = obj.sig_center(cell_idx);
             dn = obj.dn_cells(obj.col_to_cell(cell_idx));
-            dsig = 2*(obj.sig_top_mid(cell_idx)-sig);
-            neighbors = [obj.index(n+dn, sig), obj.index(n, sig+dsig),...
-                obj.index(n-dn, sig), obj.index(n, sig-dsig)];
-            domain = 0;
+            dsig = obj.sig_top_mid(cell_idx)-sig; 
         end
         function plot(obj,var)
 % Plot the mesh optionally colored with a variable
