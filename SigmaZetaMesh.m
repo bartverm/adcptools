@@ -311,19 +311,45 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
             end
         end
 
-        function [neighbors, domain] = get_neighbors(obj, cell_idx)
+        function [nb, domain] = get_neighbors(obj, cell_idx)
             % Function that provides indices of neighbors of cell_idx
-            % [neighbors, domain] = get_neighbors(cell_idx)
-            % neighbors: array of neighboring indices
-            % domain: interior (0), surface (1), bottom (-1)
-            n = obj.n_middle(cell_idx);
+            % [nb, domain] = get_neighbors(cell_idx)
+            % nb: array of neighboring indices anti clockwise from 3 o
+            % clock, to 12, to 9, to 6
+            % domain: interior (0), right (1), top right (2), and anti
+            % clockwise up to bottom right (8)
+            %
+            n = obj.n_middle(obj.col_to_cell(cell_idx));
             sig = obj.sig_center(cell_idx);
             dn = obj.dn_cells(obj.col_to_cell(cell_idx));
             dsig = 2*(obj.sig_top_mid(cell_idx)-sig);
-            neighbors = [obj.index(n+dn, sig), obj.index(n, sig+dsig),...
+            nb = [obj.index(n+dn, sig), obj.index(n, sig+dsig),...
                 obj.index(n-dn, sig), obj.index(n, sig-dsig)];
-            domain = 0;
+            d=0;
+            if isnan(nb(1))
+                d = 1;
+                if isnan(nb(2))
+                    d = 2;
+                end
+                if isnan(nb(4))
+                    d = 8;
+                end
+            elseif isnan(nb(2))
+                d = 3;
+                if isnan(nb(3))
+                    d = 4;
+                end
+            elseif isnan(nb(3))
+                d = 5;
+                if isnan(nb(4))
+                    d = 6;
+                end
+            elseif isnan(nb(4))
+                d = 7;
+            end
+            domain = d;
         end
+
         function plot(obj,var)
 % Plot the mesh optionally colored with a variable
 %
@@ -360,7 +386,7 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
                     plot_var = var;
                 end
             end
-            patch(obj.n_patch, obj.z_patch, plot_var(:,1), 'LineStyle', ':');
+            patch(obj.n_patch, obj.z_patch, plot_var(:,1), 'LineStyle', 'none');
             q=quiver(obj.n_middle(obj.col_to_cell)', obj.z_center, plot_var(:,2), plot_var(:,3), .2, 'k');
             set(gca,'NextPlot',hold_stat);
         end
