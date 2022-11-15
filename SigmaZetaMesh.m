@@ -1,4 +1,4 @@
-classdef SigmaZetaMesh < Mesh & helpers.ArraySupport
+classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
 % Defines a sigma-z mesh
 %   
 %   The SigmaZetaMesh should be generated with a SigmaZetaMeshGenerator.
@@ -404,7 +404,9 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport
             set(ax,'NextPlot','add')
             hwater=plot3(ax,obj.xw,obj.yw,obj.water_level+obj.xw*0, 'b', 'Linewidth',2);
             hmesh=patch(ax,obj.x_patch,obj.y_patch, obj.z_patch,plot_var(:,1));
-            varargout = {hbed, hwater, hmesh};
+            if nargout > 0
+                varargout = {hbed, hwater, hmesh};
+            end
             if size(plot_var,2)==3
                 hquiv = quiver3(ax, obj.x_middle(obj.col_to_cell)',...
                     obj.y_middle(obj.col_to_cell)',...

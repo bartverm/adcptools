@@ -99,7 +99,8 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
             construct_xs=true;
             construct_filter=true;
             construct_time=true;
-            for count_arg=1:nargin-1         
+            has_vmadcp = false;
+            for count_arg=1:nargin      
                 cur_arg=varargin{count_arg};
                 if isa(cur_arg,'VMADCP')
                     has_vmadcp=true;

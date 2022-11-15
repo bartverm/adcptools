@@ -28,11 +28,14 @@ classdef ArraySupport < handle
             if isempty(varargin)
                 return
             end
+            % figure out which are the non scalar expanded input
             expand_var = cellfun(@(x) (iscell(x) || isa(x,'handle') )...
                 && ~isscalar(x), varargin);
             if any(expand_var)
+                % get size of expanded variables
                 siz_nscal = cellfun(@size,varargin(expand_var), ...
                     'UniformOutput', false);
+                % make sure their sizes match
                 assert(isscalar(siz_nscal) || isequal(siz_nscal{:}),...
                     'Solver:NonMatchingInputSize',...
                     'Size of all non-scalar input should match')

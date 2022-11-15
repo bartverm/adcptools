@@ -5,7 +5,7 @@ classdef ADCPDataSolver < Solver
         %   Scalar VMADCP object holding the adcp data to compute the velocity
         %
         %   see also: Solver, VMADCP
-        adcp (1,1) VMADCP
+        adcp (:,1) VMADCP {mustBeScalarOrEmpty} = rdi.VMADCP.empty
 
         % Solver/ensemble_filter
         %
