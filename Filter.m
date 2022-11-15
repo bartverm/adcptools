@@ -1,4 +1,4 @@
-classdef Filter < matlab.mixin.Heterogeneous
+classdef Filter < matlab.mixin.Heterogeneous & handle
 % Generic class to implement filters for ADCP objects
 %
 %   This class implements a dummy filter, i.e. it does not filter anything.

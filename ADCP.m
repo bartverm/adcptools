@@ -474,7 +474,7 @@ classdef ADCP < handle
             xlabel('time (s)')
             linkaxes(axh,'xy')
             if nargout>0
-                hfout=hf;
+                hfout=gcf;
             end
         end
         function plot_filters(obj)

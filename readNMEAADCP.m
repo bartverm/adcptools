@@ -161,7 +161,7 @@ if any(hastime)
             if isempty(innmea(cntfile).(actmsg))
                 continue
             end
-            [Dummy,idxa, idxb]=intersect(lines{cntfile},innmea(cntfile).(actmsg).lineid);
+            [~,idxa, idxb]=intersect(lines{cntfile},innmea(cntfile).(actmsg).lineid);
             ffile=isempty(tmpdata.(actmsg).timeV);
             if ~ffile
                 lasttime=datenum(tmpdata.(actmsg).timeV(find(any(~isnan(tmpdata.(actmsg).timeV),2),1,'last'),:));
@@ -176,7 +176,10 @@ if any(hastime)
                 if ~ffile
                     tmpdata.(actmsg).(actdt)=[tmpdata.(actmsg).(actdt);tmpdata.(actmsg).(actdt)(end,:)*nan];
                 end
-                tmpdata.(actmsg).(actdt)=[tmpdata.(actmsg).(actdt);innmea(cntfile).(actmsg).(actdt)(idxb,:)];
+                fempty = idxb > size(innmea(cntfile).(actmsg).(actdt),1);
+                dat_in = nan(size(idxb,1),size(innmea(cntfile).(actmsg).(actdt),2));
+                dat_in(~fempty ,:) = innmea(cntfile).(actmsg).(actdt)(idxb(~fempty),:);
+                tmpdata.(actmsg).(actdt)=[tmpdata.(actmsg).(actdt);dat_in];
             end
         end
     end

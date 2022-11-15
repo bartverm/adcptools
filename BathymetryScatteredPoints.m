@@ -48,38 +48,53 @@ classdef BathymetryScatteredPoints < Bathymetry
 %
 %   see also: BathymetryScatteredPoints, LoessInterpolator,
 %   LoessNNinterpolator
-        interpolator (1,1) Interpolator;
+        interpolator (1,1) Interpolator = LoessNNInterpolator;
     end
     methods
         function obj=BathymetryScatteredPoints(varargin)
             obj=obj@Bathymetry(varargin{:});
-            obj.interpolator=LoessNNInterpolator;
+            siz = size(obj);
+            siz = num2cell(siz);
+            int(siz{:}) = LoessNNInterpolator;
+            obj.assign_property('interpolator',int); % make sure interpolators are different for array
             addlistener(obj,'known','PostSet',@obj.set_interpolator_known);
             addlistener(obj,'interpolator','PostSet',@obj.set_interpolator_known);
-            filter=EnsembleFilter;
             construct_from_vmadcp=false;
             construct_water_level=false;
+            has_filt=false;
+            has_vmadcp=false;
             for ca=1:nargin
                 cur_arg=varargin{ca};
                 if isa(cur_arg,'VMADCP')
                     construct_from_vmadcp=true;
                     construct_water_level=true;
                     vadcp=cur_arg;
+                    has_vmadcp = true;
+                    continue
                 elseif isa(cur_arg,'EnsembleFilter')
-                    filter=[filter, cur_arg]; %#ok<AGROW>
+                    filter=cur_arg;
+                    has_filt=true;
+                    continue
                 elseif isa(cur_arg,'Interpolator')
-                    obj.interpolator=cur_arg;
+                    var_name='interpolator';
                 elseif isa(cur_arg,'WaterLevel')
                     construct_water_level=false;
+                    continue
+                elseif isa(cur_arg,'double')
+                    var_name='known';
                 else
                     warning('Bathymetry:unhadled_input',['Unhandled input of type: ', class(cur_arg)])
                 end
+                obj.assign_var(var_name, cur_arg)
             end
-            if construct_from_vmadcp
+            if construct_from_vmadcp && has_vmadcp
+                if ~has_filt
+                    filter = EnsembleFilter(vadcp);
+                end
                 obj.known_from_vmadcp(vadcp,filter)
             end
             if construct_water_level
-                obj.water_level=vadcp.water_level_object;
+                obj.assign_property('water_level', vadcp.water_level_object);
             end
         end
         function z=get_bed_elev(obj,x,y)
@@ -102,12 +117,16 @@ classdef BathymetryScatteredPoints < Bathymetry
 %   see also: BathymetryScatteredPoints, VMADCP, VMADCP/bed_position
             validateattributes(vmadcp,{'VMADCP'},{'scalar'},'pos_from_vmadcp','vmadcp',2)
             tpos=vmadcp.bed_position;
-            tpos(:,filter.all_cells_bad(vmadcp),:,:)=nan;
             xpos=tpos(:,:,:,1);
             ypos=tpos(:,:,:,2);
             zpos=tpos(:,:,:,3);
             isfin=all(isfinite(tpos),4);
-            obj.known=[xpos(isfin)';ypos(isfin)';zpos(isfin)'];
+            var = cell(size(filter));
+            for cc = 1:numel(var)
+                filt = isfin & ~filter(cc).all_cells_bad(vmadcp);
+                var{cc}= [xpos(filt)';ypos(filt)';zpos(filt)'];
+            end
+            obj.assign_property('known',var);
         end
         function plot_residuals(obj)
 % Plots the residuals at the input points
@@ -169,9 +188,10 @@ classdef BathymetryScatteredPoints < Bathymetry
            end
         end % function
     end % methods
-    methods (Access=protected)
-        function set_interpolator_known(obj,varargin)
-            obj.interpolator.known=obj.known;
+    methods (Static, Access=protected)
+        function set_interpolator_known(varargin)
+            srcObj = varargin{2}.AffectedObject;
+            srcObj.interpolator.known=srcObj.known;
         end % function
     end % protected methods
 end % classdef

@@ -51,6 +51,10 @@ out.pingsperens=nan(1,nFiles);
 out.timeperens=nan(1,nFiles);
 out.profilingMode=nan(1,nFiles);
 
+
+out = initvars(out, 100);
+
+
 csect=1;
 lastens=csect;
 for cf=1:numel(filenames)
@@ -68,6 +72,9 @@ for cf=1:numel(filenames)
         out.timeperens(cf)=dat(6);
         out.profilingMode(cf)=dat(7);
         while ~(feof(fid))
+            if csect > numel(out.pitch)
+                out = initvars(out, csect * 2,nrows);
+            end
             dat=fscanf(fid,'%d',9);
             if feof(fid), break, end
             out.timeV(csect,:)=dat(1:6);
@@ -104,7 +111,7 @@ for cf=1:numel(filenames)
             out.endDepthMid(csect)=dat(9);
             dat=textscan(fid,'%d %s %s %s %f %f',1);
             nrows=dat{1};
-            out.lengthUnit(csect)=dat(2);
+            out.lengthUnit(csect)=dat{2};
             out.velRef(csect)=dat(3);
             out.intensityUnit(csect)=dat(4);
             out.intensityScFact(csect)=dat{5};
@@ -129,50 +136,147 @@ for cf=1:numel(filenames)
             out.pgood(1:nrows,csect)=dat{12};
             out.Q(1:nrows,csect)=dat{13};
             csect=csect+1;
-        end % while ~feof 
+        end % while ~feof
     end % if cnt == 7
     fclose(fid);
     out.filenumber(lastens:csect-1)=cf;
     lastens=csect;
 end
 
+out = trimvars(out, lastens);
+
 %% Try to align data if number of ensembles don't match based on time vector
 if (isfield(out,'ensInSeg'))
-nens=numel(adcp.ensnum);
-if csect-1~=nens && all(out.ensInSeg==1)
-    time1=datenum(adcp.timeV);
-    timeV=out.timeV;
-    if timeV(1,1)<50, timeV(:,1)=timeV(:,1)+2000; else timeV(:,1)=timeV(:,1)+1900; end
-    time2=datenum(timeV);
-    [~, i1, i2]=intersect(time1,time2);
-    if isempty(i1)
-        warning('readTfiles:noTimeOverlap','Could not find time overlap between transect file and raw ADCP file')
-        return;
+    nens=numel(adcp.ensnum);
+    if csect-1~=nens && all(out.ensInSeg==1)
+        time1=datenum(adcp.timeV);
+        timeV=out.timeV;
+        if timeV(1,1)<50
+            timeV(:,1)=timeV(:,1)+2000; 
+        else 
+            timeV(:,1)=timeV(:,1)+1900; 
+        end
+        time2=datenum(timeV);
+        [~, i1, i2]=intersect(time1,time2);
+        if isempty(i1)
+            warning('readTfiles:noTimeOverlap','Could not find time overlap between transect file and raw ADCP file')
+            return;
+        end
+        out2=out;
+        out.timeV=nan(nens,6);
+        out.timeV(i1,:)=out2.timeV(i2,:);
+        allfields=fields(out);
+        dim1flds=[11:16 20:35 39 40 48];
+        for cfld=dim1flds
+            out.(allfields{cfld})=nan(1,nens);
+            out.(allfields{cfld})(i1)=out2.(allfields{cfld})(i2);
+        end
+        cell1fld=36:38;
+        for cfld=cell1fld
+            out.(allfields{cfld})=cell(1,nens);
+            out.(allfields{cfld})(i1)=out2.(allfields{cfld})(i2);
+        end
+        dim2flds=[17:19 41:43 46 47];
+        for cfld=dim2flds
+            out.(allfields{cfld})=nan(size(out2.(allfields{cfld}),1),nens);
+            out.(allfields{cfld})(:,i1)=out2.(allfields{cfld})(:,i2);
+        end
+        dim3flds=[44 45];
+        for cfld=dim3flds
+            out.(allfields{cfld})=nan(size(out2.(allfields{cfld}),1),nens,size(out2.(allfields{cfld}),3));
+            out.(allfields{cfld})(:,i1,:)=out2.(allfields{cfld})(:,i2,:);
+        end
     end
-    out2=out;
-    out.timeV=nan(nens,6);
-    out.timeV(i1,:)=out2.timeV(i2,:);
-    allfields=fields(out);
-    dim1flds=[11:16 20:35 39 40 48];
-    for cfld=dim1flds
-        out.(allfields{cfld})=nan(1,nens);
-        out.(allfields{cfld})(i1)=out2.(allfields{cfld})(i2);
-    end
-    cell1fld=36:38;
-    for cfld=cell1fld
-        out.(allfields{cfld})=cell(1,nens);
-        out.(allfields{cfld})(i1)=out2.(allfields{cfld})(i2);
-    end
-    dim2flds=[17:19 41:43 46 47];
-    for cfld=dim2flds
-        out.(allfields{cfld})=nan(size(out2.(allfields{cfld}),1),nens);
-        out.(allfields{cfld})(:,i1)=out2.(allfields{cfld})(:,i2);
-    end
-    dim3flds=[44 45];
-    for cfld=dim3flds
-        out.(allfields{cfld})=nan(size(out2.(allfields{cfld}),1),nens,size(out2.(allfields{cfld}),3));
-        out.(allfields{cfld})(:,i1,:)=out2.(allfields{cfld})(:,i2,:);
-    end  
-end
 end % if ~ isemty out.ensInSeg
+end
 
+function out=initvars(out,init_sect,nrows)
+
+if nargin < 3
+    nrows = 1;
+end
+% initialize variables
+out.timeV(init_sect,6)=nan;
+out.segNum(init_sect)=nan;
+out.ensInSeg(init_sect)=nan;
+out.pitch(init_sect)=nan;
+out.roll(init_sect)=nan;
+out.corrHead(init_sect)=nan;
+out.adcpTemp(init_sect)=nan;
+out.btvel(4,init_sect)=nan;
+out.gpsvel(4,init_sect)=nan;
+out.depth(4,init_sect)=nan;
+out.elapsDist(init_sect)=nan;
+out.elapsTime(init_sect)=nan;
+out.distNorth(init_sect)=nan;
+out.distEast(init_sect)=nan;
+out.distGood(init_sect)=nan;
+out.lat(init_sect)=nan;
+out.long(init_sect)=nan;
+out.qmid(init_sect)=nan;
+out.qtop(init_sect)=nan;
+out.qbot(init_sect)=nan;
+out.qstart(init_sect)=nan;
+out.distStart(init_sect)=nan;
+out.qend(init_sect)=nan;
+out.distEnd(init_sect)=nan;
+out.startDepthMid(init_sect)=nan;
+out.endDepthMid(init_sect)=nan;
+out.lengthUnit(init_sect)={[]};
+out.velRef(init_sect)={[]};
+out.intensityUnit(init_sect)={[]};
+out.intensityScFact(init_sect)=nan;
+out.soundAbsorbtion(init_sect)=nan;
+
+out.veldepth(nrows,init_sect)=nan;
+out.velmag(nrows,init_sect)=nan;
+out.veldir(nrows,init_sect)=nan;
+out.vel(nrows,init_sect,4)=nan;
+out.echo(nrows,init_sect,4)=nan;
+out.pgood(nrows,init_sect)=nan;
+out.Q(nrows,init_sect)=nan;
+end
+
+function out=trimvars(out,lastens)
+
+% initialize variables
+out.timeV(lastens:end,:)=[];
+out.segNum(lastens:end)=[];
+out.ensInSeg(lastens:end)=[];
+out.pitch(lastens:end)=[];
+out.roll(lastens:end)=[];
+out.corrHead(lastens:end)=[];
+out.adcpTemp(lastens:end)=[];
+out.btvel(:,lastens:end)=[];
+out.gpsvel(:,lastens:end)=[];
+out.depth(:,lastens:end)=[];
+out.elapsDist(lastens:end)=[];
+out.elapsTime(lastens:end)=[];
+out.distNorth(lastens:end)=[];
+out.distEast(lastens:end)=[];
+out.distGood(lastens:end)=[];
+out.lat(lastens:end)=[];
+out.long(lastens:end)=[];
+out.qmid(lastens:end)=[];
+out.qtop(lastens:end)=[];
+out.qbot(lastens:end)=[];
+out.qstart(lastens:end)=[];
+out.distStart(lastens:end)=[];
+out.qend(lastens:end)=[];
+out.distEnd(lastens:end)=[];
+out.startDepthMid(lastens:end)=[];
+out.endDepthMid(lastens:end)=[];
+out.lengthUnit(lastens:end)=[];
+out.velRef(lastens:end)=[];
+out.intensityUnit(lastens:end)=[];
+out.intensityScFact(lastens:end)=[];
+out.soundAbsorbtion(lastens:end)=[];
+
+out.veldepth(:,lastens:end)=[];
+out.velmag(:,lastens:end)=[];
+out.veldir(:,lastens:end)=[];
+out.vel(:,lastens:end,:)=[];
+out.echo(:,lastens:end,:)=[];
+out.pgood(:,lastens:end)=[];
+out.Q(:,lastens:end)=[];
+end

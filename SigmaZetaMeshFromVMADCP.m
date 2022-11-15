@@ -1,4 +1,4 @@
-classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
+classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
 % Generates a SigmaZetaMesh based on VMADCP data
 %
 %   obj=SigmaZetaFromaVMADCP() constructs a default object
@@ -93,44 +93,63 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
         water_level
     end
     methods
-        function obj=SigmaZetaMeshFromVMADCP(vmadcp, varargin) 
-            obj.vmadcp = vmadcp;
+        function obj=SigmaZetaMeshFromVMADCP(varargin)
+            obj = obj@helpers.ArraySupport(varargin{:});
             construct_bathymetry=true;
             construct_xs=true;
             construct_filter=true;
             construct_time=true;
             for count_arg=1:nargin-1         
                 cur_arg=varargin{count_arg};
-                if isa(cur_arg,'Bathymetry')
+                if isa(cur_arg,'VMADCP')
+                    has_vmadcp=true;
+                    var_name='vmadcp';
+                elseif isa(cur_arg,'Bathymetry')
                     construct_bathymetry=false;
-                    obj.bathymetry=cur_arg;
+                    var_name='bathymetry';
                 elseif isa(cur_arg,'XSection')
                     construct_xs=false;
-                    obj.xs=cur_arg;
+                    var_name='xs';
                 elseif isa(cur_arg,'EnsembleFilter')
                     construct_filter=false;
-                    obj.filter=cur_arg;
+                    var_name='filter';
                 elseif isa(cur_arg,'datetime')
-                    obj.time=cur_arg;
+                    var_name='time';
                     construct_time=false;
                 else
                     warning(['Unhandled input of type: ',class(cur_arg)])
+                    continue
                     % warning here
                 end
+                obj.assign_property(var_name,cur_arg);
+            end
+            if ~has_vmadcp
+                return
+            end
+            vm = [obj.vmadcp];
+
+            cell_vm = num2cell(vm);
+            scalar_vm = vm;
+            if ~isscalar(cell_vm) && isequal(cell_vm{:})
+                scalar_vm = vm(1);
             end
             if construct_bathymetry
-                obj.bathymetry=BathymetryScatteredPoints(obj.vmadcp);
+                B=BathymetryScatteredPoints(scalar_vm);
+                obj.assign_property('bathy',B);
             end
             if construct_xs
-                obj.xs=XSection(obj.vmadcp);
+                obj.assign_property('xs',XSection(scalar_vm));
             end
             if construct_filter
-                obj.filter=EnsembleFilter(obj.vmadcp);
+                obj.assign_property('filter',EnsembleFilter(scalar_vm));
             end
             if construct_time
-                t=obj.vmadcp.time;
-                t(obj.filter.all_cells_bad(obj.vmadcp))=[];
-                obj.time=mean(t,"all","omitnan");
+                t={vm.time};
+                ef=[obj.filter];
+                ef={ef.bad_ensembles};
+                ef = cellfun(@not,ef,"UniformOutput",false);
+                t = cellfun(@(a,b) mean(a(b),"all","omitnat"),t,ef,'UniformOutput',false);
+                obj.assign_property('time',t);
             end
         end
         function val=get.water_level(obj)
@@ -146,12 +165,16 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
 %   the highest depth cell in the data.
 %
 %   see also: SigmaZetaMeshFromVMADCP, SigmaZetaMesh, VMADCP
+
+            % handle call from array
+            if ~isscalar(obj)
+                mesh = obj.run_method('get_mesh');
+                return
+            end
+
             mesh=SigmaZetaMesh;
             mesh.xs=obj.xs;
             mesh.time=obj.time;
-            % get velocity position and project on track
-            vpos = obj.vmadcp.depth_cell_position;
-            vpos(:,obj.filter.all_cells_bad(obj.vmadcp),:,:) = nan;
 
             % make n positions
             bpos=obj.vmadcp.bed_position();
@@ -180,10 +203,14 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
             
             % compute vertical limits of mesh
             minsigma=1-cosd(max(obj.vmadcp.beam_angle,[],'omitnan'));
-            pitch = obj.vmadcp.pitch;
-            roll = obj.vmadcp.roll;
-            fgood = pitch.^2 < 25 & roll.^2 < 25; % only use maximum z when tilts are lower < 5 degrees.
-            maxz=max(vpos(:,fgood,:,3),[],'all','omitnan');
+            maxz = sum(...
+                interp1(obj.vmadcp.time', ...
+                [ obj.vmadcp.vertical_position; ...
+                  obj.vmadcp.distmidfirstcell; ...
+                  obj.vmadcp.cellsize ]', ...
+                obj.time) .* ...
+                [1 -1 .5]...
+                ); % i.e vertpos - distmidfirtcell + cellsize/2
 
             % Check for bathymetry crossing the waterlevel
             wl=obj.water_level;
@@ -201,6 +228,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
             
             % Check for lowest mesh elevation crossing max mesh level
             z_bot_mesh=zvec*(1-minsigma)+minsigma*wl;
+            
             fbnds=SigmaZetaMeshFromVMADCP.get_intersections(z_bot_mesh,maxz); % find intersections between minimum measurement level and maximum mesh level
             if isempty(fbnds)
                 error('SigmaZetaMeshFromVMADCP:get_mesh:MaxZBelowBed','Cannot create mesh since the maximum mesh level is lower than the minimum measurement level')
@@ -242,8 +270,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator
             zb_all=zb_all(idx_unq);
             mesh.nb_all=nb_all;
             mesh.zb_all=zb_all;
-            
-                       
+                                 
             % create indices
             nz=max(1,ceil((maxz-minz_mid)/obj.deltaz)); % compute number of cells in each vertical
             max_num=max(nz); % get maximum number of cells in a vertical
