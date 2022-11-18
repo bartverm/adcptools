@@ -325,184 +325,7 @@ classdef VelocitySolver < handle
             end
         end
 
-        function [pars, cov_pars, n_vels]=get_parameters_reg_cv(obj, reg_pars, opts)
-            % Solve velocity model parameters
-            %
-            %   [pars, cov_pars, n_vels]=get_parameters(obj) Obtain the
-            %   parameters of the model by fitting it to the velocity data.
-            %   cov_pars returns the covatiance matrix of the model
-            %   parameters and n_vels returns the number of velocity
-            %   components used for the computation.
-            %
-            % see also: VelocitySolver, get_velocity, Mesh, VMADCP
-
-            % get velocity position, velocity data, and transformation
-            % matrices to obtain earth velocity
-            [vpos, vel_data, xform] = get_solver_input(obj);
-
-            % indices to match repeat transects with corresponsing mesh
-            [idx_mesh, idx_ef] = obj.make_indices();
-
-            %%% compute s,n and sigma coordinates
-            % get velocity position transverse to cross section
-            [s_pos, n_pos] = obj.xs.xy2sn(vpos(:,:,:,1), vpos(:,:,:,2));
-
-            % get bed elevation at velocity position. This could optionally
-            % be done with the bed detection at the beam.
-            zb_pos = obj.bathy.get_bed_elev(vpos(:,:,:,1), vpos(:,:,:,2));
-
-            % compute sigma coordinate of velocities
-            sig_pos = (vpos(:,:,:,3) - zb_pos) ./...
-                (obj.adcp.water_level - zb_pos);
-
-            % Get time of velocities
-            time = obj.adcp.time;
-
-            % Initialize output
-            pars = cell(numel(idx_ef),1);
-            cov_pars = cell(numel(idx_ef),1);
-            n_vels = cell(numel(idx_ef),1);
-
-            % Loop over repeat transects
-            for crp = 1:numel(idx_ef)
-
-                % get selection of data of current repeat transect and
-                % replicate singleton dimensions to get uniform dimensions
-                % of inputs
-                ens_filt = ~obj.ensemble_filter(idx_ef(crp)).bad_ensembles;
-                cur_n = n_pos(:, ens_filt, :);
-                cur_s = s_pos(:, ens_filt, :);
-                cur_t = time(:, ens_filt, :);
-                cur_t = repmat(cur_t, ...
-                    size(vel_data, 1), 1, size(vel_data, 3));
-                cur_sig = sig_pos(:, ens_filt, :);
-                cur_vel = vel_data(:, ens_filt, :);
-                cur_z = vpos(:, ens_filt, :, 3);
-                cur_xform = xform(:, ens_filt, :, :);
-                cur_xform = repmat(cur_xform,...
-                    [size(vel_data, 1), 1, 1, 1]);
-
-                % vectorize all input, at this point we don't care which
-                % data were collected together
-                cur_n = reshape(cur_n, [], 1);
-                cur_s = reshape(cur_s, [], 1);
-                cur_t = reshape(cur_t, [], 1);
-                cur_sig = reshape(cur_sig, [], 1);
-                cur_vel = reshape(cur_vel, [], 1);
-                cur_z = reshape(cur_z, [], 1);
-                cur_xform = reshape(cur_xform, [], 3);
-
-                % create filter selecting finite input
-                fgood = find(isfinite(cur_n) & isfinite(cur_sig) &...
-                    isfinite(cur_vel) & all(isfinite(cur_xform), 2));
-
-                % find mesh cell input data belongs to
-                cmesh = obj.mesh(idx_mesh(crp));
-                cell_idx = cmesh.index(cur_n(fgood), cur_sig(fgood));
-
-                % combine filter selecting finite input with filter
-                % selecting data that belongs has a correspoding mesh cell
-                % and filter input data accordingly
-                fgood_idx = isfinite(cell_idx);
-                cell_idx = cell_idx(fgood_idx);
-                fgood = fgood(fgood_idx);
-                cur_vel = cur_vel(fgood);
-                cur_xform = cur_xform(fgood,:);
-                cur_n = cur_n(fgood);
-                cur_s = cur_s(fgood);
-                cur_z = cur_z(fgood);
-                cur_t = cur_t(fgood);
-                cur_sig = cur_sig(fgood);
-
-                % compute velocity model input
-                n_center = reshape(...
-                    cmesh.n_middle(cmesh.col_to_cell), [], 1);
-                dn = cur_n - n_center(cell_idx); % delta_n
-                dz = cur_z - cmesh.z_center(cell_idx); % delta_z
-                dsig = cur_sig - cmesh.sig_center(cell_idx); % delta_sig
-                dt = cur_t - cmesh.time; % delta time
-                dt = seconds(dt);
-                nb = length(dt);
-                obj.velocity_model.get_parameter_names();
-                for j = 1:obj.mesh.ncells
-                    Cj{j} = assembleC(obj,j);
-                    %                     conC(j) = condest(Cj{j}'*Cj{j});
-                end
-                C = spblkdiag(Cj{:});
-                Cp = C'*C;
-                % data partitioning: k-fold cross-validation
-                K = 1;
-                training_perc = .9999;
-                intervals = 0:training_perc/K:training_perc; % 5 percent is used as withhold set
-                rand0 = rand(size(dt));
-                for k = 1:K
-                    cv_idx{k} = rand0>=intervals(k) & rand0<intervals(k+1);
-                    [Mu, Mv, Mw] = obj.velocity_model.get_model(...
-                        dt(cv_idx{k}), cur_s(cv_idx{k}), dn(cv_idx{k}), dz(cv_idx{k}), dsig(cv_idx{k}));
-                    Mb0 = [Mu.*cur_xform(cv_idx{k},1), Mv.*cur_xform(cv_idx{k},2), Mw.*cur_xform(cv_idx{k},3)];
-                    cell_cv_idx = cell_idx(cv_idx{k});
-                    for j = 1:obj.mesh.ncells
-                        Mj{j} = Mb0(j==cell_cv_idx,:);
-                        %                         conM(j) = condest(Mj{j}'*Mj{j});
-                        ns(j) = sum(j == cell_cv_idx);
-                        bj{j} = cur_vel(j==cell_cv_idx);
-                        %                         pj{j} = lscov(Mj{j}, bj{j});
-                    end
-
-                    b{k} = vertcat(bj{:});%
-                    M{k} = spblkdiag(Mj{:});
-                    %                     p(:,1) = vertcat(pj{:}); % cell-based inversion
-                    lc = 100;
-                    %                     p(:,k) = M{k}\b{k}; % global, direct inversion
-                    %
-                    Mp = M{k}'*M{k};
-
-                    A = Mp + lc*Cp;
-
-                    alpha = max(sum(abs(A),2)./diag(A))-2;
-                    opts = struct('michol','on','type','ict','droptol',1e-3,'diagcomp',alpha);
-                    L = ichol(A, opts);
-
-                    p(:,k) = pcg(A, M{k}'*b{k}, 1e-6, size(A,2),L,L'); % global, iterative inversion
-                end
-                % Mean estimated parameter vector
-                pk = mean(p, 2);
-                assignin("base", "p", p)
-
-                % withhold set
-                wh_idx = rand0>=intervals(end);
-                disp(sum(wh_idx)/length(wh_idx))
-                [Mu, Mv, Mw] = obj.velocity_model.get_model(...
-                    dt(wh_idx), cur_s(wh_idx), dn(wh_idx), dz(wh_idx), dsig(wh_idx));
-                Mb0 = [Mu.*cur_xform(wh_idx,1), Mv.*cur_xform(wh_idx,2), Mw.*cur_xform(wh_idx,3)];
-                cell_wh_idx = cell_idx(wh_idx);
-
-                for j = 1:obj.mesh.ncells
-                    Mj{j} = Mb0(j==cell_wh_idx,:);
-                    %                         conM(j) = condest(Mj{j}'*Mj{j});
-                    ns(j) = sum(j == cell_wh_idx);
-                    bj{j} = cur_vel(j==cell_wh_idx);
-                    %                         pj{j} = lscov(Mj{j}, bj{j});
-                end
-                b = vertcat(bj{:});%
-                M = spblkdiag(Mj{:});
-                for k = 1:K
-                    b_est = M*p(:,k);
-                    cve(k) = .5*mean((b-b_est).^2);
-                end
-                cve(k+1) = .5*mean((b-M*pk).^2);
-                %                 disp(sum(wh_idx)./length(wh_idx))
-                assignin("base", "cve", cve)
-
-                pars{1,1} = reshape(pk,[size(Mb0,2), obj.mesh.ncells])'; % At this stage, pars are already known.
-                cov_pars{1,1} = 0; n_vels{1,1} = ns;
-
-
-            end
-        end
-
-
-        function [pars, cov_pars, n_vels]=get_parameters_reg(obj, reg_pars)
+        function [pars, cov_pars, n_vels]=get_parameters_reg(obj, opts)
             % Solve velocity model parameters
             %
             %   [pars, cov_pars, n_vels]=get_parameters(obj) Obtain the
@@ -606,21 +429,6 @@ classdef VelocitySolver < handle
                 
                 obj.velocity_model.get_parameter_names();
 
-                % Data matrix
-                [Mu, Mv, Mw] = obj.velocity_model.get_model(...
-                    dt, cur_s, dn, dz, dsig);
-                Mb0 = [Mu.*cur_xform(:,1), Mv.*cur_xform(:,2), Mw.*cur_xform(:,3)]; %Model matrix times unit vectors q
-
-                for j = 1:obj.mesh.ncells
-                    Mj{j} = Mb0(j==cell_idx,:);
-                    ns(j) = sum(j == cell_idx);
-                    bj{j} = cur_vel(j==cell_idx);
-                end
-
-                b = vertcat(bj{:});
-                M = spblkdiag(Mj{:});
-                Mp = M'*M;
-
                 % Internal continuity matrix
                 for j = 1:obj.mesh.ncells
                     Cj{j} = assembleC(obj,j);
@@ -636,29 +444,64 @@ classdef VelocitySolver < handle
                 [D, IM] = assembleD(obj);
                 DD = D'*D;
 
+                % Data matrix: All data
+                [Mu, Mv, Mw] = obj.velocity_model.get_model(...
+                    dt, cur_s, dn, dz, dsig);
+                Mb0 = [Mu.*cur_xform(:,1), Mv.*cur_xform(:,2), Mw.*cur_xform(:,3)]; %Model matrix times unit vectors q
+
+                % If cross-validation is to be applied: Split data in two
+                % sets. All other operations before are data-independent
+                % and can thus be performed only once.
+
+                for j = 1:obj.mesh.ncells
+                    Mj{j} = Mb0(j==cell_idx,:);
+                    ns(j) = sum(j == cell_idx);
+                    bj{j} = cur_vel(j==cell_idx);
+                end
+
+                b = vertcat(bj{:});
+                M = spblkdiag(Mj{:});
+
+                % Construct training matrix and data
+                opts.cell_idx = cell_idx;
+                train_idx = logical(split_dataset(opts));
+                test_idx = ~train_idx;
+
+
+                M0 = M(train_idx, :);
+                b0 = b(train_idx);
+                Mp = M0'*M0;
+
                 % Regularization parameters
 
-                A = Mp + reg_pars(1)*Cp + reg_pars(2)*Cgp + reg_pars(3)*DD + reg_pars(4)*speye(size(DD));
+                A = Mp + opts.reg_pars(1)*Cp + opts.reg_pars(2)*Cgp + opts.reg_pars(3)*DD + opts.reg_pars(4)*speye(size(DD));
+                
+                % Solve training system of equations
 
                 alpha = max(sum(abs(A),2)./diag(A))-2;
                 pcg_opts = struct('michol','on','type','ict','droptol',1e-3,'diagcomp',alpha);
                 L = ichol(A, pcg_opts);
+                p = pcg(A, M0'*b0, 1e-6, size(A,2), L, L'); % global, iterative inversion
 
-                p = pcg(A, M'*b, 1e-6, size(A,2),L,L'); % global, iterative inversion
+                % Evaluate error on withold set
+
+                M1 = M(test_idx,:);
+                b1 = b(test_idx);
+
                 % Residuals and goodness of fit
-                res = M*p - b;
-                resC = C*p;
+                resf = M*p - b;   % Performance on full set
+                res0 = M0*p - b0; % Performance on training set
+                res1 = M1*p - b1; % Performance on testing set
+                pe = sum(res1.^2)/length(res1)/2;
+                fprintf('Prediction error: %d', pe)
+                resC = C*p;       % Performance on continuity
                 resCg = Cg*p;
 
                 for j = 1:obj.mesh.ncells
-                    % cell-based residuals, including std and mean.
+                    % cell-based residuals, including std and mean. See
+                    % main script
                 end
                 assignin("base", "dat", struct('M', M, 'C', C, 'Cg', Cg, 'D', D, 'IM', IM, 'A', A, 'p', p, 'b', b, 'cell_idx', cell_idx))
-
-
-
-%                 assignin("base", "dat", struct( 'D', D, 'IM', IM, 'A', A, 'p', p))
-
 
                 pars{1,1} = reshape(p,[size(Mb0,2), obj.mesh.ncells])'; % At this stage, pars are already known.
                 cov_pars{1,1} = 0; n_vels{1,1} = ns;
