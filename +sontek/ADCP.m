@@ -1,4 +1,7 @@
 classdef ADCP < ADCP
+    properties(Constant)
+        tilt_rotation_order = 'yxzb';
+    end
     properties
         % Sontek raw data
         raw(1,1) struct = struct
@@ -84,7 +87,9 @@ classdef ADCP < ADCP
             val = acosd(bom(:,:,:,3));
         end
         function val = get_coordinate_system(obj)
-            cor=obj.raw.Setup.coordinateSystem;
+            % Todo: CHECK WHETHER THIS IS CORRECT:shouldnt it be beam,
+            % instrument, earth?
+            cor=obj.raw.Setup.coordinateSystem(obj.raw.file_id);
             val = repmat(CoordinateSystem.Beam,size(cor));
             val(cor==1) = CoordinateSystem.Ship;
             val(cor==2) = CoordinateSystem.Earth;
@@ -101,8 +106,84 @@ classdef ADCP < ADCP
     end
     methods
         function vel = velocity(obj,dst,filter)
+            vel=permute(obj.raw.WaterTrack.Velocity,[1,3,2]);
+            src=obj.coordinate_system;
+            if nargin > 1 && ~all(dst == src)
+                tm=obj.xform(dst);
+                vel=helpers.matmult(tm, vel);
+            end
+            if nargin > 2
+                bad=obj.bad(filter);
+            else
+                bad=obj.bad();
+            end
+            vel(bad)=nan;
         end
-        function val = xform(obj,dst,src,varargin)
+        function tm = xform(obj,dst,src,varargin)
+            if nargin < 3
+                src=obj.coordinate_system;
+            end
+
+            P=inputParser;
+            P.addParameter('Geometry', false,@(x) isscalar(x) && islogical(x));
+            P.parse(varargin{:});
+
+            tm = repmat(shiftdim(eye(4),-2),1,obj.nensembles);
+            I=CoordinateSystem.Instrument;
+            S=CoordinateSystem.Ship;
+            E=CoordinateSystem.Earth;
+            B=CoordinateSystem.Beam;
+            exp_cfilt=true(1,obj.nensembles); % dummy filter to expand scalar input
+            roll=deg2rad(obj.roll);
+            pitch=deg2rad(obj.pitch);
+            head=deg2rad(obj.heading);
+            zr = zeros(size(head));
+
+            rp_tm = helpers.RotationMatrix.three_angle_rotation_(...
+                pitch, roll, zr,...
+                obj.tilt_rotation_order);
+            rp_tm(:,:,4,4)=1;
+            rp_inv = permute(rp_tm,[1,2,4,3]);
+            head_tm = helpers.RotationMatrix.three_angle_rotation_(...
+                zr, zr, head,...
+                obj.tilt_rotation_order);
+            head_tm(:,:,4,4) = 1;
+            head_inv = permute(rp_tm,[1,2,4,3]);
+
+            % FORWARD
+            % from lower than instrument to instrument
+            cfilt = exp_cfilt & dst >= I & src < I;
+            tmptm=obj.instrument_matrix_provider.b2i_matrix(obj);
+            tm(:,cfilt,:,:)=tmptm(:,cfilt,:,:);
+            
+            % from lower than ship to ship
+            cfilt = exp_cfilt & dst >= S & src < S;
+            tm(1,cfilt,:,:)=helpers.matmult(...
+                rp_tm(1,cfilt,:,:),...
+                tm(1,cfilt,:,:));
+            
+            % from lower than earth to earth
+            cfilt = exp_cfilt & dst >= E & src < E;
+            tm(:,cfilt,:,:)=helpers.matmult(...
+                head_tm(:,cfilt,:,:), ...
+                tm(:,cfilt,:,:));
+            
+            % from higher than ship to ship
+            cfilt = exp_cfilt & dst <= S & src > S;
+            tm(:,cfilt,:,:)=head_inv(:,cfilt,:,:);
+            
+            % from higher than instrument to instrument
+            cfilt = exp_cfilt & dst <= I & src > I;               
+            tm(1,cfilt,:,:)=helpers.matmult(...
+                rp_inv(:,cfilt,:,:),...
+                tm(1,cfilt,:,:));
+            
+            % from higher than beam to beam
+            cfilt = exp_cfilt & dst == B & src > B;
+            tmptm=obj.instrument_matrix_provider.i2b_matrix(obj);
+            tm(:,cfilt,:,:)=helpers.matmult(...
+                tmptm(:,cfilt,:,:),...
+                tm(1,cfilt,:,:));
         end
     end
     methods(Static, Access = private)

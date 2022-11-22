@@ -504,7 +504,8 @@ classdef ADCP < handle
             if nargin < 2
                 dst=CoordinateSystem.Earth;
             end
-            tm=obj.xform(CoordinateSystem.Instrument, dst, 'Geometry', true);
+            tm=obj.xform(CoordinateSystem.Instrument,...
+                dst, 'Geometry', true);
             tm(:,:,:,4)=[];
             tm(:,:,4,:)=[];
             beam_mat = obj.instrument_matrix_provider.beam_orientation_matrix(obj);

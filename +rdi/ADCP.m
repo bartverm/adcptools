@@ -491,7 +491,7 @@ classdef ADCP < ADCP
             if any(strcmp(P.UsingDefaults,'Geometry'))
                 cpitch(~obj.tilts_used_in_transform)=0; % Take into account whether tilts where used when transforming back
                 croll(~obj.tilts_used_in_transform)=0; % Take into account whether tilts where used when transforming back
-            elseif ~P.Results.Geometry
+            elseif ~P.Results.Geometry % for geometry we always want to use tilts, also when they were not used for velocity computations.
                 cpitch(:)=0;
                 croll(:)=0;
             end
