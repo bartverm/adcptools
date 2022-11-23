@@ -249,8 +249,26 @@ classdef ADCP < handle
         %   see also: ADCP, instrument_matrix_provider
         instrument_2_beam_matrix
 
+        % matrix holding unit vectors pointing in direction of beams
+        %
+        %   size: 1 x nensembles x nbeams x 3 components
+        %   for each beam it holds the 3 components of the unit vector
+        %   pointing along the beam and away from the ADCP. Note that this
+        %   matrix can be defined for an uplooking or downlooking position
+        %   depending on the conventions of the manufacturer, i.e. the
+        %   position for which all tilts are zero.
+        %
+        %   see also: ADCP, instrument_matrix_provider
         beam_orientation_matrix
 
+        % vertical distance to cells for an untilted ADCP
+        %
+        %   size: ncells x nensembles x nbeams
+        %   holds the vertical position of the depth cells for an
+        %   untilted ADCP. If an untilted ADCP is downlooking according to
+        %   the manufacturer's conventions this will hold negative values.
+        %
+        %   see aslo: ADCP, beam_orientation_matrix
         vertical_range_to_cell
     end
     methods
