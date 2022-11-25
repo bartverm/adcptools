@@ -25,9 +25,10 @@ classdef ShipVelocityProvider < matlab.mixin.Heterogeneous & handle
 %  
 %   see also: VMADCP, CoordinateSystem
             validateattributes(adcp,{'VMADCP'},{'scalar'})
-            validateattributes(dst,{'CoordinateSystem'},{'scalar'})
-            if nargin < 3
+            if nargin < 3 || isempty(dst)
                 dst=CoordinateSystem.Earth;
+            else
+                validateattributes(dst,{'CoordinateSystem'},{})
             end
             if isscalar(obj)
                 vel=obj.get_ship_velocity(adcp,dst);

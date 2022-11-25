@@ -1,4 +1,4 @@
-classdef ArraySupport < handle
+classdef ArraySupport < matlab.mixin.Copyable
 % Class to help onstruct object arrays based on array input to constructor
 %
 %   obj = ArraySupport(...) constructs obj. The size of any non-scalar
@@ -40,7 +40,7 @@ classdef ArraySupport < handle
                     'Solver:NonMatchingInputSize',...
                     'Size of all non-scalar input should match')
                 siz_obj = num2cell(siz_nscal{1});
-                obj(siz_obj{:})=obj;
+                obj(siz_obj{:})=copy(obj);
             end
 
         end

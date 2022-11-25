@@ -3,10 +3,10 @@ classdef InstrumentMatrixFromBAngle < nortek.InstrumentMatrixProvider
 %
 % see also: InstrumentMatrixProvider
     methods(Access=protected)
-        function tf=get_has_data(~,adcp)
+        function tf=get_has_data(~,adcp,varargin)
             tf=all(isfinite(adcp.beam_angle),'all');
         end
-        function i2b=get_i2b_matrix(~,adcp)
+        function i2b=get_i2b_matrix(~,adcp,varargin)
             bangle=adcp.beam_angle;
             a=sind(bangle);
             b=cosd(bangle);
@@ -18,7 +18,7 @@ classdef InstrumentMatrixFromBAngle < nortek.InstrumentMatrixProvider
                 cat(4, zr,     a(:,:,4), zr, b(:,:,4)));
 
         end
-        function b2i=get_b2i_matrix(~,adcp)
+        function b2i=get_b2i_matrix(~,adcp,varargin)
             bangle=adcp.beam_angle;
             a=1./(2*sind(bangle));
             b=1./(2*cosd(bangle));

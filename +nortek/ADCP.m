@@ -409,6 +409,12 @@ classdef ADCP < ADCP
             if nargin < 3
                 src=obj.coordinate_system;
             end
+            % UseTilts option not used since it is not possible to disable
+            % the use of tilts in the velocity calculation for Nortek ADCPs
+            %
+            % BottomTrack option is not used since WaterTrack and
+            % BottomTrack rotation matrices are always equal for Nortek
+            % ADCPs
             tm = repmat(shiftdim(eye(4),-2),1,obj.nensembles);
             I=CoordinateSystem.Instrument;
             E=CoordinateSystem.Earth;

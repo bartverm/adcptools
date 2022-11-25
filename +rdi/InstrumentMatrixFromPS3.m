@@ -15,14 +15,14 @@ classdef InstrumentMatrixFromPS3 < rdi.InstrumentMatrixProvider
         
     end
     methods(Access=protected)
-        function tf=get_has_data(obj,~)
+        function tf=get_has_data(obj,~,varargin)
             tf=~isequal(obj.ps3_matrix,eye(4));
         end
-        function i2b=get_i2b_matrix(obj,adcp)
+        function i2b=get_i2b_matrix(obj,adcp,varargin)
             validateattributes(adcp,{'ADCP'},{'scalar'});
             i2b=repmat(shiftdim(inv(obj.ps3_matrix),-2),1,adcp.nensembles,1,1);
         end
-        function b2i=get_b2i_matrix(obj,adcp)
+        function b2i=get_b2i_matrix(obj,adcp,varargin)
             validateattributes(adcp,{'ADCP'},{'scalar'});
             b2i=repmat(shiftdim(obj.ps3_matrix,-2),1,adcp.nensembles,1,1);
         end

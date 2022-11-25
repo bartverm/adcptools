@@ -1,16 +1,16 @@
 classdef InstrumentMatrixFromConfString < nortek.InstrumentMatrixProvider
     methods (Access = protected)
-        function val = get_has_data(obj, adcp)
+        function val = get_has_data(obj, adcp, varargin)
             val = ~isempty(obj.get_xfburst_lines(adcp));
             val = val & isequal([1; 2; 3; 4], unique(adcp.physical_beams_used));
         end
-        function val = get_i2b_matrix(obj, adcp)
+        function val = get_i2b_matrix(obj, adcp, varargin)
             val = obj.get_internal_b2i(adcp);
             val = inv(squeeze(val(1,1,:,:) ) );
             val = shiftdim(val, -2);
             val = repmat(val, [1, adcp.nensembles, 1, 1]);
         end
-        function val = get_b2i_matrix(obj, adcp)
+        function val = get_b2i_matrix(obj, adcp, varargin)
             val = obj.get_internal_b2i(adcp);
             val = cat(3, val(:,:,1:2,:),...
                     cat(4,...

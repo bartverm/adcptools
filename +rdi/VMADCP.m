@@ -20,6 +20,9 @@ classdef VMADCP < VMADCP & rdi.ADCP
         function r=get_bt_vertical_range(obj)
             r=shiftdim(double(obj.raw.btrange)/100,-1);
             r(r==0)=nan;
+            r = -r;
+            % sign is reverted since untilted ADCP is downlooking, so
+            % vertical range must be negative.
         end
         function btvel=get_btvel(obj,dst)
             if nargin < 2

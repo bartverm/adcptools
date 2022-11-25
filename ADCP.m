@@ -1,4 +1,4 @@
-classdef ADCP < handle
+classdef ADCP < helpers.WarningHandler
 % Abstract base class to represent ADCP datasets
 %
 %   A = ADCP(...) based on the class of the passed arguments
@@ -523,7 +523,9 @@ classdef ADCP < handle
                 dst=CoordinateSystem.Earth;
             end
             tm=obj.xform(CoordinateSystem.Instrument,...
-                dst, 'Geometry', true);
+                dst, 'UseTilts', true); 
+            % force use of tilts even if they were not used in velocity
+            % computation
             tm(:,:,:,4)=[];
             tm(:,:,4,:)=[];
             beam_mat = obj.instrument_matrix_provider.beam_orientation_matrix(obj);
@@ -574,6 +576,9 @@ classdef ADCP < handle
         %   true will always use the tilts in invers transformations,
         %   if set to false will never use tilts in inverse
         %   transformations.
+        %
+        %   'BottomTracking' - if set to true specifies that bottom
+        %   tracking rotation matrices are requested.
         %
         %   see also: ADCP
         val = xform(obj,dst,src,varargin)

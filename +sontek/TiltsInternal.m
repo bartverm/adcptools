@@ -17,7 +17,7 @@ classdef TiltsInternal < TiltsProvider
     end
     methods(Access=protected, Static)
         function val = get_tilt(adcp,name)
-            val = adcp.raw.Compass.(name)';
+            val = adcp.raw.Compass.(name)(:,1)';
             unit = adcp.raw.Compass.Units.(name)(adcp.raw.file_id);
             is_rad = strcmp(unit,'rad');
             val(is_rad) = rad2deg(val(is_rad));

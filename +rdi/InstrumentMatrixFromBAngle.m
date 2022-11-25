@@ -3,10 +3,10 @@ classdef InstrumentMatrixFromBAngle < rdi.InstrumentMatrixProvider
 %
 % see also: InstrumentMatrixProvider
     methods(Access=protected)
-        function tf=get_has_data(~,adcp)
+        function tf=get_has_data(~,adcp,varargin)
             tf=all(isfinite(adcp.beam_angle));
         end
-        function i2b=get_i2b_matrix(~,adcp)
+        function i2b=get_i2b_matrix(~,adcp,varargin)
             bangle=adcp.beam_angle;
             c=adcp.convexity;
             a=sind(bangle);
@@ -18,9 +18,11 @@ classdef InstrumentMatrixFromBAngle < rdi.InstrumentMatrixProvider
                 cat(4, -c.*a,    zr, b,  d),...
                 cat(4,    zr, -c.*a, b, -d),...
                 cat(4,    zr,  c.*a, b, -d));
-
+            % This matrix is defined for a downlooking ADCP, which has all
+            % tilts = 0. An upward looking ADCP has a 180 degrees roll. The
+            % beam velocity is positive towards the beam.
         end
-        function b2i=get_b2i_matrix(~,adcp)
+        function b2i=get_b2i_matrix(~,adcp,varargin)
             bangle=adcp.beam_angle;
             c=adcp.convexity;
             a=1./(2*sind(bangle));

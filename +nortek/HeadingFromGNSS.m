@@ -1,4 +1,4 @@
-classdef HeadingFromGNSS < HeadingProvider
+classdef HeadingFromGNSS < HeadingProvider & helpers.WarningHandler
     methods (Access = protected)
         function val = get_has_data(~, adcp)
             val = isa(adcp, 'nortek.VMADCP');
@@ -10,10 +10,10 @@ classdef HeadingFromGNSS < HeadingProvider
             val = interp1(adcp.gnss_time, adcp.gnss_heading, adcp.time,...
                 'linear');
             if obj.heading_misalignment==0
-                wrn_id = 'HeadingFromGNSS:ZeroMisalignment';
-                warning(wrn_id,...
+                obj.warn_and_disable(...
+                    'nortek:HeadingFromGNSS:ZeroMisalignment',...
                     ['Heading misalignment set to zero. Make sure to ',...
-                    'set it to the right value for proper heading. Not showing this warning again.'])
+                    'set it to the right value for proper heading.'])
             end
         end
     end

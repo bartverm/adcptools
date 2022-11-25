@@ -328,7 +328,7 @@ classdef ADCP < ADCP
                 return
             end
             if ~obj.is_workhorse
-                warning('Assuming ADCP is a Workhorse')
+                obj.warn_and_disable('ADCP:ADCPIsWorkhorse','Assuming ADCP is a workhorse.')
             end
             switch obj.transducer.frequency
                 case 76.8e3
@@ -355,7 +355,7 @@ classdef ADCP < ADCP
         end
         function val=get.attitude_temperature(obj)
             if ~obj.is_workhorse
-                warning('Assuming ADCP is a workhorse')
+                obj.warn_and_disable('ADCP:ADCPIsWorkhorse','Assuming ADCP is a workhorse.')
             end
             DC_COEF = 9.82697464e1;                                                    % Temperature coefficients
             FIRST_COEF = -5.86074151382e-3;
@@ -370,7 +370,7 @@ classdef ADCP < ADCP
         end
         function val=get.backscatter_constant(obj)
             if ~is_workhorse(obj)
-                warning('Assuming ADCP is a workhorse')
+                obj.warn_and_disable('ADCP:ADCPIsWorkhorse','Assuming ADCP is a workhorse.')
             end
             switch obj.transducer.frequency
                 case 76.8e3
@@ -403,7 +403,7 @@ classdef ADCP < ADCP
         
         function val=get.current_factor(obj) % From workhorse operation manual
             if ~obj.is_workhorse
-                warning('Assuming ADCP is a Workhorse')
+                obj.warn_and_disable('ADCP:ADCPIsWorkhorse','Assuming ADCP is a workhorse.')
             end
             switch obj.transducer.frequency
                 case 76.8e3
@@ -431,7 +431,10 @@ classdef ADCP < ADCP
             src=obj.coordinate_system;
             if nargin > 1 && ~all(dst == src)
                 if any(dst==B & ~(src==B) & obj.bin_mapping_used)
-                    warning('Bin mapping was used: backward transformation to beam coordinates might be incorrect')
+                    obj.warn_and_disable(...
+                        'ADCP:BinMappingBackwardTransformations',...
+                        ['Bin mapping was used: backward transformation'...
+                        ' to beam coordinates might be incorrect.'])
                 end
                 tm=obj.xform(dst);
                 vel=helpers.matmult(tm, vel);
@@ -448,8 +451,16 @@ classdef ADCP < ADCP
                 src=obj.coordinate_system;
             end
             P=inputParser;
-            P.addParameter('Geometry', false,@(x) isscalar(x) && islogical(x));
+            P.addParameter('UseTilts', false,...
+                @(x) isscalar(x) && islogical(x));
+            P.addParameter('BottomTracking', false,...
+                @(x) isscalar(x) && islogical(x))
             P.parse(varargin{:});
+            % Bottom track option is not used for rdi, since Water and
+            % Bottom Track matrices are always the same
+
+            % Tilt option is needed since tilts can be explicitly disabled
+            % in velocity processing for RDI ADCPs
             
             tm = repmat(shiftdim(eye(4),-2),1,obj.nensembles);
             I=CoordinateSystem.Instrument;
@@ -488,16 +499,17 @@ classdef ADCP < ADCP
             
             % from higher than instrument to instrument
             cfilt = exp_cfilt & dst <= I & src > I;
-            if any(strcmp(P.UsingDefaults,'Geometry'))
+            if any(strcmp(P.UsingDefaults,'UseTilts'))
                 cpitch(~obj.tilts_used_in_transform)=0; % Take into account whether tilts where used when transforming back
                 croll(~obj.tilts_used_in_transform)=0; % Take into account whether tilts where used when transforming back
-            elseif ~P.Results.Geometry % for geometry we always want to use tilts, also when they were not used for velocity computations.
+            elseif ~P.Results.UseTilts % for geometry we always want to use tilts, also when they were not used for velocity computations.
                 cpitch(:)=0;
                 croll(:)=0;
             end
                 
             tm(1,cfilt,:,:)=helpers.matmult(...
-                permute(obj.head_tilt(ha(cfilt),cpitch(cfilt), croll(cfilt)),[1,2,4,3]),...
+                permute(obj.head_tilt(ha(cfilt),cpitch(cfilt),...
+                croll(cfilt)),[1,2,4,3]),...
                 tm(1,cfilt,:,:));
             
             % from higher than beam to beam

@@ -22,7 +22,11 @@ classdef ShipVelocityFromGPS < ShipVelocityProvider
             vx=[vx(1) vx vx(end)];
             vy=[vy(1) vy vy(end)];
             vel=cat(3,vx,vy,zeros([size(vx),2]));
-            vel=helpers.matmult(adcp.xform(dst, CoordinateSystem.Earth),vel);
+            vel=helpers.matmult(adcp.xform(dst, CoordinateSystem.Earth,...
+                'BottomTracking',true),vel);
+            % last line transforms back to bottom_track system. This is to
+            % match behaviour of systems with bottom tracking on different
+            % beams than water tracking (e.g. sontek M9)
         end
     end
 end

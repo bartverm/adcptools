@@ -120,12 +120,15 @@ classdef ADCP < ADCP
             vel(bad)=nan;
         end
         function tm = xform(obj,dst,src,varargin)
-            if nargin < 3
+            if nargin < 3 || isempty(src)
                 src=obj.coordinate_system;
             end
-
             P=inputParser;
-            P.addParameter('Geometry', false,@(x) isscalar(x) && islogical(x));
+            P.addParameter('BottomTracking', false,...
+                @(x) isscalar(x) && islogical(x));
+            P.addParameter('UseTilts', false,...
+                @(x) isscalar(x) && islogical(x));
+            
             P.parse(varargin{:});
 
             tm = repmat(shiftdim(eye(4),-2),1,obj.nensembles);
@@ -133,7 +136,8 @@ classdef ADCP < ADCP
             S=CoordinateSystem.Ship;
             E=CoordinateSystem.Earth;
             B=CoordinateSystem.Beam;
-            exp_cfilt=true(1,obj.nensembles); % dummy filter to expand scalar input
+            % dummy filter to expand scalar input
+            exp_cfilt=true(1,obj.nensembles); 
             roll=deg2rad(obj.roll);
             pitch=deg2rad(obj.pitch);
             head=deg2rad(obj.heading);
@@ -203,12 +207,22 @@ classdef ADCP < ADCP
                     elseif ismatrix(in(1).(current_field))
                         out.(current_field) = vertcat(in.(current_field));
                     else
-                        out.(current_field) = cat(3,in.(current_field));
+                        % pad arrays with nans to maximum ncells in data,
+                        % to be able to concatenate
+                        indat = {in.(current_field)};
+                        ncells = cellfun(@(x) size(x,1), indat);
+                        max_cells = max(ncells);
+                        indat = cellfun(@(x) [x;...
+                            nan(max_cells-size(x,1),size(x,2),...
+                            size(x,3))],...
+                            indat,'UniformOutput', false);
+                        out.(current_field) = cat(3,indat{:});
                     end
                 end
             end
             % create a file id to map per-file scalar values to ensembles
-            if isfield(in,'System') && all(cellfun(@(x) isfield(x,'Time'),{in.System}))
+            if isfield(in,'System') &&...
+                    all(cellfun(@(x) isfield(x,'Time'),{in.System}))
                 n_ens = cellfun(@(x) size(x.Time,1), {in.System});
                 out.file_id = zeros(size(out.System.Time,1),1);
                 out.file_id(1) = 1;

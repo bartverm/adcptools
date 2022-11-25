@@ -275,10 +275,15 @@ classdef XSection < handle & helpers.ArraySupport
             if nargin > 1
                 argin = [argin {scale}];
             end
+            varargout = cell(1,nargout);
             if ~isscalar(obj)
-                varargout = obj.plot_array('plot',argin{:});
+                hold_stat = get(gca,'nextplot');
+                set(gca,'nextplot','add')
+                [varargout{:}] = obj.run_method('plot', argin{:});
+                set(gca,'nextplot', hold_stat)
                 return
             end
+
             if nargin < 2
                 scale=obj.scale;
             end

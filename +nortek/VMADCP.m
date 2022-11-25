@@ -231,7 +231,7 @@ classdef VMADCP < nortek.ADCP & VMADCP
         function read_sigvm(obj, search_string)
             cur_files = dir(search_string);
             if isempty(cur_files)
-                error(['Could not find ' ,search_string])
+                error('Could not find files.')
             end
             cur_files([cur_files.isdir]) = [];
 
@@ -364,6 +364,9 @@ classdef VMADCP < nortek.ADCP & VMADCP
             val = permute(obj.bt_depth, [2 3 1]);
             val = interp1(obj.bt_time', val, obj.time,'nearest');
             val = ipermute(val, [2 3 1]);
+            val = -val;
+            % Untilted ADCP is upward looking, so vertical range to bed
+            % should be negative
         end
     end
     properties%(Access = protected)

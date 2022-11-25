@@ -77,13 +77,17 @@ classdef VMADCP < ADCP
             end
         end
         function val = get.slant_range_to_bed(obj)
-            tm = obj.xform(CoordinateSystem.Instrument, CoordinateSystem.Earth);
+            tm = obj.xform(CoordinateSystem.Instrument,...
+                CoordinateSystem.Earth,...
+                'BottomTracking', true, 'UseTilts', true);
             tm(:,:,:,4) = [];
             tm(:,:,4,:) = [];
-            beam_m = obj.instrument_matrix_provider.beam_orientation_matrix(obj);
+            imp = obj.instrument_matrix_provider;
+            beam_m = imp.beam_orientation_matrix(obj,...
+                'BottomTracking', true);
             tm = helpers.matmult(beam_m,tm,3,4);
             tm(:,:,:,1:2)=[];
-            val = -obj.bt_vertical_range ./ tm;
+            val = obj.bt_vertical_range ./ tm;
         end
         function val = get.bt_vertical_range(obj)
             val = obj.get_bt_vertical_range;
@@ -114,7 +118,7 @@ classdef VMADCP < ADCP
         %   coordinate system
         %
         % see also: VMADCP
-            if nargin < 2
+            if nargin < 2 || isempty(dst)
                 dst = obj.coordinate_system;
             end
             btvel = obj.get_btvel(dst);
@@ -132,8 +136,11 @@ classdef VMADCP < ADCP
             if nargin < 2 
                 dst=CoordinateSystem.Earth;
             end
-            tm =obj.xform(CoordinateSystem.Instrument, dst,'Geometry',true);
-            beam_m = obj.instrument_matrix_provider.beam_orientation_matrix(obj);
+            tm =obj.xform(CoordinateSystem.Instrument, dst,...
+                'UseTilts',true,'BottomTracking',true);
+            imp = obj.instrument_matrix_provider;
+            beam_m = imp.beam_orientation_matrix(obj,...
+                'BottomTracking', true);
             tm(:,:,:,4)=[];
             tm(:,:,4,:)=[];
             tm = helpers.matmult(beam_m,tm);
@@ -147,12 +154,15 @@ classdef VMADCP < ADCP
         %
         % see also: VMADCP, bed_offset
             pos=obj.bed_offset(CoordinateSystem.Earth);
-            pos(:,:,:,1)=pos(:,:,:,1)+repmat(obj.horizontal_position(1,:),[1,1,4]);
-            pos(:,:,:,2)=pos(:,:,:,2)+repmat(obj.horizontal_position(2,:),[1,1,4]);
-            pos(:,:,:,3)=pos(:,:,:,3)+permute(obj.vertical_position,[3,2,4,1]);
+            pos(:,:,:,1)=pos(:,:,:,1)+...
+                repmat(obj.horizontal_position(1,:),[1,1,4]);
+            pos(:,:,:,2)=pos(:,:,:,2)+...
+                repmat(obj.horizontal_position(2,:),[1,1,4]);
+            pos(:,:,:,3)=pos(:,:,:,3)+...
+                permute(obj.vertical_position,[3,2,4,1]);
         end
-        function vel=ship_velocity(obj,dst)
-            vel=obj.shipvel_provider.ship_velocity(obj,dst);
+        function vel=ship_velocity(obj,varargin)
+            vel=obj.shipvel_provider.ship_velocity(obj,varargin{:});
         end
         function wl=get.water_level(obj)
             wl=obj.water_level_object.get_water_level(obj.time);
@@ -165,9 +175,12 @@ classdef VMADCP < ADCP
             %
             %   see also: VMADCP, depth_cell_offset
             pos=obj.depth_cell_offset(CoordinateSystem.Earth);
-            pos(:,:,:,1)=pos(:,:,:,1)+repmat(obj.horizontal_position(1,:),[1,1,4]);
-            pos(:,:,:,2)=pos(:,:,:,2)+repmat(obj.horizontal_position(2,:),[1,1,4]);
-            pos(:,:,:,3)=pos(:,:,:,3)+permute(obj.vertical_position,[3,2,4,1]);
+            pos(:,:,:,1)=pos(:,:,:,1)+...
+                repmat(obj.horizontal_position(1,:),[1,1,4]);
+            pos(:,:,:,2)=pos(:,:,:,2)+...
+                repmat(obj.horizontal_position(2,:),[1,1,4]);
+            pos(:,:,:,3)=pos(:,:,:,3)+...
+                permute(obj.vertical_position,[3,2,4,1]);
         end
         function handle_track=plot_track(obj,varargin)
             % plot the track sailed by the vessel
