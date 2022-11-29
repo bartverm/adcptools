@@ -422,11 +422,11 @@ classdef VelocitySolver < handle
                 dsig = cur_sig - cmesh.sig_center(cell_idx); % delta_sig
                 dt = cur_t - cmesh.time; % delta time
                 dt = seconds(dt);
-%                 nb = length(dt);
-                
-%                 [dt, cur_s, dn, dz, dsig,...
-%                     dtt, cur_st, dnt, dzt, dsigt] = split_dataset(opts, dt, cur_s, dn, dz, dsig);
-                
+                %                 nb = length(dt);
+
+                %                 [dt, cur_s, dn, dz, dsig,...
+                %                     dtt, cur_st, dnt, dzt, dsigt] = split_dataset(opts, dt, cur_s, dn, dz, dsig);
+
                 obj.velocity_model.get_parameter_names();
 
                 % Internal continuity matrix
@@ -442,7 +442,11 @@ classdef VelocitySolver < handle
 
                 %Smoothing matrix
                 [D, IM] = assembleD(obj);
-                DD = D'*D;
+                Dp = D'*D;
+
+                %Consistency matrix
+                D2 = assembleD2(obj);
+                D2p = D2'*D2;
 
                 % Data matrix: All data
                 [Mu, Mv, Mw] = obj.velocity_model.get_model(...
@@ -462,48 +466,83 @@ classdef VelocitySolver < handle
                 b = vertcat(bj{:});
                 M = spblkdiag(Mj{:});
 
-                % Construct training matrix and data
-                opts.cell_idx = cell_idx;
-                train_idx = logical(split_dataset(opts));
-                test_idx = ~train_idx;
-
-
-                M0 = M(train_idx, :);
-                b0 = b(train_idx);
-                Mp = M0'*M0;
-
-                % Regularization parameters
-
-                A = Mp + opts.reg_pars(1)*Cp + opts.reg_pars(2)*Cgp + opts.reg_pars(3)*DD + opts.reg_pars(4)*speye(size(DD));
-                
-                % Solve training system of equations
-
+                % Generate first guess for p
+                rpg = [100, 100, 1, 1];
+                A = M'*M + rpg(1)*Cp + rpg(2)*Cgp + rpg(3)*Dp + rpg(4)*D2p;
                 alpha = max(sum(abs(A),2)./diag(A))-2;
                 pcg_opts = struct('michol','on','type','ict','droptol',1e-3,'diagcomp',alpha);
                 L = ichol(A, pcg_opts);
-                p = pcg(A, M0'*b0, 1e-6, size(A,2), L, L'); % global, iterative inversion
+                p0 = pcg(A, M'*b, 1e-9, size(A,2), L, L'); % global, iterative inversion
+                np = length(p0);
 
-                % Evaluate error on withold set
-
-                M1 = M(test_idx,:);
-                b1 = b(test_idx);
-
-                % Residuals and goodness of fit
-                resf = M*p - b;   % Performance on full set
-                res0 = M0*p - b0; % Performance on training set
-                res1 = M1*p - b1; % Performance on testing set
-                pe = sum(res1.^2)/length(res1)/2;
-                fprintf('Prediction error: %d', pe)
-                resC = C*p;       % Performance on continuity
-                resCg = Cg*p;
-
-                for j = 1:obj.mesh.ncells
-                    % cell-based residuals, including std and mean. See
-                    % main script
+                %                     Inspect matrices
+                plt=1;
+                if plt
+                    figure;
+                    subplot(2,3,1)
+                    spy(M'*M); title('Mp')
+                    subplot(2,3,2)
+                    spy(Cp); title('Cp')
+                    subplot(2,3,3)
+                    spy(Cgp); title('Cgp')
+                    subplot(2,3,4)
+                    spy(Dp); title('Dp')
+                    subplot(2,3,5)
+                    spy(D2p); title('D2p')
+                    subplot(2,3,6)
+                    spy(A); title('A')
                 end
-                assignin("base", "dat", struct('M', M, 'C', C, 'Cg', Cg, 'D', D, 'IM', IM, 'A', A, 'p', p, 'b', b, 'cell_idx', cell_idx))
+                % First loop: cross-validation ensembles
+                opts.cell_idx = cell_idx;
+                % Regularization parameters
+                regP = combine_regpars(opts);nepochs = opts.cviter;
+                p = nan([np,size(regP,1),nepochs]);
+                for ep = 1:nepochs
+                    train_idx = logical(split_dataset(opts));
+                    test_idx = ~train_idx;
 
-                pars{1,1} = reshape(p,[size(Mb0,2), obj.mesh.ncells])'; % At this stage, pars are already known.
+                    % Construct training matrix and data
+                    M0 = M(train_idx, :);
+                    b0 = b(train_idx);
+                    
+                    M1 = M(test_idx,:);
+                    b1 = b(test_idx);                    
+ 
+                    Mp = M0'*M0;
+
+                    for rp = 1:size(regP,1)
+                        A = Mp + regP(rp,1)*Cp + regP(rp,2)*Cgp + regP(rp,3)*Dp + regP(rp,4)*D2p;
+                        pcg_opts.diagcomp = max(sum(abs(A),2)./diag(A))-2;
+                        L = ichol(A, pcg_opts);
+                        p(:, rp, ep) = pcg(A, M0'*b0, 1e-9, size(A,2), L, L', p0); % Matrix of solutions (columns) belonging to regularization parameters regP (rows)
+
+                        % Residuals and goodness of fit
+%                         resf = M*p - b;   % Performance on full set
+%                         res0 = M0*p - b0; % Performance on training set
+                        res1 = M1*p(:, rp, ep) - b1; % Performance on testing set
+                        pe(1,rp, ep) = sum(res1.^2)/length(res1); % MSE prediction error
+%                         fprintf('Prediction error: %d', pe)
+                        resC = C*p(:, rp, ep);       % Performance on continuity
+                        pe(2,rp, ep) = sum(resC.^2)/np; % MSE continuity error
+                        resCg = Cg*p(:, rp, ep);
+                        pe(3,rp, ep) = sum(resCg.^2)/np; % MSE continuity error 2
+                        resD = D*p(:, rp, ep);       % Performance on smoothness
+                        pe(4,rp, ep) = sum(resCg.^2)/np; % MSE smoothness error
+                        resD2 = D2*p(:, rp, ep);       % Performance on consistency
+                        pe(5,rp, ep) = sum(resCg.^2)/np; % MSE consistency error
+                    end
+                end
+                Pe = mean(pe, 3);
+
+
+%                 for j = 1:obj.mesh.ncells
+%                     % cell-based residuals, including std and mean. See
+%                     % main script
+%                 end
+
+                assignin("base", "dat", struct('M', M, 'C', C, 'Cg', Cg, 'D', D, 'D2', D2, 'IM', IM, 'p', p, 'b', b, 'opts', opts, 'cell_idx', cell_idx, 'Pe', Pe, 'regP', regP))
+
+                pars{1,1} = reshape(squeeze(p(:,1,1)) ,[size(Mb0,2), obj.mesh.ncells])'; % At this stage, pars are already known.
                 cov_pars{1,1} = 0; n_vels{1,1} = ns;
             end
         end
