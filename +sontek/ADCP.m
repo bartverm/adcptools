@@ -108,6 +108,14 @@ classdef ADCP < ADCP
         function vel = velocity(obj,dst,filter)
             vel=permute(obj.raw.WaterTrack.Velocity,[1,3,2]);
             src=obj.coordinate_system;
+            I = CoordinateSystem.Instrument;
+
+            if isfield(obj.raw,'BottomTrack') && any(src>I)
+                obj.warn_and_disable('sontek:ADCP:BottomTrackIncluded',...
+                    ['These data include bottom track data,',...
+                    ' use sontek.VMADCP object for correct results.'])
+            end
+
             if nargin > 1 && ~all(dst == src)
                 tm=obj.xform(dst);
                 vel=helpers.matmult(tm, vel);

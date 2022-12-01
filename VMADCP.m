@@ -220,8 +220,14 @@ classdef VMADCP < ADCP
             end
             set(gca,'NextPlot',hold_stat)
             axis equal
-            xlabel(ca,[obj.horizontal_position_provider.description,' x (m)']);
-            ylabel(ca,[obj.horizontal_position_provider.description,' y (m)']);
+            fdat = find(obj.horizontal_position_provider.has_data(obj),...
+                1,'first');
+            xlabel(ca,...
+                [obj.horizontal_position_provider(fdat).description,...
+                ' x (m)']);
+            ylabel(ca,...
+                [obj.horizontal_position_provider(fdat).description,...
+                ' y (m)']);
             if nargout > 0
                 handle_track=ht;
             end

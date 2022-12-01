@@ -5,8 +5,34 @@ classdef VMADCP < sontek.ADCP & VMADCP
             obj=obj@sontek.ADCP(varargin{:});
             obj=obj@VMADCP(varargin{:});
             obj.horizontal_position_provider = [
-                LatLonToUTM(sontek.LatLonFromGPS)
+                sontek.ADCPHorizontalPositionFromGPSUTM;...
+                LatLonToUTM([...
+                    sontek.LatLonFromGPS;...
+                    sontek.LatLonFromRawGPS])
                 ];
+        end
+        function vel = velocity(obj, dst, filter)
+            I = CoordinateSystem.Instrument;
+            src = obj.coordinate_system;
+
+            % remove ship velocity correction for ship and earth velocity
+            f_corr = src > I;
+            vel=permute(obj.raw.WaterTrack.Velocity,[1,3,2]);
+            ship_vel = obj.ship_velocity(src);
+            vel(:,f_corr,:,:) = vel(:, f_corr,:,:) -...
+                ship_vel(:, f_corr,:,:);
+            
+            if nargin > 1 && ~all(dst == src)
+                tm=obj.xform(dst);
+                vel=helpers.matmult(tm, vel);
+            end
+            if nargin > 2
+                bad=obj.bad(filter);
+            else
+                bad=obj.bad();
+            end
+            vel(bad)=nan;
+            
         end
         function vel=water_velocity(obj,varargin)
             vel = water_velocity@VMADCP(obj,varargin{:});
@@ -16,11 +42,19 @@ classdef VMADCP < sontek.ADCP & VMADCP
             else
                 dst = obj.coordinate_system;
             end
+            B = CoordinateSystem.Beam;
+            I = CoordinateSystem.Instrument;
+            app_vel = obj.velocity(dst);
+            src = obj.coordinate_system;
+
+            % By default sontek corrects velocity already for earth and xyz
+            % coodinates
+            f_corr = src > I; % select ship and earth measurements
+            
+
             % here we have to deal with bottom track and water track not
             % always using the same set of beams, thus correction in beam
             % coordiantes for ship velocity goes wrong
-            src = obj.coordinate_system;
-            B = CoordinateSystem.Beam;
             f_corr = src == B & dst == B &...
                 obj.raw.WaterTrack.WT_Frequency' ~=...
                 obj.raw.BottomTrack.BT_Frequency';
@@ -35,7 +69,6 @@ classdef VMADCP < sontek.ADCP & VMADCP
             ship_vel = obj.ship_velocity(dst);
             ship_vel(:,f_corr,:,:) = helpers.matmult(tm_bt2wt,...
                 ship_vel(:,f_corr,:,:));
-            app_vel = obj.velocity(dst);
             vel(:,f_corr,:) = app_vel(:,f_corr,:,:) +...
                 ship_vel(:,f_corr,:,:);
 
