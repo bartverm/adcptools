@@ -262,6 +262,8 @@ classdef ADCP < ADCP
 
         typical_pdbw
 
+        transducer_radius
+
         % ADCP/noise_level
         %
         %   Specifies the background noise received by the instrument in
@@ -465,6 +467,14 @@ classdef ADCP < ADCP
         function val=get.type(obj)
             val = rdi.ADCP_Type(obj.raw.firmver);
         end
+        
+        function val=get.transducer_radius(obj)
+            wat = acoustics.Water;
+            [~,~,rayl] = obj.get_instrument_characteristics;
+            labda = wat.speedsound(0)./obj.frequency;
+            val = sqrt(rayl.*labda/pi);
+        end
+
         %%% Ordinary methods
         
         function val=get.current_factor(obj) % From workhorse operation manual
