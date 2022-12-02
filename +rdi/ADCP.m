@@ -104,15 +104,6 @@ classdef ADCP < ADCP
         % see also: ADCP, transducer, water
         raw(1,1) struct;
         
-               
-        % ADCP/type
-        %
-        %   Specify the type of ADCP that is being used. Default is
-        %   rdi.ADCP_Type.Monitor.
-        %
-        % see also: ADCP, rdi.ADCP_Type
-        type(1,1) rdi.ADCP_Type = rdi.ADCP_Type.Unknown
-        
         % ADCP/temperature_offset
         %
         %   Specifies the temperature offset for Workhorse ADCPs for ADC
@@ -130,7 +121,15 @@ classdef ADCP < ADCP
         % see also: ADCP
         noise_level(1,1) double = -40
     end
-    properties(Dependent, SetAccess=private)
+    properties(Dependent, SetAccess=private)     
+        % ADCP/type
+        %
+        %   Get the type of ADCP that is being used.
+        %
+        % see also: ADCP, rdi.ADCP_Type
+        type rdi.ADCP_Type 
+
+
         % ADCP/fileid read only property
         %
         % fileid contains a fileid for each ensemble corresponding to the
@@ -232,6 +231,10 @@ classdef ADCP < ADCP
         %
         % see also: ADCP
         voltage_factor
+
+        voltage_offset
+
+        frequency
         
         % ADCP/power read only property
         %
@@ -262,11 +265,28 @@ classdef ADCP < ADCP
         backscatter_constant
     end
 
+    properties(Constant)
+        % frequency for Sentinel ADCPs
+        sentinel_freq = [38.4, 76.8, 153.6, 307.2,...
+            491.52, 983.04, 2457.6]*1e3
+
+        % frequency for Workhorse ADCPs
+        workhorse_freq = [38.4, 76.8, 153.6, 307.2,...
+            614.4, 1228.8, 2457.6]*1e3
+
+        % voltage scaling for workhorse ADCPs (from workhorse command and
+        % output data format manual, Oct 2022, under ADC channels)
+        wh_v_scaling = [2092719, 592157, 592157, 380667, 253765, 253765]
+
+        % current scaling for workhorse ADCPs (from workhorse command and
+        % output data format manual, Oct 2022, under ADC channels)
+        wh_i_scaling = [43838, 11451, 11451, 11451, 11451, 11451, 11451]
+    end
+
     methods
         %%% Constructor method %%%
         function obj=ADCP(varargin)
             obj = obj@ADCP(varargin{:});
-            obj.type = rdi.ADCP_Type.Unknown;
             obj.instrument_matrix_provider = [
                 rdi.InstrumentMatrixFromCalibration; 
                 rdi.InstrumentMatrixFromBAngle
@@ -276,9 +296,7 @@ classdef ADCP < ADCP
                 rdi.HeadingInternal
                 ];
             for ca=1:nargin
-                if isa(varargin{ca},'rdi.ADCP_Type')
-                    obj.type=varargin{ca};
-                elseif isstruct(varargin{ca})
+                if isstruct(varargin{ca})
                     obj.raw=varargin{1};
                 end
             end
@@ -321,34 +339,37 @@ classdef ADCP < ADCP
         function val=get.bandwidth(obj)
             val=double(obj.raw.bandwidth);
         end
+        function val = get.frequency(obj)
+            val = nan(1,obj.nensembles);
+            val(obj.type == rdi.ADCP_Type.STREAMPRO_31) = 2e6;
+            val(obj.type == rdi.ADCP_Type.PINNACLE_61) = 44e3;
+            id = bin2dec(fliplr(obj.raw.sysconf(1:3,:)'))'+1;
+            is_sent = obj.type == rdi.ADCP_Type.SENTINELV_47 |...
+                obj.type == rdi.ADCP_Type.SENTINELV_66;
+            val(is_sent) = obj.sentinel_freq(id(is_sent));
+            val(~is_sent) = obj.workhorse_freq(id(~is_sent));
+        end
+        function val = get.voltage_offset(obj)
+            val = zeros(size(1,obj.nensembles));
+            val(obj.type == rdi.ADCP_Type.PINNACLE_61)=24;
+        end
 
-        function val=get.voltage_factor(obj) % From workhorse operation manual
-            if isfield(obj.raw,'sp_mid_bin1') % streampro header, use voltage factor from manual (0.1 to convert to voltage, but factor is divide by 1e6 in voltage calculation)
-                val=1e5;
-                return
-            end
-            if ~obj.is_workhorse
-                warning('Assuming ADCP is a Workhorse')
-            end
-            switch obj.transducer.frequency
-                case 76.8e3
-                    val=2092719;
-                case {153.6e3, 307.2e3}
-                    val=592157;
-                case 614.4e3
-                    val=380667;
-                case {1228.8e3, 2457.6e3}
-                    val=253765;
-                otherwise
-                    warning('Unknown voltage factor')
-                    val=nan;
-            end
+        function val=get.voltage_factor(obj) % From workhorse operation manual and PDDecoder software
+            val = 1e5*ones(size(obj.type));
+            val(obj.type == rdi.ADCP_Type.TASMAN_74 |...
+                obj.type == rdi.ADCP_Type.PATHFINDER_67) = 1e6;
+            isw = obj.is_workhorse;
+            freq = obj.frequency;
+            [~, freq_idx] = ismember(freq, obj.workhorse_freq);
+            fgood = freq_idx ~= 0;
+            val(isw & fgood) = obj.wh_v_scaling(freq_idx(isw & fgood));
         end
         function val=get.current(obj)
-            val=reshape(double(obj.raw.ADC(:,1))*obj.current_factor/1e6,1,[]);
+            val=reshape(double(obj.raw.ADC(:,1)),1,[]).*obj.current_factor/1e6;
         end
         function val=get.voltage(obj)
-            val=reshape(double(obj.raw.ADC(:,2))*obj.voltage_factor/1e6,1,[]);
+            val=reshape(double(obj.raw.ADC(:,2)),1,[]).*...
+                obj.voltage_factor+obj.voltage_offset;
         end
         function val=get.power(obj)
             val=obj.voltage.*obj.current;
@@ -369,61 +390,84 @@ classdef ADCP < ADCP
             val=127.3./(obj.attitude_temperature+273); % From WinRiver manual
         end
         function val=get.backscatter_constant(obj)
-            if ~is_workhorse(obj)
-                warning('Assuming ADCP is a workhorse')
+            tp = obj.type;
+            freq = obj.frequency;
+            isw = obj.is_workhorse;
+            wh_freq = obj.workhorse_freq;
+            bw = obj.bandwidth;
+            val = nan(1,nensembles);
+
+            iscm = tp == rdi.ADCP_Type.CHANNELMASTER_28;
+            val(iscm & freq == wh_freq(4) & bw == 0) = -143.4; % 300 high
+            val(iscm & freq == wh_freq(4) & bw == 1) = -152.26; % 300 low
+            val(iscm & freq == wh_freq(5) & bw == 0) = -139.08; % 600 high
+            val(iscm & freq == wh_freq(5) & bw == 1) = -147.28; % 600 low
+            val(iscm & freq == wh_freq(6) & bw == 0) = -127.13; % 1200 high
+            val(iscm & freq == wh_freq(6) & bw == 1) = -137.17; % 1200 low
+
+            isex = tp == rdi.ADCP_Type.EXPLORER_34;
+            if any(isex)
+                obj.warning(...
+                    'Assuming Explorer ADCP with piston transducer')
             end
-            switch obj.transducer.frequency
-                case 76.8e3
-                    val=-159.1;
-                case 307.2e3
-                    switch obj.type
-                        case rdi.ADCP_Type.Sentinel
-                            val=-143.5;
-                        case rdi.ADCP_Type.Monitor
-                            val=-143;
-                        otherwise
-                            warning('Assuming ADCP is a Monitor')
-                            val=-143;
-                    end
-                case 614.4e3
-                    if obj.type~=rdi.ADCP_Type.RioGrande
-                        warning('Assuming ADCP is a RioGrande')
-                    end
-                    val=-139.3;
-                case 1228.8e3
-                    val=-129.1;
-                otherwise
-                    warning('Unknown backscatter constant for current ADCP Type')
-                    val=nan;
-            end
+            val(isex & bw == 0) = -132.73; % high
+            val(isex & bw == 1) = -140.95; % low
+            
+            % Skipping long ranger,  don't know how to detect it from the
+            % firmware version
+
+            isos = tp == rdi.ADCP_Type.OCEAN_SURVEYOR_14 |...
+                tp == rdi.ADCP_Type.OCEAN_SURVEYOR_23;
+            val(isos & freq == wh_freq(1)) = -172.19; % 38
+            val(isos & freq == wh_freq(2)) = -164.26; % 75
+            val(isos & freq == wh_freq(3)) = -156.01; % 150
+
+            ispi = tp == rdi.ADCP_Type.PIONEER_73;
+            val(ispi & freq == wh_freq(4)) = -151.30; % 300
+            val(ispi & freq == wh_freq(5)) = -145.25; % 600
+            
+            % Skipping quarter master, don't know how to detect it from the
+            % firmware version
+
+            isrg = tp == RDI.ADCP_Type.RIO_GRANDE_10;
+            val(isrg & freq == wh_freq(5) & bw == 0) = -139.09; % 600 high
+            val(isrg & freq == wh_freq(5) & bw == 1) = -149.14; % 600 low
+            val(isrg & freq == wh_freq(6) & bw == 0) = -129.44; % 1200 high
+            val(isrg & freq == wh_freq(6) & bw == 1) = -139.57; % 1200 low
+            
+            %Riverpro (5b) or RioPro (4b)
+            isrp = tp == RDI.ADCP_Type.RIVERPRO_56; 
+            
+
+
+
         end
 
-        
+        function val=get.type(obj)
+            val = rdi.ADCP_Type(obj.raw.firmver);
+        end
         %%% Ordinary methods
         
         function val=get.current_factor(obj) % From workhorse operation manual
-            if ~obj.is_workhorse
-                warning('Assuming ADCP is a Workhorse')
-            end
-            switch obj.transducer.frequency
-                case 76.8e3
-                    val=43838;
-                case {153.6e3,307.2e3, 614.4e3, 1228.8e3, 2457.6e3}
-                    val=11451;
-                otherwise
-                    warning('Do not know current factor for given ADCP type')
-                    val=nan;
-            end
+            val = 1e5*ones(1,obj.nensembles);
+            isw = obj.is_workhorse;
+            freq = obj.frequency;
+            [~, freq_idx] = ismember(freq, obj.workhorse_freq);
+            fgood = freq_idx ~= 0;
+            val(isw & fgood) = obj.wh_i_scaling(freq_idx(isw & fgood));
         end
         
         function tf=is_workhorse(obj)
-            if any(obj.type== [rdi.ADCP_Type.LongRanger1500, rdi.ADCP_Type.LongRanger3000, rdi.ADCP_Type.QuarterMaster1500,...
-                    rdi.ADCP_Type.QuarterMaster1500ModBeams, rdi.ADCP_Type.QuarterMaster3000, rdi.ADCP_Type.QuarterMaster6000,...
-                    rdi.ADCP_Type.Sentinel, rdi.ADCP_Type.Mariner, rdi.ADCP_Type.Monitor])
-                tf=true;
-            else
-                tf=false;
-            end
+           tf=ismember(obj.type,[...
+               rdi.ADCP_Type.WORKHORSE_8;...
+               rdi.ADCP_Type.WORKHORSE_16;...
+               rdi.ADCP_Type.WORKHORSE_43;...
+               rdi.ADCP_Type.WORKHORSE_50;...
+               rdi.ADCP_Type.WORKHORSE_51;...
+               rdi.ADCP_Type.WORKHORSE_52;...
+               rdi.ADCP_Type.WORKHORSE_77;...
+               rdi.ADCP_Type.WORKHORSE_78...                                                                      
+               ]);
         end
         function vel=velocity(obj,dst,filter)
             vel=obj.int16_to_double(obj.raw.VEL)/1000;
@@ -566,6 +610,9 @@ classdef ADCP < ADCP
         function val=get_echo(obj)
             val=double(obj.raw.ECHO).*obj.intensity_scale;
         end
+
+
+
         function pt = get_transducer(obj, varargin)
         % Reset tranducer properties
         %
@@ -579,7 +626,7 @@ classdef ADCP < ADCP
             %TODO: compute SentinelV and MonitorV radii back from
             %beam_width and frequency (see equation in Deines 1999)
             % Handle phased array ADCPs
-            if obj.type==rdi.ADCP_Type.RiverRay
+            if obj.type==rdi.ADCP_Type.RIVERRAY_44
                 if ~isa(pt,'acoustics.PhasedArrayTransducer')
                     pt=acoustics.PhasedArrayTransducer;
                 end
