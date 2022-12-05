@@ -182,7 +182,7 @@ classdef PistonTransducer < handle
             value=2*pi*obj.frequency./obj.speedsound;
         end
         function value=get.nearfield(obj)
-            value=pi*obj.radius^2./obj.wavelength;
+            value=pi*obj.radius.^2./obj.wavelength;
         end
         function value=get.angularfreq(obj)
             value=2*pi*obj.frequency;
