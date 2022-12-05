@@ -329,6 +329,202 @@ if any(AllHeaders(:,1)==12800)
     end
 end
 
+% Read vertical beam range data
+if any(AllHeaders(:,1) == 0x4100)
+    initVBeamRange(nens);
+    for cntens=1:nens
+        Ndatablock=find(DataHeader{cntens}(:,1)==0x4100, 1);
+        if isempty(Ndatablock)
+            continue
+        else
+            fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
+            readVBeamRange(fileid(cntens),fpos,cntens);
+        end
+    end
+end
+
+% Read vertical beam profile leader data
+if any(AllHeaders(:,1) == 0x0f01)
+    initVBeamLeader(nens);
+    for cntens=1:nens
+        Ndatablock=find(DataHeader{cntens}(:,1)==0x0f01, 1);
+        if isempty(Ndatablock)
+            continue
+        else
+            fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
+            readVBeamLeader(fileid(cntens),fpos,cntens);
+        end
+    end
+end
+
+% Read vertical beam velocity data
+if any(AllHeaders(:,1) == 0x0a00)
+    initVBeamVelocity(nens);
+    for cntens=1:nens
+        Ndatablock=find(DataHeader{cntens}(:,1)==0x0a00, 1);
+        if isempty(Ndatablock)
+            continue
+        else
+            fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
+            readVBeamVelocity(fileid(cntens),fpos,cntens);
+        end
+    end
+end
+
+% Read vertical beam corr data
+if any(AllHeaders(:,1) == 0x0b00)
+    initVBeamCorr(nens);
+    for cntens=1:nens
+        Ndatablock=find(DataHeader{cntens}(:,1)==0x0b00, 1);
+        if isempty(Ndatablock)
+            continue
+        else
+            fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
+            readVBeamCorr(fileid(cntens),fpos,cntens);
+        end
+    end
+end
+
+% Read vertical beam echo data
+if any(AllHeaders(:,1) == 0x0c00)
+    initVBeamEcho(nens);
+    for cntens=1:nens
+        Ndatablock=find(DataHeader{cntens}(:,1)==0x0c00, 1);
+        if isempty(Ndatablock)
+            continue
+        else
+            fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
+            readVBeamEcho(fileid(cntens),fpos,cntens);
+        end
+    end
+end
+
+% Read vertical beam percentage good data
+if any(AllHeaders(:,1) == 0x0d00)
+    initVBeamPerc(nens);
+    for cntens=1:nens
+        Ndatablock=find(DataHeader{cntens}(:,1)==0x0d00, 1);
+        if isempty(Ndatablock)
+            continue
+        else
+            fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
+            readVBeamPerc(fileid(cntens),fpos,cntens);
+        end
+    end
+end
+
+% Read vertical beam status data
+if any(AllHeaders(:,1) == 0x0e00)
+    initVBeamStat(nens);
+    for cntens=1:nens
+        Ndatablock=find(DataHeader{cntens}(:,1)==0x0e00, 1);
+        if isempty(Ndatablock)
+            continue
+        else
+            fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
+            readVBeamStat(fileid(cntens),fpos,cntens);
+        end
+    end
+end
+
+
+% Read surface layer velocity leader
+if any(AllHeaders(:,1) == 0x0010)
+    initSLayerVelLeader(nens);
+    for cntens=1:nens
+        Ndatablock=find(DataHeader{cntens}(:,1)==0x0010, 1);
+        if isempty(Ndatablock)
+            continue
+        else
+            fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
+            readSLayerVelLeader(fileid(cntens),fpos,cntens);
+        end
+    end
+end
+
+% Read surfacelayer velocity data
+if any(AllHeaders(:,1) == 0x0110)
+    initSLayerVelocity(nens);
+    for cntens=1:nens
+        Ndatablock=find(DataHeader{cntens}(:,1)==0x0110, 1);
+        if isempty(Ndatablock)
+            continue
+        else
+            fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
+            readSLayerVelocity(fileid(cntens),fpos,cntens);
+        end
+    end
+end
+
+% Read surfacelayer correlation data
+if any(AllHeaders(:,1) == 0x0210)
+    initSLayerCorr(nens);
+    for cntens=1:nens
+        Ndatablock=find(DataHeader{cntens}(:,1)==0x0210, 1);
+        if isempty(Ndatablock)
+            continue
+        else
+            fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
+            readSLayerCorr(fileid(cntens),fpos,cntens);
+        end
+    end
+end
+
+% Read surfacelayer echo data
+if any(AllHeaders(:,1) == 0x0310)
+    initSLayerEcho(nens);
+    for cntens=1:nens
+        Ndatablock=find(DataHeader{cntens}(:,1)==0x0310, 1);
+        if isempty(Ndatablock)
+            continue
+        else
+            fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
+            readSLayerEcho(fileid(cntens),fpos,cntens);
+        end
+    end
+end
+
+% Read surfacelayer percentage  good data
+if any(AllHeaders(:,1) == 0x0410)
+    initSLayerPerc(nens);
+    for cntens=1:nens
+        Ndatablock=find(DataHeader{cntens}(:,1)==0x0410, 1);
+        if isempty(Ndatablock)
+            continue
+        else
+            fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
+            readSLayerPerc(fileid(cntens),fpos,cntens);
+        end
+    end
+end
+
+% Read surfacelayer status data
+if any(AllHeaders(:,1) == 0x0510)
+    initSLayerStat(nens);
+    for cntens=1:nens
+        Ndatablock=find(DataHeader{cntens}(:,1)==0x0510, 1);
+        if isempty(Ndatablock)
+            continue
+        else
+            fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
+            readSLayerStat(fileid(cntens),fpos,cntens);
+        end
+    end
+end
+
+% Read Auto Mode 3 data
+if any(AllHeaders(:,1) == 0x4401)
+    initAutoMode3(nens);
+    for cntens=1:nens
+        Ndatablock=find(DataHeader{cntens}(:,1)==0x4401, 1);
+        if isempty(Ndatablock)
+            continue
+        else
+            fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
+            readAutoMode3(fileid(cntens),fpos,cntens);
+        end
+    end
+end
 
 % Read external data
 if any(regexpi(flags,'x'))                                                 % If external data is to be read
@@ -750,7 +946,127 @@ if any(dataID~=[0;50])
 end
 dataout.transformation_matrix(:,:,cntens)=reshape(fread(fid,16,'*int16'),4,4);
 
+function readVBeamRange(fid,fpos,cntens)
+    global dataout
+    fseek(fid,fpos+2,-1);
+    dataout.vbeam_eval_amp(cntens) = fread(fid,1,'*uint8');
+    dataout.vbeam_rssi_amp(cntens) = fread(fid,1,'*uint8');
+    dataout.vbeam_range(cntens) = fread(fid,1,'*uint32');
+    dataout.vbeam_status(cntens) = fread(fid,1,'*uint8');
 
+function readVBeamLeader(fid,fpos,cntens)
+global dataout
+fseek(fid,fpos+2,-1);
+dataout.vbeam_ncells(cntens) = fread(fid, 1, '*uint16');
+dataout.vbeam_ping_per_ens(cntens) = fread(fid, 1, '*uint16');
+dataout.vbeam_cellsize = fread(fid, 1, '*uint16');
+dataout.vbeam_distmidbin1(cntens) = fread(fid, 1, '*uint16');
+fseek(fid,2,0);
+dataout.vbeam_xmit_length(cntens) = fread(fid, 1, '*uint16)');
+dataout.vbeam_lag_length(cntens) = fread(fid,1,'*uint16');
+dataout.vbeam_ncode_xmit(cntens) = fread(fid, 1, '*uint16');
+
+function readVBeamVelocity(fid,fpos,cntens)
+global dataout
+fseek(fid,fpos+2,-1);
+ncells = dataout.vbeam_ncells(cntens);
+dataout.vbeam_velocity(1:ncells,cntens) = ...
+    fread(fid,nvels,"*int16");
+
+function readVBeamCorr(fid,fpos,cntens)
+global dataout
+fseek(fid,fpos+2,-1);
+ncells = dataout.vbeam_ncells(cntens);
+dataout.vbeam_corr(1:ncells,cntens) = ...
+    fread(fid,nvels,"*uint8");
+
+function readVBeamEcho(fid,fpos,cntens)
+global dataout
+fseek(fid,fpos+2,-1);
+ncells = dataout.vbeam_ncells(cntens);
+dataout.vbeam_echo(1:ncells,cntens) = ...
+    fread(fid,nvels,"*uint8");
+
+function readVBeamPerc(fid,fpos,cntens)
+global dataout
+fseek(fid,fpos+2,-1);
+ncells = dataout.vbeam_ncells(cntens);
+dataout.vbeam_perc(1:ncells,cntens) = ...
+    fread(fid,nvels,"*uint8");
+
+function readVBeamStat(fid,fpos,cntens)
+global dataout
+fseek(fid,fpos+2,-1);
+ncells = dataout.vbeam_ncells(cntens);
+dataout.vbeam_stat(1:ncells,cntens) = ...
+    fread(fid,nvels,"*uint8");
+
+function readSLayerVelLeader(fid,fpos,cntens)
+    global dataout
+    fseek(fid,fpos+2,-1);
+    dataout.sl_ncells(cntens) = fread(fid,1,'*uint8');
+    dataout.sl_cellsize(cntens) = fread(fid,1,'*uint16');
+    dataout.sl_distmidbin1(cntens) = fread(fid,1,'*uint16');
+
+function readSLayerVelocity(fid,fpos,cntens)
+    global dataout
+    fseek(fid,fpos+2,-1);
+    ncells = dataout.sl_ncells(cntens);
+    nvels = 4 * dataout.sl_ncells(cntens);
+    dataout.sl_velocity(1:ncells,cntens,:) = permute(reshape(...
+        fread(fid,nvels,"*int16"),4,ncells),[2 3 1]);
+
+function readSLayerEcho(fid,fpos,cntens)
+global dataout
+fseek(fid,fpos+2,-1);
+ncells = dataout.sl_ncells(cntens);
+nvels = 4 * dataout.sl_ncells(cntens);
+dataout.sl_echo(1:ncells,cntens,:) = permute(reshape(...
+    fread(fid,nvels,"*uint8"),4,ncells),[2 3 1]);
+
+function readSLayerCorr(fid,fpos,cntens)
+global dataout
+fseek(fid,fpos+2,-1);
+ncells = dataout.sl_ncells(cntens);
+nvels = 4 * dataout.sl_ncells(cntens);
+dataout.sl_corr(1:ncells,cntens,:) = permute(reshape(...
+    fread(fid,nvels,"*uint8"),4,ncells),[2 3 1]);
+
+function readSLayerPerc(fid,fpos,cntens)
+global dataout
+fseek(fid,fpos+2,-1);
+ncells = dataout.sl_ncells(cntens);
+nvels = 4 * dataout.sl_ncells(cntens);
+dataout.sl_perc(1:ncells,cntens,:) = permute(reshape(...
+    fread(fid,nvels,"*uint8"),4,ncells),[2 3 1]);
+
+function readSLayerStat(fid,fpos,cntens)
+global dataout
+fseek(fid,fpos+2,-1);
+ncells = dataout.sl_ncells(cntens);
+nvels = 4 * dataout.sl_ncells(cntens);
+dataout.sl_stat(1:ncells,cntens,:) = permute(reshape(...
+    fread(fid,nvels,"*uint8"),4,ncells),[2 3 1]);
+
+function readAutoMode3(fid,fpos,cntens)
+global dataout
+fseek(fid,fpos+2,-1);
+dataout.am3_nbeams(cntens) = fread(fid,1,'uint8');
+for cb  = 1:dataout.am3_nbeams(cntens)
+    dataout.am3_setup(1,cntens,cb) = fread(fid,1,'*uint8');
+    dataout.am3_depth(1,cntens,cb) = fread(fid,1,'*uint16');
+    dataout.am3_ping_count(1,cntens,cb) = fread(fid,1,'*uint8');
+    dataout.am3_ping_type(1,cntens,cb) = fread(fid,1,'*uint8');
+    dataout.am3_ncells(1,cntens,cb) = fread(fid,1,'*uint16');
+    dataout.am3_cellsize(1,cntens,cb) = fread(fid,1,'*uint16');
+    dataout.am3_distmidbin1(1,cntens,cb) = fread(fid,1,'*uint16');
+    dataout.am3_ncodereps(1,cntens,cb) = fread(fid,1,'*uint8');
+    dataout.am3_xmit_length(1,cntens,cb) = fread(fid,1,'*uint16');
+    dataout.am3_lag_length(1,cntens,cb) = fread(fid,1,'*uint16');
+    dataout.am3_xmit_bandwidth(1,cntens,cb) = fread(fid,1,'*uint8');
+    dataout.am3_recv_bandwidth(1,cntens,cb) = fread(fid,1,'*uint8');
+    dataout.am3_min_ping_interval(1,cntens,cb) = fread(fid,1,'*uint16');
+end
 
 % Read WinRiverII General NMEA GGA data
 function readNMEAGGA(fid,fpos,cntens,cntblock)
@@ -1016,6 +1332,97 @@ dataout.sp_transmit_length=zeros(1,nens, 'uint16');
 function initTM(nens)
 global dataout
 dataout.transformation_matrix=zeros(4,4,nens,'int16');
+
+function initVBeamRange(nens)
+global dataout
+dataout.vbeam_eval_amp = zeros(1,nens,'uint8');
+dataout.vbeam_rssi_amp = zeros(1,nens,'uint8');
+dataout.vbeam_range = zeros(1,nens,'uint32');
+dataout.vbeam_status = zeros(1,nens,'uint8');
+
+function initVBeamLeader(nens)
+global dataout
+dataout.vbeam_ncells = zeros(1,nens,'uint16');
+dataout.vbeam_ping_per_ens = zeros(1,nens,'uint16');
+dataout.vbeam_cell_size = zeros(1,nens,'uint16');
+dataout.vbeam_distmidbin1 = zeros(1,nens,'uint16');
+dataout.vbeam_xmit_length = zeros(1,nens,'uint16)');
+dataout.vbeam_lag_length = zeros(1,nens,'uint16)');
+dataout.vbeam_ncode_xmit = zeros(1,nens,'uint16');
+
+function initVBeamVelocity(nens)
+global dataout
+ncells = max(dataout.vbeam_ncells);
+dataout.vbeam_velocity = ones(ncells,nens,"int16")*intmin("int16");
+
+function initVBeamPerc(nens)
+global dataout
+ncells = max(dataout.vbeam_ncells);
+dataout.vbeam_perc = zeros(ncells,nens,"uint8");
+
+function initVBeamEcho(nens)
+global dataout
+ncells = max(dataout.vbeam_ncells);
+dataout.vbeam_echo = zeros(ncells,nens,"uint8");
+
+function initVBeamCorr(nens)
+global dataout
+ncells = max(dataout.vbeam_ncells);
+dataout.vbeam_corr = zeros(ncells,nens,"uint8");
+
+function initVBeamStat(nens)
+global dataout
+ncells = max(dataout.vbeam_ncells);
+dataout.vbeam_stat = zeros(ncells,nens,"uint8");
+
+function initSLayerVelLeader(nens)
+global dataout
+dataout.sl_ncells = zeros(1,nens,'uint8');
+dataout.sl_cellsize = zeros(1,nens,'uint16');
+dataout.sl_distmidbin1 = zeros(1,nens,'uint16');
+
+function initSLayerVelocity(nens)
+global dataout
+ncells = max(dataout.sl_ncells);
+dataout.sl_velocity = ones(ncells,nens,4,"int16")*intmin("int16");
+
+function initSLayerEcho(nens)
+global dataout
+ncells = max(dataout.sl_ncells);
+dataout.sl_echo = zeros(ncells,nens,4,"uint8");
+
+function initSLayerCorr(nens)
+global dataout
+ncells = max(dataout.sl_ncells);
+dataout.sl_corr = zeros(ncells,nens,4,"uint8");
+
+function initSLayerPerc(nens)
+global dataout
+ncells = max(dataout.sl_ncells);
+dataout.sl_perc = zeros(ncells,nens,4,"uint8");
+
+function initSLayerStat(nens)
+global dataout
+ncells = max(dataout.sl_ncells);
+dataout.sl_stat = zeros(ncells,nens,4,"uint8");
+
+function initAutoMode3(nens)
+global dataout
+dataout.am3_nbeams = zeros(1,nens,'uint8');
+dataout.am3_setup = zeros(1,nens,4,'uint8');
+dataout.am3_depth = zeros(1,nens,4,'uint16');
+dataout.am3_ping_count = zeros(1,nens,4,'uint8');
+dataout.am3_ping_type = zeros(1,nens,4,'uint8');
+dataout.am3_ncells = zeros(1,nens,4,'uint16');
+dataout.am3_cellsize = zeros(1,nens,4,'uint16');
+dataout.am3_distmidbin1 = zeros(1,nens,4,'uint16');
+dataout.am3_ncodereps = zeros(1,nens,4,'uint8');
+dataout.am3_xmit_length = zeros(1,nens,4,'uint16');
+dataout.am3_lag_length = zeros(1,nens,4,'uint16');
+dataout.am3_xmit_bandwidth = zeros(1,nens,4,'uint8');
+dataout.am3_recv_bandwidth = zeros(1,nens,4,'uint8');
+dataout.am3_min_ping_interval = zeros(1,nens,4,'uint16');
+
 
 %Initialize Bottom tracking data
 function initBT(nens)
