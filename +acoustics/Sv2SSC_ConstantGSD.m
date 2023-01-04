@@ -70,7 +70,8 @@ classdef Sv2SSC_ConstantGSD < acoustics.Sv2SSC
             beta_ref=acoustics.Sv2SSC_ConstantGSD.sv_to_beta(Sv_ref); % compute beta for ref (eqs. 12, Sassi et al.)
             ms_ref=reshape(ssc(obj.reference_idx),[],1);
             k_ref=beta_ref./ms_ref; % compute k for ref (eqs. 12, Sassi et al.)
-            [b,stdb]=lscov(Sv_ref,10*log10(k_ref)); % simple linear fitting forced through the origin
+            idx = find(~isnan(Sv_ref));         % Use only samples with a valid backscatter value
+            [b,stdb]=lscov([Sv_ref(idx), ones(size(Sv_ref(idx)))],10*log10(k_ref(idx))); % Simple linear fitting (not through origin; what's the effect of this?)
             
             % calibration of specific attenuation (paragraph 15)
             Sv_cal=reshape(sv(obj.attenuation_idx),[],1);
@@ -79,7 +80,8 @@ classdef Sv2SSC_ConstantGSD < acoustics.Sv2SSC
             [gamma_e,k_ref,int_beta]=deal(nan(numel(obj.attenuation_idx),1));
             for cs=1:numel(obj.attenuation_idx)
                 ensid=ensemble_idx{obj.attenuation_idx(cs)};
-                k_ref(cs)=nanmean(nanmean(beta_all(1,ensid,:),2),3).^b;
+                if isempty(ensid); continue; end    % Check if ensembles are found
+                k_ref(cs)=10^(b(2)/10).*nanmean(nanmean(beta_all(1,ensid,:),2),3).^b(1);
                 beta_cur=nanmean(nanmean(beta_all(:,ensid,:),2),3);
                 srange_cur=nanmean(nanmean(srange(:,ensid,:),2),3);
                 cell_idx_cur=mode(reshape(cell_idx{obj.attenuation_idx(cs)},1,[]));
@@ -117,7 +119,7 @@ classdef Sv2SSC_ConstantGSD < acoustics.Sv2SSC
             Sv=inadcp.backscatter();
             srange=inadcp.depth_cell_slant_range();
             beta=acoustics.Sv2SSC_ConstantGSD.sv_to_beta(Sv);
-            K_ref=beta(1,:,:).^b; % Kref from calibration
+            K_ref=10^(b(2)/10).*beta(1,:,:).^b(1); % Kref from calibration
 
             int_beta=[zeros(1,size(beta,2), size(beta,3)); cumsum((beta(1:end-1,:,:)+beta(2:end,:,:)).*diff(srange,1,1)/2,1)];
             val=beta./(K_ref-gamma_e.*int_beta);
@@ -132,14 +134,15 @@ classdef Sv2SSC_ConstantGSD < acoustics.Sv2SSC
             beta_ref=acoustics.Sv2SSC_ConstantGSD.sv_to_beta(Sv_ref); % compute beta for ref (eqs. 12, Sassi et al.)
             ms_ref=reshape(ssc(obj.reference_idx),[],1);
             k_ref=beta_ref./ms_ref;
-            b=lscov(Sv_ref,10*log10(k_ref)); % simple linear fitting forced through the origin
+            idx = find(~isnan(Sv_ref));         % Use only samples with a valid backscatter value
+            b=lscov([Sv_ref(idx), ones(size(Sv_ref(idx)))],10*log10(k_ref(idx))); % Simple linear fitting (not through origin; what's the effect of this?)
             plot(Sv_ref, k_ref,'o');
             set(gca,'yscale','log')
             xlabel('S_{v,\alpha_s=0} (dB)')
             ylabel('K(R_{ref}) (-)')
             hold on
             xl=get(gca,'xlim');
-            plot(xl,acoustics.Sv2SSC_ConstantGSD.sv_to_beta(xl).^b,'r')
+            plot(xl,10^(b(2)/10)*acoustics.Sv2SSC_ConstantGSD.sv_to_beta(xl).^b(1),'r')
         end
     end
     methods(Static)
