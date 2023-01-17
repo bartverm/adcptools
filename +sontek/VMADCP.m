@@ -10,6 +10,11 @@ classdef VMADCP < sontek.ADCP & VMADCP
                     sontek.LatLonFromGPS;...
                     sontek.LatLonFromRawGPS])
                 ];
+            if isfield(obj.raw,'Setup') &&...
+                    isfield(obj.raw.Setup,'sensorDepth')
+                obj.vertical_position_provider.depth_transducer =... 
+                    obj.raw.Setup.sensorDepth(obj.raw.file_id);
+            end
         end
         function vel = velocity(obj, dst, filter)
             I = CoordinateSystem.Instrument;
@@ -43,14 +48,13 @@ classdef VMADCP < sontek.ADCP & VMADCP
                 dst = obj.coordinate_system;
             end
             B = CoordinateSystem.Beam;
-            I = CoordinateSystem.Instrument;
             app_vel = obj.velocity(dst);
             src = obj.coordinate_system;
 
             % By default sontek corrects velocity already for earth and xyz
             % coodinates
-            f_corr = src > I; % select ship and earth measurements
-            
+%             f_corr = src > I; % select ship and earth measurements
+%             vel(:,f_corr,:) = app_vel(:,f_corr,:);
 
             % here we have to deal with bottom track and water track not
             % always using the same set of beams, thus correction in beam

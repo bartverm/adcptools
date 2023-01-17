@@ -15,6 +15,11 @@ classdef HeadingInternal < HeadingProvider
             val = val - 90;
             is_known = is_deg | is_rad;
             assert(all(is_known),'Not all heading angle units are known')
+            if isfield(adcp.raw,'Setup') &&...
+                    isfield(adcp.raw.Setup,'magneticDeclination')
+                val = val + adcp.raw.Setup.magneticDeclination(...
+                    adcp.raw.file_id);
+            end
         end
     end
 end

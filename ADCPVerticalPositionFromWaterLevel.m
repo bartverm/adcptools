@@ -1,4 +1,4 @@
-classdef ADCPVerticalPositionFromWaterLevel < ADCPVerticalPosition
+classdef ADCPVerticalPositionFromWaterLevel < ADCPVerticalPosition & helpers.WarningHandler
 % Defines ADCP vertical position based on the water level
 %
 %   Subclasses should implement the get_water_level method
@@ -31,17 +31,21 @@ classdef ADCPVerticalPositionFromWaterLevel < ADCPVerticalPosition
                 elseif isa(arg,'double')
                     obj.depth_transducer=arg;
                 elseif isa(arg,'VMADCP')
-                    addlistener(arg,'water_level_object','PostSet',@obj.set_wl);
+                    addlistener(arg,'water_level_object',...
+                        'PostSet',@obj.set_wl);
                 else
                     warning(['Unhandled input of type: ', class(arg)])
                 end
             end
         end
         function val=get_vertical_position(obj,adcp)
-%             if all(obj.depth_transducer==0)
-%                 warning('Set depth of transducer for correct results')
-%             end
-            val=obj.water_level.get_water_level(adcp.time)-obj.depth_transducer;
+            if all(obj.depth_transducer==0)
+                obj.warn_and_disable(['ADCPVerticalPositionFromWater',...
+                    'Level:ZeroDepthTransducer'],...
+                    'Set depth of transducer for correct results')
+            end
+            val=obj.water_level.get_water_level(adcp.time)-...
+                obj.depth_transducer;
         end
         function set_wl(obj, ~, prop_evt)
             obj.water_level=prop_evt.AffectedObject.water_level_object;
