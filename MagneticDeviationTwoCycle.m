@@ -33,8 +33,8 @@ classdef MagneticDeviationTwoCycle < MagneticDeviationModel
     methods
         function val = magnetic_deviation(obj, adcp)
             obj.unset_deviation_correction(adcp)
-            head=head_prov.heading(adcp);
-            obj.set_deviation_correction(obj, acdp)
+            head=adcp.heading;
+            obj.set_deviation_correction(adcp)
 
             % compute correction
             val = obj.offset +...
@@ -103,15 +103,22 @@ classdef MagneticDeviationTwoCycle < MagneticDeviationModel
     end
     methods(Access = protected)
         function unset_deviation_correction(obj, adcp)
-            % get uncorrected heading from adcp
+        % disables previously set MagneticDeviationModels in adcp object
+
             head_prov=adcp.heading_provider;
-            obj.adcp_head_provider = copy(head_prov); % store heading provider
+
+             % store heading provider for use in set_deviation_correction
+            obj.adcp_head_provider = copy(head_prov);
+
+            % find heading provider in use
             fgood = find(head_prov.has_data(adcp),1,'first');
-            adcp.heading_provider=head_prov(fgood);
+
+            % disable the magnetic deviation model
             head_prov(fgood).magnetic_deviation_model =...
                 MagneticDeviationConstant(0);
         end
         function set_deviation_correction(obj,adcp)
+        % restore orginal heading provider in adcp object
             adcp.heading_provider = obj.adcp_head_provider;
             obj.adcp_head_provider = [];
         end
