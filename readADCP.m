@@ -330,10 +330,10 @@ if any(AllHeaders(:,1)==12800)
 end
 
 % Read vertical beam range data
-if any(AllHeaders(:,1) == 0x4100)
+if any(AllHeaders(:,1) == 16640)
     initVBeamRange(nens);
     for cntens=1:nens
-        Ndatablock=find(DataHeader{cntens}(:,1)==0x4100, 1);
+        Ndatablock=find(DataHeader{cntens}(:,1)==16640, 1);
         if isempty(Ndatablock)
             continue
         else
@@ -344,10 +344,10 @@ if any(AllHeaders(:,1) == 0x4100)
 end
 
 % Read vertical beam profile leader data
-if any(AllHeaders(:,1) == 0x0f01)
+if any(AllHeaders(:,1) == 3841)
     initVBeamLeader(nens);
     for cntens=1:nens
-        Ndatablock=find(DataHeader{cntens}(:,1)==0x0f01, 1);
+        Ndatablock=find(DataHeader{cntens}(:,1)==3841, 1);
         if isempty(Ndatablock)
             continue
         else
@@ -358,10 +358,10 @@ if any(AllHeaders(:,1) == 0x0f01)
 end
 
 % Read vertical beam velocity data
-if any(AllHeaders(:,1) == 0x0a00)
+if any(AllHeaders(:,1) == 2560)
     initVBeamVelocity(nens);
     for cntens=1:nens
-        Ndatablock=find(DataHeader{cntens}(:,1)==0x0a00, 1);
+        Ndatablock=find(DataHeader{cntens}(:,1)==2560, 1);
         if isempty(Ndatablock)
             continue
         else
@@ -372,10 +372,10 @@ if any(AllHeaders(:,1) == 0x0a00)
 end
 
 % Read vertical beam corr data
-if any(AllHeaders(:,1) == 0x0b00)
+if any(AllHeaders(:,1) == 2816)
     initVBeamCorr(nens);
     for cntens=1:nens
-        Ndatablock=find(DataHeader{cntens}(:,1)==0x0b00, 1);
+        Ndatablock=find(DataHeader{cntens}(:,1)==2816, 1);
         if isempty(Ndatablock)
             continue
         else
@@ -386,10 +386,10 @@ if any(AllHeaders(:,1) == 0x0b00)
 end
 
 % Read vertical beam echo data
-if any(AllHeaders(:,1) == 0x0c00)
+if any(AllHeaders(:,1) == 3072)
     initVBeamEcho(nens);
     for cntens=1:nens
-        Ndatablock=find(DataHeader{cntens}(:,1)==0x0c00, 1);
+        Ndatablock=find(DataHeader{cntens}(:,1)==3072, 1);
         if isempty(Ndatablock)
             continue
         else
@@ -400,10 +400,10 @@ if any(AllHeaders(:,1) == 0x0c00)
 end
 
 % Read vertical beam percentage good data
-if any(AllHeaders(:,1) == 0x0d00)
+if any(AllHeaders(:,1) == 3328)
     initVBeamPerc(nens);
     for cntens=1:nens
-        Ndatablock=find(DataHeader{cntens}(:,1)==0x0d00, 1);
+        Ndatablock=find(DataHeader{cntens}(:,1)==3328, 1);
         if isempty(Ndatablock)
             continue
         else
@@ -414,10 +414,10 @@ if any(AllHeaders(:,1) == 0x0d00)
 end
 
 % Read vertical beam status data
-if any(AllHeaders(:,1) == 0x0e00)
+if any(AllHeaders(:,1) == 3584)
     initVBeamStat(nens);
     for cntens=1:nens
-        Ndatablock=find(DataHeader{cntens}(:,1)==0x0e00, 1);
+        Ndatablock=find(DataHeader{cntens}(:,1)==3584, 1);
         if isempty(Ndatablock)
             continue
         else
@@ -429,10 +429,10 @@ end
 
 
 % Read surface layer velocity leader
-if any(AllHeaders(:,1) == 0x0010)
+if any(AllHeaders(:,1) == 16)
     initSLayerVelLeader(nens);
     for cntens=1:nens
-        Ndatablock=find(DataHeader{cntens}(:,1)==0x0010, 1);
+        Ndatablock=find(DataHeader{cntens}(:,1)==16, 1);
         if isempty(Ndatablock)
             continue
         else
@@ -443,10 +443,10 @@ if any(AllHeaders(:,1) == 0x0010)
 end
 
 % Read surfacelayer velocity data
-if any(AllHeaders(:,1) == 0x0110)
+if any(AllHeaders(:,1) == 272)
     initSLayerVelocity(nens);
     for cntens=1:nens
-        Ndatablock=find(DataHeader{cntens}(:,1)==0x0110, 1);
+        Ndatablock=find(DataHeader{cntens}(:,1)==272, 1);
         if isempty(Ndatablock)
             continue
         else
@@ -457,10 +457,10 @@ if any(AllHeaders(:,1) == 0x0110)
 end
 
 % Read surfacelayer correlation data
-if any(AllHeaders(:,1) == 0x0210)
+if any(AllHeaders(:,1) == 528)
     initSLayerCorr(nens);
     for cntens=1:nens
-        Ndatablock=find(DataHeader{cntens}(:,1)==0x0210, 1);
+        Ndatablock=find(DataHeader{cntens}(:,1)==528, 1);
         if isempty(Ndatablock)
             continue
         else
@@ -471,10 +471,10 @@ if any(AllHeaders(:,1) == 0x0210)
 end
 
 % Read surfacelayer echo data
-if any(AllHeaders(:,1) == 0x0310)
+if any(AllHeaders(:,1) == 784)
     initSLayerEcho(nens);
     for cntens=1:nens
-        Ndatablock=find(DataHeader{cntens}(:,1)==0x0310, 1);
+        Ndatablock=find(DataHeader{cntens}(:,1)==784, 1);
         if isempty(Ndatablock)
             continue
         else
@@ -485,10 +485,10 @@ if any(AllHeaders(:,1) == 0x0310)
 end
 
 % Read surfacelayer percentage  good data
-if any(AllHeaders(:,1) == 0x0410)
+if any(AllHeaders(:,1) == 1040)
     initSLayerPerc(nens);
     for cntens=1:nens
-        Ndatablock=find(DataHeader{cntens}(:,1)==0x0410, 1);
+        Ndatablock=find(DataHeader{cntens}(:,1)==1040, 1);
         if isempty(Ndatablock)
             continue
         else
@@ -499,10 +499,10 @@ if any(AllHeaders(:,1) == 0x0410)
 end
 
 % Read surfacelayer status data
-if any(AllHeaders(:,1) == 0x0510)
+if any(AllHeaders(:,1) == 1296)
     initSLayerStat(nens);
     for cntens=1:nens
-        Ndatablock=find(DataHeader{cntens}(:,1)==0x0510, 1);
+        Ndatablock=find(DataHeader{cntens}(:,1)==1296, 1);
         if isempty(Ndatablock)
             continue
         else
@@ -513,10 +513,10 @@ if any(AllHeaders(:,1) == 0x0510)
 end
 
 % Read Auto Mode 3 data
-if any(AllHeaders(:,1) == 0x4401)
+if any(AllHeaders(:,1) == 17409)
     initAutoMode3(nens);
     for cntens=1:nens
-        Ndatablock=find(DataHeader{cntens}(:,1)==0x4401, 1);
+        Ndatablock=find(DataHeader{cntens}(:,1)==17409, 1);
         if isempty(Ndatablock)
             continue
         else
