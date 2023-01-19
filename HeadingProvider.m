@@ -1,4 +1,8 @@
-classdef HeadingProvider < matlab.mixin.Heterogeneous & handle
+classdef HeadingProvider <...
+        matlab.mixin.Heterogeneous &...
+        matlab.mixin.Copyable & ...
+        handle
+
 % Defines interface for classes providing header data
 %
 %   HeadingProvider methods:
@@ -14,6 +18,15 @@ classdef HeadingProvider < matlab.mixin.Heterogeneous & handle
 %   see also: HeadingProviderInternal, HeadingProviderTFiles
     properties
         heading_misalignment (1,1) double {mustBeFinite, mustBeReal} = 0;
+
+        magnetic_deviation_model (1,1) MagneticDeviationModel = ...
+            MagneticDeviationConstant(0);
+
+        % magentic variation
+        magnetic_variation (1,1) double {mustBeFinite, mustBeReal} = 0;
+    end
+    properties(Dependent, SetAccess = private, GetAccess = public)
+        magnetic_deviation
     end
     methods (Sealed)
         function val=has_data(obj,adcp)
