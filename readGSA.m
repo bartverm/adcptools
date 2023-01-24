@@ -36,7 +36,7 @@ function [NMEA_GSA,discard]=readGSA(instr)
 
 % Create input parser
 P=inputParser;
-P.addRequired('instr',@(x) (iscellstr(x) | ischar(x)));
+P.addRequired('instr',@(x) (isstring(x) | iscellstr(x) | ischar(x)));
 P.parse(instr);
 
 % Convert input to cell of strings if it is a character array

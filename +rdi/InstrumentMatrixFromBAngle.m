@@ -1,4 +1,4 @@
-classdef InstrumentMatrixFromBAngle < InstrumentMatrixProvider
+classdef InstrumentMatrixFromBAngle < rdi.InstrumentMatrixProvider
 % Computes uncalibrated instrument matrix from the beam angle
 %
 % see also: InstrumentMatrixProvider
