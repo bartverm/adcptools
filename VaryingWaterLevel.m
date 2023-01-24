@@ -29,7 +29,8 @@ classdef VaryingWaterLevel < WaterLevel
         time (1,:) datetime = datetime()
         constituents(1,:) cell = {};
         names(1,:) cell = {};
-        parameters(1,:) double = []
+        parameters(1,:) double = [];
+        omega(1,:) double = [];
     
 % VaryingWaterLeve/water_level water level series
 %
@@ -72,6 +73,14 @@ classdef VaryingWaterLevel < WaterLevel
             M = obj.get_model();
             obj.parameters = (M'*M)\M'*obj.water_level';
             obj.names = obj.get_names();
+        end
+
+        function obj = get_omega(obj)
+            T = const_to_periods(obj.constituents);
+%             obj.omega(1) = 0;
+            for c = 1:numel(obj.constituents)
+                obj.omega(1,c) = 2*pi/(T(c)*3600); % rad / s
+            end
         end
 
        function names = get_names(obj)

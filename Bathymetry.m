@@ -58,7 +58,7 @@ classdef Bathymetry < handle
             if nargin > 3
                 d=obj.water_level.get_depth(obj.get_bed_elev(x,y),time);
             else
-                d=obj.obj.water_level.get_depth(obj.get_bed_elev(x,y));
+                d=obj.water_level.get_depth(obj.get_bed_elev(x,y));
             end
         end
 
