@@ -1,4 +1,4 @@
-classdef VelocitySolver < handle
+classdef VelocitySolver < ADCPDataSolver
     % Abstract base class to solve ADCP repeat transect velocity data
     %
     %   Subclasses should implement the get_solver_input method.
@@ -28,115 +28,8 @@ classdef VelocitySolver < handle
     %   see also: VMADCP, Mesh, Bathymetry, XSection, Filter,
     %   TimeBasedVelocitySolver, LocationBasedVelocitySolver
 
-    properties
-        % VelocitySolver/adcp
-        %
-        %   Scalar VMADCP object holding the adcp data to compute the velocity
-        %
-        %   see also: VelocitySolver, VMADCP
-        adcp (1,1) VMADCP
-
-        % VelocitySolver/mesh mesh on which velocity is solved
-        %
-        %   Mesh object defining the mesh on which the data is to be
-        %   solved. If an array is passed, each mesh is used for a
-        %   different repeat transect, thus the number of elements must
-        %   match the number of elements in the ensemble_filter property.
-        %
-        %   Default value is SigmaZetaMesh
-        %
-        %   see also: VelocitySolver, Mesh
-        mesh (1,:) Mesh = SigmaZetaMesh;
-
-        % VelocitySolver/bathy
-        %
-        %   Scalar bathymetry object that defines the location of the bed. Default
-        %   is BathymetryFromScatteredPoints(adcp), which constructs a bathymetry
-        %   based on the VMADCP data in adcp.
-        %
-        %   see also: VelocitySolver, BathymetryScatteredPoints
-        bathy (1,1) Bathymetry = BathymetryScatteredPoints;
-
-        % VelocitySolver/xs
-        %
-        %   Scalar XSection object defining the origin and direction of the
-        %   cross-section. Default value is XSection(adcp) which construct a
-        %   cross-section based on the track of the VMADCP data in adcp
-        %
-        %   see also: VelocitySolver, XSection
-        xs (1,1) XSection
-
-        % VelocitySolver/ensemble_filter
-        %
-        %   Ensemble filters defining repeat crossings to be processed
-        %
-        %   see also: VelocitySolver, EnsembleFilter
-        ensemble_filter (1,:) EnsembleFilter
-
-        % VelocitySolver/velocity_model
-        %
-        %   Velocity model to use when solving for velocity
-        %
-        %   see also: VelocitySolver, VelocityModel
-        velocity_model (1,1) VelocityModel
-    end
-    methods
-        function obj=VelocitySolver(varargin)
-            has_vmadcp=false;
-            has_mesh=false;
-            has_bathy=false;
-            has_xs=false;
-            has_model=false;
-            for cnt_arg=1:nargin
-                cur_arg=varargin{cnt_arg};
-                if isa(cur_arg,'VMADCP')
-                    has_vmadcp=true;
-                    obj.adcp=cur_arg;
-                elseif isa(cur_arg, 'Mesh')
-                    has_mesh=true;
-                    obj.mesh=cur_arg;
-                elseif isa(cur_arg, 'Bathymetry')
-                    has_bathy=true;
-                    obj.bathy=cur_arg;
-                elseif isa(cur_arg,'Filter')
-                    obj.ensemble_filter=cur_arg;
-                elseif isa(cur_arg,'XSection')
-                    has_xs=true;
-                    obj.xs=cur_arg;
-                elseif isa(cur_arg,'VelocityModel')
-                    has_model=true;
-                    obj.velocity_model=cur_arg;
-                end
-            end
-            if ~has_mesh
-                error('You must provide a Mesh object upon construction of a VelocitySolver object')
-            end
-            if ~has_vmadcp
-                error('You must provide a VMADCP object upon construction of a VelocitySolver object')
-            end
-            if ~has_bathy
-                obj.bathy=BathymetryScatteredPoints(obj.adcp);
-            end
-            if ~has_xs
-                obj.xs=XSection(obj.adcp);
-            end
-            if ~has_model
-                obj.velocity_model=VelocityModel;
-            end
-        end
-    end
-    methods (Abstract, Access=protected)
-        % Get input data for velocity solver
-        %       [vpos, vdat, xform] = get_solver_input(obj) returns the velocity
-        %       position, the velocity data, and the transformation matrix to get
-        %       from the velocity data to velocity components in earth coordinates.
-        %
-        %       Subclasses should implement this function
-        [vpos, vdat, xform] = get_solver_input(obj)
-    end
-    methods
-
-        function [vel, cov_vel, n_bvels] = get_velocity(obj)
+   methods
+        function varargout = get_velocity(obj, varargin)
             %   Get velocity from model parameters
             %
             %   vel=get_velocity(obj) computes the velocity in the mesh cells by using
@@ -145,16 +38,10 @@ classdef VelocitySolver < handle
             %   measured within a mesh cell (this is determined by the Mesh class) are
             %   averaged.
             %
-            %   [vel,std] = get_velocity(obj) also returns the standard
+            %   [vel,cov_vel] = get_velocity(obj) also returns the standard
             %   deviation in the velocity
-            [pars, cov_pars, n_bvels] = get_parameters(obj);
-            [vel, cov_vel] = deal(cell(numel(pars,1)));
-            for crp = 1 : numel(pars)
-                [vel{crp}, cov_vel{crp}] = ...
-                    obj.velocity_model.get_velocity( ...
-                    pars{crp}, ...
-                    cov_pars{crp});
-            end
+            varargout = cell(1,nargout);
+            [varargout{:}] = obj.get_data(varargin{:});
         end
 
         function [pars, cov_pars, n_vels]=get_parameters(obj)
@@ -570,19 +457,30 @@ classdef VelocitySolver < handle
             %
             % See also: VelocitySolver, get_velocity
             vel = cell(size(orig_vel));
+        % Rotates velocity to direction of cross-section
+        %
+        %   vel=obj.rotate_to_xs(orig_vel) Rotates the velocity orig_vel
+        %   to the direction of the cross-section.
+        %
+        %   [vel, cov]=obj.rotate_to_xs(orig_vel, orig_cov) also rotates
+        %   the covariance matrix
+        %
+        % See also: VelocitySolver, get_velocity
+            xs = [obj.xs];
+            u = cellfun(@(x) x(:,1),orig_vel,'UniformOutput',false);
+            v = cellfun(@(x) x(:,2),orig_vel,'UniformOutput',false);
+            [vels, veln] = xs.xy2sn_vel( ...
+                u, ...
+                v);
+            vel = cellfun(@(a,b,c) [a,b,c(:,3)], vels, veln, orig_vel, ...
+                'UniformOutput',false);
             if nargin > 2
-                cov = cell(size(orig_cov));
-            end
-            for crp = 1:numel(orig_vel)
-                [vels, veln] = obj.xs.xy2sn_vel( ...
-                    orig_vel{crp}(:, 1), ...
-                    orig_vel{crp}(:, 2));
-                vel{crp} = [vels, veln, orig_vel{crp}(:, 3)];
-                if nargin > 2
-                    Tsn = obj.xs.xy2sn_tens(orig_cov{crp}(:, 1:2, 1:2));
-                    cov{crp} = cat(3, [Tsn, orig_cov{crp}(:,3,1:2)],...
-                        orig_cov{crp}(:,:,3));
-                end
+                Trot = cellfun(@(x) x(:,1:2,1:2), orig_cov, ...
+                    'UniformOutput',false);
+                Tsn = xs.xy2sn_tens(Trot);
+                cov = cellfun(@(a,b) cat(3, [a, b(:,3,1:2)],...
+                    b(:,:,3)),Tsn,orig_cov, ...
+                    'UniformOutput',false);
             end
         end
 
