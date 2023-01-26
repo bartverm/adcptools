@@ -9,7 +9,7 @@ addpath ~/src/loess/ % For bathymetry interpolation, download at https://github.
 data=readDeployment('trans','raw_data/');
 
 %% Create VMADCP object
-V = VMADCP(data);
+V = rdi.VMADCP(data);
 
 %% Make some plots (for first inspection of data)
 V.plot_all
