@@ -84,11 +84,9 @@ classdef ADCP < ADCP
         end
         function val = get_beam_angle(obj)
             bom = obj.instrument_matrix_provider.beam_orientation_matrix(obj);
-            val = acosd(bom(:,:,:,3));
+            val = 180-acosd(bom(:,:,:,3));
         end
         function val = get_coordinate_system(obj)
-            % Todo: CHECK WHETHER THIS IS CORRECT:shouldnt it be beam,
-            % instrument, earth?
             cor=obj.raw.Setup.coordinateSystem(obj.raw.file_id);
             val = repmat(CoordinateSystem.Beam,size(cor));
             val(cor==1) = CoordinateSystem.Ship;
@@ -110,16 +108,15 @@ classdef ADCP < ADCP
             src=obj.coordinate_system;
             I = CoordinateSystem.Instrument;
 
-            if isfield(obj.raw,'BottomTrack') && any(src>I)
-                obj.warn_and_disable('sontek:ADCP:BottomTrackIncluded',...
-                    ['These data include bottom track data,',...
-                    ' use sontek.VMADCP object for correct results.'])
-            end
+%             if isfield(obj.raw,'BottomTrack') && any(src>I)
+%                 obj.warn_and_disable('sontek:ADCP:BottomTrackIncluded',...
+%                     ['These data include bottom track data,',...
+%                     ' use sontek.VMADCP object for correct results.'])
+%             end
 
-            if nargin > 1 && ~all(dst == src)
-                tm=obj.xform(dst);
-                vel=helpers.matmult(tm, vel);
-            end
+            tm=obj.xform(dst);
+            vel=helpers.matmult(tm, vel);
+            
             if nargin > 2
                 bad=obj.bad(filter);
             else
@@ -149,6 +146,8 @@ classdef ADCP < ADCP
             roll=deg2rad(obj.roll);
             pitch=deg2rad(obj.pitch);
             head=deg2rad(obj.heading);
+            head_corr = deg2rad(...
+                obj.heading_provider.heading_corrections(obj));
             zr = zeros(size(head));
 
             rp_tm = helpers.RotationMatrix.three_angle_rotation_(...
@@ -160,6 +159,11 @@ classdef ADCP < ADCP
                 zr, zr, head,...
                 obj.tilt_rotation_order);
             head_tm(:,:,4,4) = 1;
+            head_c_tm = helpers.RotationMatrix.three_angle_rotation_(...
+                zr, zr, head_corr,...
+                obj.tilt_rotation_order);
+            head_c_tm(:,:,4,4) = 1;
+
             head_inv = permute(rp_tm,[1,2,4,3]);
 
             % FORWARD
@@ -179,7 +183,14 @@ classdef ADCP < ADCP
             tm(:,cfilt,:,:)=helpers.matmult(...
                 head_tm(:,cfilt,:,:), ...
                 tm(:,cfilt,:,:));
-            
+
+            % from earth to earth (apply heading corrections)
+            cfilt = exp_cfilt & dst == E & src == E;
+            tm(:,cfilt,:,:)=helpers.matmult(...
+                head_c_tm(:,cfilt,:,:), ...
+                tm(:,cfilt,:,:));
+
+            % BACKWARD
             % from higher than ship to ship
             cfilt = exp_cfilt & dst <= S & src > S;
             tm(:,cfilt,:,:)=head_inv(:,cfilt,:,:);

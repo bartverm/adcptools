@@ -5,7 +5,7 @@ classdef ArraySupport < matlab.mixin.Copyable
 %   cell or handle class input determines the size of the output object
 %   array. All non scalar inputs of type cell or handle class will need to
 %   have the same size. To use this constructor subclass from
-%   ArrayOnConstruct and call the superclass constructor in your class.
+%   ArraySupport and call the superclass constructor in your class.
 %
 %   ArraySupport methods (protected):
 %   assign_property - Assign elements of an array to property of obj array
@@ -21,8 +21,6 @@ classdef ArraySupport < matlab.mixin.Copyable
 %           end
 %  
 %   see also:
-%   ArrayMethods
-
     methods
         function obj = ArraySupport(varargin)
             if isempty(varargin)
@@ -113,6 +111,8 @@ classdef ArraySupport < matlab.mixin.Copyable
     end
     methods
         function ax = generate_tiles(obj)
+        % pass output of this function to a plot function to plot each 
+        % object in a separate tile
             for ct = 1:numel(obj)
                 ax(ct) = nexttile; %#ok<AGROW> 
             end

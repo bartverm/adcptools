@@ -1,30 +1,7 @@
 classdef MagneticDeviationTwoCycle < MagneticDeviationModel
     properties (SetAccess = protected, GetAccess = public)
-        % constant offset of compass in degrees
-        %
-        % see also: MagneticDeviationTwoCycle
-        offset = 0
-
-
-        % sine amplitude of one cycle deviation in degrees
-        %
-        % see also: MagneticDeviationTwoCycle
-        onecycle_sin = 0
-        
-        % cosine amplitude of one cycle deviation in degrees
-        %
-        % see also: MagneticDeviationTwoCycle
-        onecycle_cos = 0
-        
-        % sine amplitude of two cycle deviation in degrees
-        %
-        % see also: MagneticDeviationTwoCycle
-        twocycle_sin = 0
-        
-        % cosine amplitude of two cycle deviation in degrees
-        %
-        % see also: MagneticDeviationTwoCycle
-        twocycle_cos = 0
+        pars_c
+        pars_s
     end
     properties(Access=protected)
         adcp_head_provider % stores heading provider property of adcp 
@@ -34,14 +11,8 @@ classdef MagneticDeviationTwoCycle < MagneticDeviationModel
         function val = magnetic_deviation(obj, adcp)
             obj.unset_deviation_correction(adcp)
             head=adcp.heading;
-            obj.set_deviation_correction(adcp)
-
-            % compute correction
-            val = obj.offset +...
-                  obj.onecycle_sin * sind(head) + ...
-                  obj.onecycle_cos * cosd(head) + ...
-                  obj.twocycle_sin * sind(2 * head) + ...
-                  obj.twocycle_cos * cosd(2 * head);
+            obj.set_deviation_correction(adcp);
+            val = obj.head_cor(head);
         end
 
         function estimate_deviation(obj,vmadcp,make_plot)
@@ -67,7 +38,7 @@ classdef MagneticDeviationTwoCycle < MagneticDeviationModel
             gps_dx = diff(gps_x);
             gps_dy = diff(gps_y);
             gps_ang = atan2d(gps_dy,gps_dx);
-            d_ang=bt_ang-gps_ang;
+            d_ang=-gps_ang+bt_ang;
             d_ang = atan2d(sind(d_ang), cosd(d_ang));
             head = vmadcp.heading;
             head2 = atan2d(...
@@ -77,24 +48,14 @@ classdef MagneticDeviationTwoCycle < MagneticDeviationModel
             obj.set_deviation_correction(vmadcp)
 
             % fit model
-            M = [sind(head2); cosd(head2); sind(2*head2); cosd(2*head2)]';
-            
-            pars = robustfit(M,d_ang,'welsch');
-
-            % store model parameters
-            obj.offset = pars(1);
-            obj.onecycle_sin = pars(2);
-            obj.onecycle_cos = pars(3);
-            obj.onecycle_sin = pars(4);
-            obj.onecycle_cos = pars(5);
+            M = obj.model_mat(head2);
+            obj.pars_c = robustfit(M,cosd(d_ang),'welsch',[],'off');
+            obj.pars_s = robustfit(M,sind(d_ang),'welsch',[],'off');
 
             % plot if requested
             if make_plot
+                mod_bias = obj.head_cor(head2);
                 figure
-                mod_bias = pars(1) +...
-                pars(2).*M(:,1)'+pars(3).*M(:,2)'+...
-                pars(4).*M(:,3)'+pars(5).*M(:,4)';
-
                 scatter(head2,d_ang,'.')
                 hold on
                 plot(head2, mod_bias,'r.')
@@ -121,6 +82,22 @@ classdef MagneticDeviationTwoCycle < MagneticDeviationModel
         % restore orginal heading provider in adcp object
             adcp.heading_provider = obj.adcp_head_provider;
             obj.adcp_head_provider = [];
+        end
+        function val = head_cor(obj,head)
+        % compute correction given heading
+            M = obj.model_mat(head);
+            mod_bias_c = M * obj.pars_c;
+            mod_bias_s = M * obj.pars_s;
+            val = reshape(atan2d(mod_bias_s, mod_bias_c),1,[]);
+        end
+    end
+    methods(Access = protected, Static)
+        function val = model_mat(head)
+            val = [head*0+1;...
+                sind(head);...
+                cosd(head);...
+                sind(2 * head);...
+                cosd(2 * head)]';
         end
     end
 end
