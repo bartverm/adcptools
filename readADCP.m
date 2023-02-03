@@ -962,7 +962,7 @@ dataout.vbeam_ping_per_ens(cntens) = fread(fid, 1, '*uint16');
 dataout.vbeam_cellsize = fread(fid, 1, '*uint16');
 dataout.vbeam_distmidbin1(cntens) = fread(fid, 1, '*uint16');
 fseek(fid,2,0);
-dataout.vbeam_xmit_length(cntens) = fread(fid, 1, '*uint16)');
+dataout.vbeam_xmit_length(cntens) = fread(fid, 1, '*uint16');
 dataout.vbeam_lag_length(cntens) = fread(fid,1,'*uint16');
 dataout.vbeam_ncode_xmit(cntens) = fread(fid, 1, '*uint16');
 
@@ -1346,8 +1346,8 @@ dataout.vbeam_ncells = zeros(1,nens,'uint16');
 dataout.vbeam_ping_per_ens = zeros(1,nens,'uint16');
 dataout.vbeam_cell_size = zeros(1,nens,'uint16');
 dataout.vbeam_distmidbin1 = zeros(1,nens,'uint16');
-dataout.vbeam_xmit_length = zeros(1,nens,'uint16)');
-dataout.vbeam_lag_length = zeros(1,nens,'uint16)');
+dataout.vbeam_xmit_length = zeros(1,nens,'uint16');
+dataout.vbeam_lag_length = zeros(1,nens,'uint16');
 dataout.vbeam_ncode_xmit = zeros(1,nens,'uint16');
 
 function initVBeamVelocity(nens)
