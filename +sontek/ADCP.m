@@ -167,6 +167,7 @@ classdef ADCP < ADCP
             head_inv = permute(rp_tm,[1,2,4,3]);
 
             % FORWARD
+
             % from lower than instrument to instrument
             cfilt = exp_cfilt & dst >= I & src < I;
             tmptm=obj.instrument_matrix_provider.b2i_matrix(obj);
@@ -191,6 +192,7 @@ classdef ADCP < ADCP
                 tm(:,cfilt,:,:));
 
             % BACKWARD
+
             % from higher than ship to ship
             cfilt = exp_cfilt & dst <= S & src > S;
             tm(:,cfilt,:,:)=head_inv(:,cfilt,:,:);
