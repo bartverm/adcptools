@@ -10,8 +10,9 @@ classdef ShipBubbleFilter < Filter
     end
    methods (Access=protected)
        function bad=bad_int(obj,adcp)
+           validateattributes(adcp,{'VMADCP'},{'scalar'})
            if isscalar(obj)
-               bad = zeros(size(adcp.velocity));
+               bad = zeros(size(adcp.echo));
                bs_median = nanmedian(adcp.backscatter,2);   % median backscatter in horizontal direction
                BS = adcp.backscatter;
 
