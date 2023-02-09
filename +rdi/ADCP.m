@@ -356,6 +356,8 @@ classdef ADCP < ADCP
                 obj.type == rdi.ADCP_Type.SENTINELV_66;
             val(is_sent) = obj.sentinel_freq(id(is_sent));
             val(~is_sent) = obj.workhorse_freq(id(~is_sent));
+            val(obj.type == rdi.ADCP_Type.RIVERPRO_56) = ...
+                obj.workhorse_freq(6); % riverpro is always 1200 khz
         end
         function val = get.voltage_offset(obj)
             val = zeros(size(1,obj.nensembles));
@@ -381,8 +383,8 @@ classdef ADCP < ADCP
         end
         function val=get.power(obj)
             %%% Has voltage and current
-            has_volt = obj.raw.ADC(:,2)~=0;
-            has_curr = obj.raw.ADC(:,1)~=0;
+            has_volt = reshape(obj.raw.ADC(:,2)~=0,1,[]);
+            has_curr = reshape(obj.raw.ADC(:,1)~=0,1,[]);
             val = nan(1,obj.nensembles);
 
             has_v_and_c = has_volt & has_curr;
@@ -434,8 +436,10 @@ classdef ADCP < ADCP
             FIRST_COEF = -5.86074151382e-3;
             SECOND_COEF = 1.60433886495e-7;
             THIRD_COEF = -2.32924716883e-12;
-            t_cnts = reshape(double(obj.raw.ADC(:,6))*256,1,[]);                 % Temperature Counts (ADC value)
-            val(obj.is_workhorse) = obj.temperature_offset + ((THIRD_COEF.*t_cnts + SECOND_COEF).*t_cnts +...
+            t_cnts = reshape(double(obj.raw.ADC(obj.is_workhorse,6))*256,1,[]);                 % Temperature Counts (ADC value)
+            val(obj.is_workhorse) = obj.temperature_offset +...
+                ((THIRD_COEF.*t_cnts + SECOND_COEF).*...
+                t_cnts +...
                 FIRST_COEF).*t_cnts + DC_COEF;                                         % real-time temperature of the transducer (C)
         end
         function val=get.intensity_scale(obj)
