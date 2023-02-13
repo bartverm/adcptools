@@ -43,7 +43,7 @@ if ischar(instr)
 end
 
 % tmpdat=textscan_checked([instr{:}],'$ %*2s VTG %f32 T %f32 M %f32 N %f32 K %*2s','Delimiter',nlines,',*');
-defineNMEA;
+rdi.defineNMEA;
 [tmpdat,split]=regexp([instr{:}],patterns.vtg,'names','split'); 
 clear instr
 discard=find(~strcmp(split,''));
@@ -57,10 +57,10 @@ if any(discard)
 end
 
 %Initialize variable
-NMEA_VTG.TrackDegTrue=cell2mat(textscan_checked([tmpdat(:).TrueCourse],'%f32','delimiter',','));
-NMEA_VTG.TrackDegMagn=cell2mat(textscan_checked([tmpdat(:).MagCourse],'%f32','delimiter',','));
-NMEA_VTG.SpeedKnots=cell2mat(textscan_checked([tmpdat(:).speedKn],'%f32','delimiter',','));
-NMEA_VTG.SpeedKmH=cell2mat(textscan_checked([tmpdat(:).speedKm],'%f32','delimiter',','));
+NMEA_VTG.TrackDegTrue=cell2mat(rdi.textscan_checked([tmpdat(:).TrueCourse],'%f32','delimiter',','));
+NMEA_VTG.TrackDegMagn=cell2mat(rdi.textscan_checked([tmpdat(:).MagCourse],'%f32','delimiter',','));
+NMEA_VTG.SpeedKnots=cell2mat(rdi.textscan_checked([tmpdat(:).speedKn],'%f32','delimiter',','));
+NMEA_VTG.SpeedKmH=cell2mat(rdi.textscan_checked([tmpdat(:).speedKm],'%f32','delimiter',','));
 if isfield(tmpdat,'mode')
     NMEA_VTG.mode=zeros(size(tmpdat),'uint8')';
     tmpmod={tmpdat(:).mode};
