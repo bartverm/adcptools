@@ -1,21 +1,17 @@
-function [NMEA_GSA,discard]=readGSA(instr)
-% readGSA(gsa) interprets a NMEA GSA string
+function [NMEA_DBT,discard]=readDBT(instr)
+% readDBT(dbt) interprets a NMEA DBT string
 %
-%   [GSAstruct]=readGSA(instr) Reads a NMEA sentence in the character array
-%   or cell of strings and returns a structure with the gsa data.
+%   [DBTstruct]=readDBT(instr) Reads a NMEA sentence in the character array
+%   or cell of strings and returns a structure with the dbt data.
 %   
 %   The output structure will contain the following fields:
-%   modesel: Mode selection 0=manual, 1=automatic
-%   mode   : Mode 1=No Fix, 2=2D, 3=3D
-%   prn    : PRN number of satellites used in solution
-%   pdop   : Position dilution of precision
-%   hdop   : Horizontal dilution of precision
-%   vdop   : Vertical dilution of precision
-%
+%    depthf: Depth under transducer in feet
+%    depthM: Depth under transducer in meters
+%    depthF: Depth under transducer in Fathoms
 %
 %
 %    Author: Bart Vermeulen
-%    Date last edit: 21-12-2009
+%    Date last edit: 17-12-2009
 
 %    Copyright 2009 Bart Vermeulen
 %
@@ -36,20 +32,17 @@ function [NMEA_GSA,discard]=readGSA(instr)
 
 % Create input parser
 P=inputParser;
-P.addRequired('instr',@(x) (isstring(x) | iscellstr(x) | ischar(x)));
+P.addRequired('instr',@(x) (iscellstr(x) | ischar(x)));
 P.parse(instr);
 
 % Convert input to cell of strings if it is a character array
-instr(cellfun(@isempty,instr))=[];
 if ischar(instr)
     instr=cellstr(instr);
 end
 
-defineNMEA;
-%% Scan the data
-% format is defined as:
-%   $__GSA,a,x,xx,xx,xx,xx,xx,xx,xx,xx,xx,xx,xx,xxx.x,x.x,x.x*hh<CR><LF>
-[tmpdat,split]=regexp([instr{:}],patterns.gsa,'names','split');
+% tmpdat=textscan([instr{:}],'$ %*2s DBT %f32 f %f32 M %f32 F %*2s',nlines,'Delimiter',',*');
+rdi.defineNMEA;
+[tmpdat,split]=regexp([instr{:}],patterns.dbt,'names','split');
 clear instr
 discard=find(~strcmp(split,''));
 fdiscard=[];
@@ -62,9 +55,6 @@ if any(discard)
 end
 
 %Initialize variable
-NMEA_GSA.modesel=strcmpi({tmpdat(:).modesel},'A')';
-NMEA_GSA.mode=cell2mat(textscan([tmpdat(:).mode],'%u8','delimiter',','));
-NMEA_GSA.prn=cell2mat(textscan([tmpdat(:).prn],'%u8 %u8 %u8 %u8 %u8 %u8 %u8 %u8 %u8 %u8 %u8 %u8','delimiter',','));
-NMEA_GSA.pdop=cell2mat(textscan([tmpdat(:).pdop],'%f32','delimiter',','));
-NMEA_GSA.hdop=cell2mat(textscan([tmpdat(:).hdop],'%f32','delimiter',','));
-NMEA_GSA.vdop=cell2mat(textscan([tmpdat(:).vdop],'%f32','delimiter','*'));
+NMEA_DBT.depthf=cell2mat(textscan([tmpdat(:).depthf],'%f32','delimiter',','));
+NMEA_DBT.depthM=cell2mat(textscan([tmpdat(:).depthM],'%f32','delimiter',','));
+NMEA_DBT.depthF=cell2mat(textscan([tmpdat(:).depthF],'%f32','delimiter',','));

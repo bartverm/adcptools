@@ -67,48 +67,48 @@ end
 rfiles=match_and_cat({'.*[0-9]{3,3}r\.[0-9]{3,3}$'; '.*\.PD0$'});
 assert(~isempty(rfiles),'ReadDeployment:NoRFiles','Could not find raw data files') % Make sure we found at least one adcp file
 disp('Reading ADCP raw data files...') % Tell something nice to the user
-outADCP=readADCP(rfiles); % Read files
+outADCP=rdi.readADCP(rfiles); % Read files
 
 %% Read Navigation Files
 nfiles=match_and_cat({'.*[0-9]{3,3}n\.[0-9]{3,3}$'; '.*GPS\.TXT$'}); % search for navigation files
 if ~isempty(nfiles) % Found something?
     disp('Reading navigation files...') % Tell something nice to the user
-    outADCP.nFiles=readNMEAADCP(outADCP,nfiles); % try to read it
+    outADCP.nFiles=rdi.readNMEAADCP(outADCP,nfiles); % try to read it
 end
 
 %% Read Depth Sounder Files
 dfiles=match_and_cat({'.*[0-9]{3,3}d\.[0-9]{3,3}$'; '.*DS\.TXT$'}); % search for depth sounder files
 if ~isempty(dfiles) % found something
     disp('Reading depth sounder files...')
-    outADCP.dFiles=readNMEAADCP(outADCP,dfiles); % read it
+    outADCP.dFiles=rdi.readNMEAADCP(outADCP,dfiles); % read it
 end
 
 %% Read External Heading Files
 hfiles=match_and_cat({'.*[0-9]{3,3}h\.[0-9]{3,3}$'; '.*EH\.TXT$'}); % search for depth sounder files
 if ~isempty(hfiles)
     disp('Reading external heading files...')
-    outADCP.hFiles=readNMEAADCP(outADCP,hfiles);
+    outADCP.hFiles=rdi.readNMEAADCP(outADCP,hfiles);
 end
 
 %% Read Transect files
 tfiles=match_and_cat('.*[0-9]{3,3}t\.[0-9]{3,3}$'); % search for transect files
 if ~isempty(tfiles) 
     disp('Reading transect files...')
-    outADCP.tFiles=readTfiles(outADCP,tfiles);
+    outADCP.tFiles=rdi.readTfiles(outADCP,tfiles);
 end
 
 %% Read VISEA Extern file
 vfiles=match_and_cat('.*[0-9]{3,3}extern\.dat$'); % search for transect files
 if ~isempty(vfiles)
     disp('Reading VISEA extern files...')
-    outADCP.VISEA_Extern=readViseaExtern(outADCP,vfiles,rfiles);
+    outADCP.VISEA_Extern=rdi.readViseaExtern(outADCP,vfiles,rfiles);
 end
 
 %% Read VISEA log files
 logfiles=match_and_cat('.*\d{3}(GPS|com\d{1,2}).log');
 if ~isempty(logfiles)
     disp('Reading VISEA log files...')
-    outADCP.VISEA_log=readViseaLogFiles(outADCP,[path,filesep,DepName,'*.log']);
+    outADCP.VISEA_log=rdi.readViseaLogFiles(outADCP,[path,filesep,DepName,'*.log']);
 end
 
 %% Function to match regular expression in file names and concatenate the path to the result

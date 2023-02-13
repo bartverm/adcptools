@@ -1158,14 +1158,14 @@ ggastr=fgetl(fid);
 
 function readGGAint(ggastr,nens)
 global dataout
-defineNMEA;
+rdi.defineNMEA;
 hasdata=~cellfun(@isempty,regexp(ggastr,patterns.gga));
 if ~any(hasdata)
     return
 end
 disp('WinRiver GGA data found')
 initGGA(nens);
-datgga=readGGA(ggastr(hasdata));
+datgga=rdi.readGGA(ggastr(hasdata));
 dataout.GGA.UTCtime(hasdata,:)=datgga.UTCtime;
 dataout.GGA.lat(hasdata)=datgga.lat;
 dataout.GGA.long(hasdata)=datgga.long;
@@ -1188,14 +1188,14 @@ hdtstr=fgetl(fid);
 
 function readHDTint(hdtstr,nens)
 global dataout
-defineNMEA;
+rdi.defineNMEA;
 hasdata=~cellfun(@isempty,regexp(hdtstr,patterns.hdt));
 if ~any(hasdata)
     return
 end
 disp('WinRiver HDT data found')
 initHDT(nens);
-dathdt=readHDT(hdtstr(hasdata));
+dathdt=rdi.readHDT(hdtstr(hasdata));
 dataout.HDT.heading(hasdata)=dathdt.heading;
 
 
@@ -1210,14 +1210,14 @@ dbtstr=fgetl(fid);
 
 function readDBTint(dbtstr,nens)
 global dataout
-defineNMEA;
+rdi.defineNMEA;
 hasdata=~cellfun(@isempty,regexp(dbtstr,patterns.dbt));
 if ~any(hasdata)
     return
 end
 disp('WinRiver DBT data found')
 initDBT(nens);
-datdbt=readDBT(dbtstr(hasdata));
+datdbt=rdi.readDBT(dbtstr(hasdata));
 dataout.DBT.depthf(hasdata)=datdbt.depthf;
 dataout.DBT.dephtM(hasdata)=datdbt.depthM;
 dataout.DBT.depthF(hasdata)=datdbt.depthF;
@@ -1234,14 +1234,14 @@ vtgstr=fgetl(fid);
 
 function readVTGint(vtgstr,nens)
 global dataout
-defineNMEA
+rdi.defineNMEA
 hasdata=~cellfun(@isempty,regexp(vtgstr,patterns.vtg));
 if ~any(hasdata)
     return
 end
 disp('WinRiver VTG data found')
 initVTG(nens);
-datvtg=readVTG(vtgstr(hasdata));
+datvtg=rdi.readVTG(vtgstr(hasdata));
 dataout.VTG.TrackDegTrue(hasdata)=datvtg.TrackDegTrue;
 dataout.VTG.TrackDegMagn(hasdata)=datvtg.TrackDegMagn;
 dataout.VTG.SpeedKnots(hasdata)=datvtg.SpeedKnots;

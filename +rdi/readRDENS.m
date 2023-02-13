@@ -1,11 +1,11 @@
-function [NMEA_HDT,discard]=readHDT(instr)
-% readHDT(hdt) interprets a NMEA HDT string
+function [NMEA_RDENS,discard]=readRDENS(instr)
+% readRDENS(gga) interprets the RDI propietary NMEA message RDENS
 %
-%   [HDTstruct]=readHDT(instr) Reads a NMEA sentence in the character array
-%   or cell of strings and returns a structure with the hdt data.
-%   
-%   The output structure will contain the following fields:
-%   heading: heading of the gps compass
+%   [RDENSstruct]=readRDENS(instr) Reads a NMEA sentence in the character 
+%                 array or cell of strings and returns a structure with the
+%                 following fields:
+%                 ensnum: Sequential ensemble number
+%                 pctime: Pc time in centiseconds
 %
 %    Author: Bart Vermeulen
 %    Date last edit: 21-12-2009
@@ -37,8 +37,9 @@ if ischar(instr)
     instr=cellstr(instr);
 end
 
-defineNMEA;
-[tmpdat,split]=regexp([instr{:}],patterns.hdt,'names','split');
+rdi.defineNMEA;
+
+[tmpdat,split]=regexp([instr{:}],patterns.rdens,'names','split');
 clear instr
 discard=find(~strcmp(split,''));
 fdiscard=[];
@@ -49,8 +50,8 @@ if any(discard)
     end
     discard=fdiscard+(1:length(fdiscard))-1;     
 end
-%tmpdat=textscan([instr{:}],'$ %*2s HDT %f32 T %*2s',nlines,'Delimiter',',*');
+
 
 %Initialize variable
-NMEA_HDT.heading=cell2mat(textscan([tmpdat(:).heading],'%f32','delimiter',','));
-
+NMEA_RDENS.ensnum=cell2mat(textscan([tmpdat(:).ensnum],'%u32','delimiter',','));
+NMEA_RDENS.pctime=cell2mat(textscan([tmpdat(:).pctime],'%u32','delimiter',','));
