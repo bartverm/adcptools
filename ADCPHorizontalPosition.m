@@ -1,4 +1,4 @@
-classdef ADCPHorizontalPosition < matlab.mixin.Heterogeneous
+classdef ADCPHorizontalPosition < matlab.mixin.Heterogeneous & handle
     % Abstract class defining the horizontal position of the ADCP
     %
     %   ADCPHorizontalPosition methods:
