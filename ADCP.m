@@ -486,7 +486,9 @@ classdef ADCP < handle
                 hc=colorbar;
                 ylabel(hc,'Backscatter (dB)')
                 shading flat
-                set(gca,'clim',clim)
+                if all(isfinite(clim))
+                    set(gca,'clim',clim)
+                end
                 title(['Beam ',num2str(cb)])
             end
             xlabel('time (s)')

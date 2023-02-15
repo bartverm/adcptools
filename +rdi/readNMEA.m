@@ -65,13 +65,13 @@ end
 nfiles=length(infiles);   %find amount if fukes
 NMEA(1:nfiles)=struct();  %initialize an arrray of structures
 
-defineNMEA;
+rdi.defineNMEA;
 
 for cntfile=1:nfiles
     disp(['Reading data from file ' infiles{cntfile}]);
     fid=fopen(infiles{cntfile},'r');   %Open file
     if (fid < 0)
-	error('readNMEA','unable to open file for reading');
+	error('readNMEA:CouldNotOpenFile','unable to open file for reading');
     else
     fseek(fid,0,1);                    %Go to the end
     filesize=ftell(fid);               %Get filesize
@@ -82,30 +82,17 @@ for cntfile=1:nfiles
     
     
     % Search for NMEA and RDI strings
-    [rawdat tok]=regexp(rawdat,patterns.nmea,'match','tokens');
+    [rawdat, tok]=regexp(rawdat,patterns.nmea,'match','tokens');
     tok=vertcat(tok{:});
 
     if (size(tok,2) < 2)
         disp('Empty file or invalid NMEA data, skipping it');
     else
-%     %Search for non RDENS data
-%     csumidx=find(~ (strcmpi('RD',tok(:,1)) & strcmpi('ENS',tok(:,2))));
-%     
-%     %Do checksum test on all the rest
-%     disp('Checking checksum...')
-%     isvalnmea=nmeachecksum(rawdat(csumidx));
-%     
-%     %Remove all that failed checksum test
-%     if ~all(isvalnmea)
-%         disp(['Found ',num2str(length(find(~isvalnmea))),' sentences with bad checksum'])
-%         rawdat(csumidx(~isvalnmea))=[];
-%         tok(csumidx(~isvalnmea),:)=[];
-%     end
     
     %Search for RDENS data
     rdensidx=strcmpi('RD',tok(:,1)) & strcmpi('ENS',tok(:,2));
     if any(rdensidx), disp('RDENS proprietary data found, reading...' )
-        [NMEA(cntfile).RDENS,discard]=readRDENS(rawdat(rdensidx));
+        [NMEA(cntfile).RDENS,discard]=rdi.readRDENS(rawdat(rdensidx));
         NMEA(cntfile).RDENS.lineid=find(rdensidx);
         if ~isempty(discard)
             disp(['Discarding ',num2str(length(discard)),' malformed RDENS string(s)'])
@@ -118,7 +105,7 @@ for cntfile=1:nfiles
     %Search for GGA data
     ggaidx=strcmpi('GGA',tok(:,2));
     if any(ggaidx), disp('GGA data found, reading...' )
-         [NMEA(cntfile).GGA,discard]=readGGA(rawdat(ggaidx));
+         [NMEA(cntfile).GGA,discard]=rdi.readGGA(rawdat(ggaidx));
          NMEA(cntfile).GGA.lineid=find(ggaidx);
          if ~isempty(discard)
             disp(['Discarding ',num2str(length(discard)),' malformed GGA string(s)'])
@@ -130,7 +117,7 @@ for cntfile=1:nfiles
     %Search for GBS data
     gbsidx=strcmpi('PS',tok(:,1)) & strcmpi('AT',tok(:,2)) & strcmpi('GBS',tok(:,3));
     if any(gbsidx), disp('GBS proprietary data found, reading...' )
-         [NMEA(cntfile).GBS,discard]=readPSAT(rawdat(gbsidx));
+         [NMEA(cntfile).GBS,discard]=rdi.readPSAT(rawdat(gbsidx));
          NMEA(cntfile).GBS.lineid=find(gbsidx);
          if ~isempty(discard)
             disp(['Discarding ',num2str(length(discard)),' malformed GBS string(s)'])
@@ -142,7 +129,7 @@ for cntfile=1:nfiles
     %Search for GLL data
     gllidx=strcmpi('GLL',tok(:,2));
     if any(gllidx), disp('GLL data found, reading...' )
-        [NMEA(cntfile).GLL,discard]=readGLL(rawdat(gllidx));
+        [NMEA(cntfile).GLL,discard]=rdi.readGLL(rawdat(gllidx));
         NMEA(cntfile).GLL.lineid=find(gllidx);
         if ~isempty(discard)
            disp(['Discarding ',num2str(length(discard)),' malformed GLL string(s)'])
@@ -154,7 +141,7 @@ for cntfile=1:nfiles
     %Search for GSA data
     gsaidx=strcmpi('GSA',tok(:,2));
     if any(gsaidx), disp('GSA data found, reading...' )
-        [NMEA(cntfile).GSA,discard]=readGSA(rawdat(gsaidx));
+        [NMEA(cntfile).GSA,discard]=rdi.readGSA(rawdat(gsaidx));
         NMEA(cntfile).GSA.lineid=find(gsaidx);
         if ~isempty(discard)
             disp(['Discarding ',num2str(length(discard)),' malformed GSA string(s)'])
@@ -166,7 +153,7 @@ for cntfile=1:nfiles
     %Search for DBT data
     dbtidx=strcmpi('DBT',tok(:,2));
     if any(dbtidx), disp('DBT data found, reading...' )
-        [NMEA(cntfile).DBT,discard]=readDBT(rawdat(dbtidx));
+        [NMEA(cntfile).DBT,discard]=rdi.readDBT(rawdat(dbtidx));
         NMEA(cntfile).DBT.lineid=find(dbtidx);
         if ~isempty(discard)
             disp(['Discarding ',num2str(length(discard)),' malformed DBT string(s)'])
@@ -178,7 +165,7 @@ for cntfile=1:nfiles
     % Search for HPR data
     hpridx=strcmpi('PS',tok(:,1)) & strcmpi('AT',tok(:,2)) & strcmpi('HPR',tok(:,3));
     if any(hpridx), disp('HPR data found, reading...' )
-        [NMEA(cntfile).HPR,discard]=readHPR(rawdat(hpridx));
+        [NMEA(cntfile).HPR,discard]=rdi.readHPR(rawdat(hpridx));
         NMEA(cntfile).HPR.lineid=find(hpridx);
         if ~isempty(discard)
             disp(['Discarding ',num2str(length(discard)),' malformed HPR string(s)'])
@@ -199,7 +186,7 @@ for cntfile=1:nfiles
     %Search for DBS data
     dbsidx=strcmpi('DBS',tok(:,2));
     if any(dbsidx), disp('DBS data found, reading...' )
-        [NMEA(cntfile).DBS,discard]=readDBS(rawdat(dbsidx));
+        [NMEA(cntfile).DBS,discard]=rdi.readDBS(rawdat(dbsidx));
         NMEA(cntfile).DBS.lineid=find(dbsidx);
         if ~isempty(discard)
             disp(['Discarding ',num2str(length(discard)),' malformed DBS string(s)'])
@@ -211,7 +198,7 @@ for cntfile=1:nfiles
     %Search for ZDA data
     zdaidx=strcmpi('ZDA',tok(:,2));
     if any(zdaidx), disp('ZDA data found, reading...' )
-        [NMEA(cntfile).ZDA,discard]=readZDA(rawdat(zdaidx));
+        [NMEA(cntfile).ZDA,discard]=rdi.readZDA(rawdat(zdaidx));
         NMEA(cntfile).ZDA.lineid=find(zdaidx);
         if ~isempty(discard)
             disp(['Discarding ',num2str(length(discard)),' malformed ZMA string(s)'])
@@ -223,7 +210,7 @@ for cntfile=1:nfiles
     %Search for RMC data
    rmcidx=strcmpi('RMC',tok(:,2));
      if any(rmcidx), disp('RMC data found, reading...' )
-        [NMEA(cntfile).RMC,discard]=readRMC(rawdat(rmcidx));
+        [NMEA(cntfile).RMC,discard]=rdi.readRMC(rawdat(rmcidx));
         NMEA(cntfile).RMC.lineid=find(rmcidx);
         if ~isempty(discard)
             disp(['Discarding ',num2str(length(discard)),' malformed RMC string(s)'])
@@ -235,7 +222,7 @@ for cntfile=1:nfiles
     %Search for HDT data
     hdtidx=strcmpi('HDT',tok(:,2));
     if any(hdtidx), disp('HDT data found, reading...' )
-        [NMEA(cntfile).HDT,discard]=readHDT(rawdat(hdtidx));
+        [NMEA(cntfile).HDT,discard]=rdi.readHDT(rawdat(hdtidx));
         NMEA(cntfile).HDT.lineid=find(hdtidx);
         if ~isempty(discard)
             disp(['Discarding ',num2str(length(discard)),' malformed HDT string(s)'])
@@ -247,7 +234,7 @@ for cntfile=1:nfiles
         % search for VTG data 
     vtgidx=strcmpi('VTG',tok(:,2));
     if any(vtgidx), disp('VTG data found, reading...' )
-        [NMEA(cntfile).VTG,discard]=readVTG(rawdat(vtgidx));
+        [NMEA(cntfile).VTG,discard]=rdi.readVTG(rawdat(vtgidx));
         NMEA(cntfile).VTG.lineid=find(vtgidx);
         if ~isempty(discard)
             disp(['Discarding ',num2str(length(discard)),' malformed VTG string(s)'])
