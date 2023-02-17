@@ -101,7 +101,7 @@ end
 vfiles=match_and_cat('.*[0-9]{3,3}extern\.dat$'); % search for transect files
 if ~isempty(vfiles)
     disp('Reading VISEA extern files...')
-    outADCP.VISEA_Extern=readViseaExtern(outADCP,vfiles,rfiles);
+    outADCP.VISEA_Extern=readViseaExtern(outADCP,vfiles);
 end
 
 %% Read VISEA log files

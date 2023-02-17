@@ -1,4 +1,4 @@
-classdef TaylorTidalVelocityModel < TidalVelocityModel & TaylorVelocityModel
+classdef TaylorTidalVelocityModel < TidalModel & TaylorModel
     %   Velocity model based on Taylor expansions of tidal amplitudes.
     %
     %   @TaylorTidalVelocityModel
@@ -272,6 +272,9 @@ classdef TaylorTidalVelocityModel < TidalVelocityModel & TaylorVelocityModel
             val = val.*[2*numel(obj.constituentsU) + 1, ...
                 2*numel(obj.constituentsV) + 1, ...
                 2*numel(obj.constituentsW) + 1];
+        end
+        function val = get_ncomponents(obj)
+
         end
     end
 end
