@@ -22,8 +22,8 @@ classdef SolverOptions < handle
         % according to: alpha = max(sum(abs(A),2)./diag(A))-2;
         %               preconditioner_opts.diagcomp = max(sum(abs(A),2)./diag(A))-2;
         
-        pcg_tol = 1e-9;
-        pcg_iter = 1000;
+        pcg_tol (1,1) double {mustBePositive} = 1e-9;
+        pcg_iter (1,1) double {mustBeInteger} = 1000;
         
         % Initialization of iterative solver using base vector p0
         use_p0 (1,1) double = 1;
