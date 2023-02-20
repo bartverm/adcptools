@@ -88,7 +88,7 @@ classdef Solver < helpers.ArraySupport
             end
         end
 
-        function [pars, cov_pars, n_vels]=get_parameters(obj)
+        function [pars, cov_pars, n_vels] = get_parameters(obj)
             % Solve velocity model parameters
             %
             %   [pars, cov_pars, n_vels]=get_parameters(obj) Obtain the
