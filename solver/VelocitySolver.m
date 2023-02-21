@@ -327,9 +327,7 @@ classdef VelocitySolver < ADCPDataSolver
                 C2p = C2'*C2;
 
                 %Coherence matrix
-                H = max(cur_z) - min(cur_z); %Typical scales
-                B = max(cur_n) - min(cur_n);
-                [C3, IM] = assembleC3(obj, B, H);
+                C3 = assembleC3(obj);
                 C3p = C3'*C3;
 
                 %Consistency matrix

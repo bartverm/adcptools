@@ -1,7 +1,7 @@
 classdef SolverOptions < handle
     %SOLVER_OPTIONS Contains input parameters for solving for mesh-based
     % parameters
-    
+
     properties
         % Solver options
 
@@ -11,7 +11,7 @@ classdef SolverOptions < handle
         % Vermeulen et al. 2014. 'pcg' (preconditioned conjugate gradient
         % method) assembles a global system of equations and is suitable
         % for regularized inversion.
-        
+
         % in case lscov
         lscov_opts = [];
 
@@ -21,11 +21,14 @@ classdef SolverOptions < handle
         % Dynamically sets the modified incomplete Cholesky preconditioner
         % according to: alpha = max(sum(abs(A),2)./diag(A))-2;
         %               preconditioner_opts.diagcomp = max(sum(abs(A),2)./diag(A))-2;
-        
+        % This is done at the point of calling pcg
+
         pcg_tol (1,1) double {mustBePositive} = 1e-9;
         pcg_iter (1,1) double {mustBeInteger} = 1000;
-        
-        % Initialization of iterative solver using base vector p0
+
+        % Initialization of iterative solver using base vector p, which is
+        % a solution to the regularized problem with regularization
+        % parameters reg_pars(1)
         use_p0 (1,1) double = 1;
 
         % Cross-validation options
@@ -41,54 +44,87 @@ classdef SolverOptions < handle
         cv_iter = 1; % Re-partitioning iterations into training and validation sets
 
         % in case of cv_mode = 'omit_cells' or 'omit_time'
-        omit_cells (1,:) double = []; % in case of omit_cells: indices of the cells to omit
-        omit_time (1,2) double = []; % in case of omit_time: time interval to omit in the training set
+        omit_cells (1,:) double {mustBeInteger} = []; % in case of omit_cells: indices of the cells to omit
+        omit_time (1,:) double = []; % in case of omit_time: time interval to omit in the training set
 
-        % Sensitivity study options
 
+        % Regularization options
+
+        reg_pars (1,5) cell = {[100, 100, 5, 5, 100]}; % Regularization parameters. Can be cell array of double vectors of same length
+        
+        % Affects both reg_pars and reg_pars_sens
+        force_zero (1,5) double = [0,0,0,0,0]; % Set index i to one if you want to set lambda_i to zero (affects all computations)
+        no_flow = {'right', 'surface', 'left', 'bottom'}; % Declare no-flow boundaries
+
+        % Sensitivity study: Generalization error
+        generalization_analysis = 0;
         reg_vary = 'coupled'; % 'coupled', 'full'
         % If set to 'coupled': Variation of lambda_c and lambda_d. If set
         % to 'full': independent variation of all regularization hyperparameters (not
         % recommended)
+        reg_relative_weights = [1, 1, 1, 1, 1];
 
-        reg_iter (1,5) double = [4, nan, 4, nan, nan]; % iterations per regularization parameter. 
-        res_near_zero (1,1) double {mustBePositive} = .05; % The smaller this number, 
-        % the more the regularization hyperpareters will be clustered
-        % towards zero in the hyperparameter sensitivity experiment
+        reg_iter (1,5) double = [4, 4, 4, 4, 4]; % iterations per regularization parameter.
+        % Only reg_iter(1) and reg_iter(3) will play a role if reg_vary =
+        % 'coupled'.
+        res_near_zero (1,5) double {mustBePositive} = .05*ones(1,5); % The smaller this number,
+        % the more the regularization hyperparameters will be clustered
+        % towards zero in the sensitivity experiment
 
         max_reg_pars (1,5) double {mustBePositive} = [1e3, 1e3, 1e3, 1e3, 1e3]; % vector of maximal regularization hyperparameters
         % in the sensitivity experiment
         min_reg_pars (1,5) double = [0, 0, 0, 0, 0]; % Fixed
-                
-        reg_pars = {100, 100, 5, 5, 100}; % Regularization parameters
 
-        reg_pars_compare = {[0, 100, 1000], [0, 100, 1000], [0, 20, 50], [0, 20, 50], [0, 100, 1000]}; % Cell of
-        % vectors of regularization parameters, which will all be used in model inversion.
-        reg_pars_sensitivity (1,5) cell = []; % Default reg parameters. Can also be multiple for purposes of comparing.
+        reg_pars_sens (1,5) cell = {nan, nan, nan, nan, nan};
 
-
-        force_zero (1,5) double = [0,0,0,0,0]; % Set to one if you want to set lambda_i to zero.
-
+        % TO INCLUDE: SENSITIVITY TO ADDITIVE NOISE
     end
-    
+
     methods
         function obj = SolverOptions(varargin)
-            %SOLVER_OPTIONS Construct an instance of this class
-            %   Detailed explanation goes here
-            %p = inputParser('caseSensitive', 1, )
-            ymax = symlog(opts.max_reg_pars, opts.res_near_zero);
+            %SolverOptions
 
-            reg_pars = {symexp(linspace(0,ymax,opts.reg_iter(1)), opts.res_near_zero)',...
-                symexp(linspace(0,ymax,opts.reg_iter(2)), opts.res_near_zero)',...
-                symexp(linspace(0,ymax,opts.reg_iter(3)), opts.res_near_zero)',...
-                symexp(linspace(0,ymax,opts.reg_iter(4)), opts.res_near_zero)',...
-                symexp(linspace(0,ymax,opts.reg_iter(5)), opts.res_near_zero)'};
+            % Overwrite default solver options
+            for ia = 1:2:nargin
+                obj.(varargin{ia}) = varargin{ia+1};
+            end
+
+            % prepare generalization error analysis
+            for i = 1:5
+                ymax = helpers.symlog(obj.max_reg_pars(i), obj.res_near_zero(i));
+                ymin = helpers.symlog(obj.min_reg_pars(i), obj.res_near_zero(i));
+                obj.reg_pars_sens{i} = helpers.symexp(linspace(ymin, ymax, obj.reg_iter(i)), obj.res_near_zero(i))';
+            end
+
         end
-        
-        function outputArg = method1(obj,inputArg)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
-            outputArg = obj.Property1 + inputArg;
+
+        function reg_pars_sens_vec = vectorize_reg_pars(obj)
+            if strcmp(obj.reg_vary, 'coupled')
+                L = obj.reg_pars_sens(1, [1,3]); % Only vary two reg. parameters
+                n = length(L);
+                [L{:}] = ndgrid(L{end:-1:1});
+                L = cat(n+1,L{:});
+                L = fliplr(reshape(L,[],n));
+                RP = [L(:, 1), L(:,1), L(:,2), L(:,2), L(:,1)]; % Coupling of parameters
+            elseif strcmp(obj.reg_vary, 'full')
+                L = obj.reg_pars_sens; % Vary all reg. parameters
+                n = length(L);
+                [L{:}] = ndgrid(L{end:-1:1});
+                L = cat(n+1,L{:});
+                RP = fliplr(reshape(L,[],n));
+            else
+                error('Invalid reg_vary option')
+            end
+
+            for i = 1:size(RP,2)
+                RP(:,i) = obj.reg_relative_weights(i);
+                if obj.force_zero(i)    
+                    RP(:,i) = 0;
+                end
+            end
+
+
+            reg_pars_sens_vec = RP;
         end
     end
 end

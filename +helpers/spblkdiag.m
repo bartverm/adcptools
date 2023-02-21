@@ -10,13 +10,8 @@ function M = spblkdiag(varargin)
 % with A, B, ... matrices.
 %
 % See also blkdiag, speye, spdiags.
-% Authors:
-%{
-Name  : Rody P.S. Oldenhuis
-E-mail: oldenhuis@gmail.com
-%}
-% If you find this work useful, please consider a donation:
-% https://www.paypal.me/RodyO/3.5
+% 
+
     % Basic checks on input/output consistency
     assert(nargin > 0,...
           [mfilename ':inargcount'],...

@@ -1,17 +1,20 @@
-function [C3, IM] = assembleC3(LBS, B, H)
+function [C3, IM] = assembleC3(solver)
 
-par_names = LBS.velocity_model.names;
-Np = sum(LBS.velocity_model.npars);
-NNp = Np*LBS.mesh.ncells;
+par_names = solver.velocity_model.names;
+Np = sum(solver.velocity_model.npars);
+mesh = solver.mesh;
+NNp = Np*solver.mesh.ncells;
+
+
 idx = 1;
 w = ones([Np,1]);
-IM = zeros(LBS.mesh.ncells);
-for j = 1:LBS.mesh.ncells % loop trough every cell
+IM = zeros(mesh.ncells);
+for j = 1:mesh.ncells % loop trough every cell
     for i=1:Np
         par_names_tot{1,idx} = sprintf('cell %i: %s',j, par_names{1,i});       
         idx = idx + 1;
     end
-    [neighbors(j,:), dom(j)] = LBS.mesh.get_neighbors(j);
+    [neighbors(j,:), dom(j)] = mesh.get_neighbors(j);
     nbreal = neighbors(j,~isnan(neighbors(j,:)));
     nbreal = nbreal(nbreal>j);
     IM(j,nbreal) = 1;
@@ -21,7 +24,10 @@ IM = IM + IM';
 
 % Apply enhanced regularization for small singular value features using
 % characteristic spatial scales
+H = max(mesh.z_patch) - min(mesh.z_patch);
+B = max(mesh.n_patch) - min(mesh.n_patch); %Typical scales
 
+% Automatically assign weights to smoothness of different parameters
 for i = 1:Np
     if contains(par_names{i}, 'w')
         w(i) = w(i)*B/H;
@@ -30,10 +36,16 @@ for i = 1:Np
         w(i) = w(i)*B;
     end
 end
-W = sparse(diag(repmat(w,LBS.mesh.ncells,1)));
+
+
+wj = cell(1,mesh.ncells);
+wj(:)= {w};
+
+
+W = helpers.spblkdiag(wj{:});
 D1 = speye(NNp);
 rows = []; cols = []; vals = [];
-for c = 1:LBS.mesh.ncells %rows
+for c = 1:solver.mesh.ncells %rows
     adj = neighbors(c,:);
     adj = adj(~isnan(adj)); nnb = length(adj);
     for nb = 1:nnb

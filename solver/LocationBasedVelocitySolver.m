@@ -45,7 +45,7 @@ classdef LocationBasedVelocitySolver < VelocitySolver
             xform(:,:,:,4)=[]; % remove Error velocity to beam transformation
             
             % filter and vectorize
-            [vdat, xform] = obj.filter_and_vectorize(vdat, xform);
+            [vdat, xform] = obj.filter_and_vectorize(vdat, xform)*mat'; %quick and dirty
         end
     end
 
