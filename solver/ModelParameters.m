@@ -15,7 +15,7 @@ classdef ModelParameters < handle
 
         C (1,:) cell = {}; % regularization matrices
 
-        
+        cell_idx (:,1) double = [];
     end
     
     methods
@@ -25,12 +25,9 @@ classdef ModelParameters < handle
                 obj.(varargin{ia}) = varargin{ia+1};
             end
         end
-        
-        function outputArg = method1(obj,inputArg)
-            %METHOD1 Summary of this method goes here
-            %   Detailed explanation goes here
-            outputArg = obj.Property1 + inputArg;
-        end
+       
+        % HERE, INCLUDE VARIOUS POST-PROCESSING FUNCTIONS.
+
     end
 end
 

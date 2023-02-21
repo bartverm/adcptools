@@ -53,16 +53,16 @@ classdef SolverOptions < handle
         reg_pars (1,5) cell = {[100, 100, 5, 5, 100]}; % Regularization parameters. Can be cell array of double vectors of same length
         
         % Affects both reg_pars and reg_pars_sens
-        force_zero (1,5) double = [0,0,0,0,0]; % Set index i to one if you want to set lambda_i to zero (affects all computations)
-        no_flow = {'right', 'surface', 'left', 'bottom'}; % Declare no-flow boundaries
+        no_flow = {'right', 'surface', 'left', 'bottom'}; % Declare no-flow boundaries (affects all computations)
 
         % Sensitivity study: Generalization error
-        generalization_analysis = 0;
+        gen_analysis = 0;
         reg_vary = 'coupled'; % 'coupled', 'full'
         % If set to 'coupled': Variation of lambda_c and lambda_d. If set
         % to 'full': independent variation of all regularization hyperparameters (not
         % recommended)
         reg_relative_weights = [1, 1, 1, 1, 1];
+        force_zero (1,5) double = [0,0,0,0,0]; % Set index i to one if you want to set lambda_i to zero
 
         reg_iter (1,5) double = [4, 4, 4, 4, 4]; % iterations per regularization parameter.
         % Only reg_iter(1) and reg_iter(3) will play a role if reg_vary =

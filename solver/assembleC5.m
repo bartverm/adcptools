@@ -1,27 +1,27 @@
-function [C, rhsvec] = assembleC5(LBS)
+function [C, rhsvec] = assembleC5(solver)
 
 % Function that assembles cell-based kinematic boundary conditions.
 
-par_names_tot = repmat(LBS.velocity_model.names,1,LBS.mesh.ncells);
-Np = sum(LBS.velocity_model.npars);
+par_names_tot = repmat(solver.velocity_model.names,1,solver.mesh.ncells);
+Np = sum(solver.velocity_model.npars);
 idx = 1;
-for j = 1:LBS.mesh.ncells % loop trough every cell
+for j = 1:solver.mesh.ncells % loop trough every cell
     for i=1:Np
         par_names_tot{1,idx} = sprintf('cell %i: %s',j, par_names_tot{1,idx});
         idx = idx + 1;
     end
-    [neighbors(j,:), dom(j)] = LBS.mesh.get_neighbors(j);
+    [neighbors(j,:), dom(j)] = solver.mesh.get_neighbors(j);
 end
 
-cmesh = LBS.mesh;
-ZB = LBS.bathy;
-T = LBS.velocity_model;
-eta = LBS.adcp.water_level_object;
+cmesh = solver.mesh;
+ZB = solver.bathy;
+T = solver.velocity_model;
+eta = solver.adcp.water_level_object;
 eta.get_omega();
 B = 1;
 L = 1;
 dx = 2; dy = 2;
-t = LBS.mesh.time;
+t = solver.mesh.time;
 
 % Compute relevant indices
 
@@ -81,10 +81,10 @@ for idx = 1:cmesh.ncells
             % Assemble element matrix
 %             sig = cmesh.sig_center(idx);
             %             D0 = eta.parameters(1) - LBS.mesh.zb_middle(LBS.mesh.col_to_cell(idx));
-            zbx = 1/(2*dx)*(ZB.get_depth(cmesh.x_middle(LBS.mesh.col_to_cell(idx))+dx,cmesh.y_middle(LBS.mesh.col_to_cell(idx)),t)-...
-                ZB.get_depth(cmesh.x_middle(LBS.mesh.col_to_cell(idx))-dx,cmesh.y_middle(LBS.mesh.col_to_cell(idx)),t));% Assumption of zero gradient in x-direction
-            zby = 1/(2*dy)*(ZB.get_depth(cmesh.x_middle(LBS.mesh.col_to_cell(idx)),cmesh.y_middle(LBS.mesh.col_to_cell(idx))+dy,t)-...
-                ZB.get_depth(cmesh.x_middle(LBS.mesh.col_to_cell(idx)),cmesh.y_middle(LBS.mesh.col_to_cell(idx))-dy,t));% Assumption of zero gradient in x-direction
+            zbx = 1/(2*dx)*(ZB.get_depth(cmesh.x_middle(solver.mesh.col_to_cell(idx))+dx,cmesh.y_middle(solver.mesh.col_to_cell(idx)),t)-...
+                ZB.get_depth(cmesh.x_middle(solver.mesh.col_to_cell(idx))-dx,cmesh.y_middle(solver.mesh.col_to_cell(idx)),t));% Assumption of zero gradient in x-direction
+            zby = 1/(2*dy)*(ZB.get_depth(cmesh.x_middle(solver.mesh.col_to_cell(idx)),cmesh.y_middle(solver.mesh.col_to_cell(idx))+dy,t)-...
+                ZB.get_depth(cmesh.x_middle(solver.mesh.col_to_cell(idx)),cmesh.y_middle(solver.mesh.col_to_cell(idx))-dy,t));% Assumption of zero gradient in x-direction
 
             terms0 = [zbx, -dsig*zbx, zby, -dsig*zby, -1, dsig];
             Cj{idx}(1,ind0) = terms0;
@@ -97,7 +97,6 @@ for idx = 1:cmesh.ncells
         end
     end
 end
-
 
 C = spblkdiag(Cj{:});
 rhsvec = cell2mat(rhs');
