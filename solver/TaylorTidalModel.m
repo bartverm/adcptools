@@ -1,4 +1,4 @@
-classdef TaylorTidalVelocityModel < TidalModel & TaylorModel
+classdef TaylorTidalModel < TidalModel & TaylorModel
     %   Velocity model based on Taylor expansions of tidal amplitudes.
     %
     %   @TaylorTidalVelocityModel
@@ -160,24 +160,18 @@ classdef TaylorTidalVelocityModel < TidalModel & TaylorModel
     end
 
     methods
-        function [Mu, Mv, Mw]=get_model(obj, time, d_s, d_n, d_z, d_sigma)
+        function M = get_model(obj, d_t, d_s, d_n, d_z, d_sigma)
             %   [Mu, Mv, Mw]=get_model(obj, time, d_s, d_n, d_z, d_sigma)
             %   procuces the model matrices consisting of Kronecker
             %   products of the Taylor and Tidal velocity models,
             %   respectively. 
-            [Tu, Tv, Tw] = get_model@TidalVelocityModel(obj,time);
-            [Su, Sv, Sw] = get_model@TaylorVelocityModel(obj, time, d_s, d_n, d_z, d_sigma);
-            ns = numel(time);
-            Mu = zeros([ns,obj.npars(1)]);
-            Mv = zeros([ns,obj.npars(2)]);
-            Mw = zeros([ns,obj.npars(3)]);
-
+            T = get_model@TidalModel(obj,d_t);
+            S = get_model@TaylorModel(obj, d_t, d_s, d_n, d_z, d_sigma);
+            
+            % Place copies of T as new columns of S: modified Kronecker
             for i = 1:ns
-                Mu(i,:) = kron(Su(i,:), Tu(i,:));
-                Mv(i,:) = kron(Sv(i,:), Tv(i,:));
-                Mw(i,:) = kron(Sw(i,:), Tw(i,:));
+                M(i,:) = kron(S(i,:), T(i,:));
             end
-
         end
 
         function obj = get_parameter_names(obj)
@@ -275,6 +269,10 @@ classdef TaylorTidalVelocityModel < TidalModel & TaylorModel
         end
         function val = get_ncomponents(obj)
 
+        end
+
+        function C = kron_modified(A,B)
+            % TODO: implement
         end
     end
 end
