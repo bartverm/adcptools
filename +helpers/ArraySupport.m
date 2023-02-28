@@ -45,7 +45,7 @@ classdef ArraySupport < handle
 
         end
     end
-    methods(Access = protected)
+    methods(Access = protected, Sealed)
         function assign_property(obj, var_name, var)
 % Assign elements of an array to property of object array
 %

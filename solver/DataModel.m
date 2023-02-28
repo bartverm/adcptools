@@ -35,7 +35,10 @@ classdef DataModel < handle
         %   velocity is equal to the mean velocity.
         %
         %   see also: DataModel, get_model
-        ncomponents        
+        ncomponents
+
+        % ncomponents x ncomponents
+        rotation (:,:) double
     end
     methods
 

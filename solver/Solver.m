@@ -68,7 +68,13 @@ classdef Solver < helpers.ArraySupport
         %   see also: Solver, DataModel
         data_model (1,1) DataModel = DataModel;
 
+        water_level (1,1) WaterLevel = WaterLevel;
+
         opts (1,1) SolverOptions = SolverOptions;
+
+        regularizations (1,:) Regularization = [ContinuityRegularization; 
+            CoherenceRegularization;
+            KinematicRegularization]
     end
     methods
         function obj=Solver(varargin)
@@ -85,6 +91,8 @@ classdef Solver < helpers.ArraySupport
                     var = 'data_model';
                 elseif isa(cur_arg,'SolverOptions')
                     var = 'opts';
+                elseif isa(cur_arg,'WaterLevel')
+                    var = 'water_level';
                 else
                     continue
                 end
@@ -353,6 +361,8 @@ classdef Solver < helpers.ArraySupport
 
             obj.velocity_model.get_parameter_names();
 
+            all_C=obj.regularizations.assemble_matrix;
+
             % Internal continuity matrix
             %                 for j = 1:obj.mesh.ncells
             C1 = assembleC1(obj);
@@ -445,79 +455,79 @@ classdef Solver < helpers.ArraySupport
                     p(:,idx) = pcg(A, M_train'*b_train + rp(5)*C5'*bc, obj.opts.pcg_tol, obj.opts.pcg_iter, L, L');
             
             end
-
-
-
-            % First loop: cross-validation ensembles
-            opts.cell_idx = cell_idx;
-
-            % Regularization parameters
-            
-
-            nepochs = opts.cv_iter;
-            p = zeros([np,size(regP,1),nepochs]);
-            niter = nepochs*size(regP,1);
-            i = 0;
-            if opts.use_p0
-                pguess = p0;
-            else
-                pguess = zeros(size(p0));
-            end
-
-
-
-
-
-            if obj.opts.gen_analysis
-
-            pe = zeros([10, size(regP,1), nepochs]);
-            if ~strcmp(opts.cv_mode, 'none')
-                for ep = 1:nepochs
-                    train_idx = logical(split_dataset(opts));
-                    test_idx = ~train_idx;
-regP = combine_regpars(opts);
-                    % Construct training matrix and data
-                    M0 = M(train_idx, :);
-                    b0 = b(train_idx);
-
-                    M1 = M(test_idx,:);
-                    b1 = b(test_idx);
-
-                    Mp = M0'*M0;
-
-                    for rp = 1:size(regP,1)
-                        i = i+1;
-                        fprintf('Cross-validation percentage: %2.2f percent \n', 100*i/niter)
-                        A = Mp + regP(rp,1)*C1p + regP(rp,2)*C2p + regP(rp,3)*C3p + regP(rp,4)*C4p + regP(rp,5)*C5p;
-                        pcg_opts.diagcomp = max(sum(abs(A),2)./diag(A))-2;
-                        L = ichol(A, pcg_opts);
-                        [p(:, rp, ep), ~, ~, it] = pcg(A, M0'*b0 + regP(rp,5)*C5'*bc, 1e-9, size(A,2), L, L', pguess); % Matrix of solutions (columns) belonging to regularization parameters regP (rows)
-
-                        % Residuals and goodness of fit
-
-                        pe(1, rp, ep) = calc_res(b, M*p(:, rp, ep)); % Performance on full set
-                        pe(2, rp, ep) = calc_res(b0, M0*p(:, rp, ep)); % Performance on training set
-                        pe(3, rp, ep) = calc_res(b1, M1*p(:, rp, ep)); % Performance on validation set
-                        pe(4, rp, ep) = calc_res(0, C1*p(:, rp, ep)); % Performance on continuity
-                        pe(5, rp, ep) = calc_res(0, C2*p(:, rp, ep)); % Performance on gen. continuity
-                        pe(6, rp, ep) = calc_res(0, C3*p(:, rp, ep)); % Performance on smoothness
-                        pe(7, rp, ep) = calc_res(0, C4*p(:, rp, ep)); % Performance on consistency
-                        pe(8, rp, ep) = calc_res(bc, C5*p(:, rp, ep)); % Performance on boundary conditions
-
-                        pe(9,rp,ep) = condest(A);
-                        pe(10,rp,ep) = it;
-                    end
-                end
-            end
-            Pe = mean(pe, 3);
-            assignin("base", "dat", struct('M', M, 'C1', C1, 'C2', C2, 'C3', C3, 'C4', C4, 'C5', C5, 'bc', bc, ...
-                'IM', IM, 'p', p, 'p0', p0, 'p1', p1, 'b', b,...
-                'opts', opts, 'cell_idx', cell_idx, 'Pe', Pe, 'regP', regP))
-
-            pars{1,1} = reshape(squeeze(p(:,1,1)) ,[size(Mb0,2), obj.mesh.ncells])'; % At this stage, pars are already known.
-            cov_pars{1,1} = 0; n_vels{1,1} = ns;
-        end
-        end
+% 
+% 
+% 
+%             % First loop: cross-validation ensembles
+%             opts.cell_idx = cell_idx;
+% 
+%             % Regularization parameters
+%             
+% 
+%             nepochs = opts.cv_iter;
+%             p = zeros([np,size(regP,1),nepochs]);
+%             niter = nepochs*size(regP,1);
+%             i = 0;
+%             if opts.use_p0
+%                 pguess = p0;
+%             else
+%                 pguess = zeros(size(p0));
+%             end
+% 
+% 
+% 
+% 
+% 
+%             if obj.opts.gen_analysis
+% 
+%             pe = zeros([10, size(regP,1), nepochs]);
+%             if ~strcmp(opts.cv_mode, 'none')
+%                 for ep = 1:nepochs
+%                     train_idx = logical(split_dataset(opts));
+%                     test_idx = ~train_idx;
+% regP = combine_regpars(opts);
+%                     % Construct training matrix and data
+%                     M0 = M(train_idx, :);
+%                     b0 = b(train_idx);
+% 
+%                     M1 = M(test_idx,:);
+%                     b1 = b(test_idx);
+% 
+%                     Mp = M0'*M0;
+% 
+%                     for rp = 1:size(regP,1)
+%                         i = i+1;
+%                         fprintf('Cross-validation percentage: %2.2f percent \n', 100*i/niter)
+%                         A = Mp + regP(rp,1)*C1p + regP(rp,2)*C2p + regP(rp,3)*C3p + regP(rp,4)*C4p + regP(rp,5)*C5p;
+%                         pcg_opts.diagcomp = max(sum(abs(A),2)./diag(A))-2;
+%                         L = ichol(A, pcg_opts);
+%                         [p(:, rp, ep), ~, ~, it] = pcg(A, M0'*b0 + regP(rp,5)*C5'*bc, 1e-9, size(A,2), L, L', pguess); % Matrix of solutions (columns) belonging to regularization parameters regP (rows)
+% 
+%                         % Residuals and goodness of fit
+% 
+%                         pe(1, rp, ep) = calc_res(b, M*p(:, rp, ep)); % Performance on full set
+%                         pe(2, rp, ep) = calc_res(b0, M0*p(:, rp, ep)); % Performance on training set
+%                         pe(3, rp, ep) = calc_res(b1, M1*p(:, rp, ep)); % Performance on validation set
+%                         pe(4, rp, ep) = calc_res(0, C1*p(:, rp, ep)); % Performance on continuity
+%                         pe(5, rp, ep) = calc_res(0, C2*p(:, rp, ep)); % Performance on gen. continuity
+%                         pe(6, rp, ep) = calc_res(0, C3*p(:, rp, ep)); % Performance on smoothness
+%                         pe(7, rp, ep) = calc_res(0, C4*p(:, rp, ep)); % Performance on consistency
+%                         pe(8, rp, ep) = calc_res(bc, C5*p(:, rp, ep)); % Performance on boundary conditions
+% 
+%                         pe(9,rp,ep) = condest(A);
+%                         pe(10,rp,ep) = it;
+%                     end
+%                 end
+%             end
+%             Pe = mean(pe, 3);
+%             assignin("base", "dat", struct('M', M, 'C1', C1, 'C2', C2, 'C3', C3, 'C4', C4, 'C5', C5, 'bc', bc, ...
+%                 'IM', IM, 'p', p, 'p0', p0, 'p1', p1, 'b', b,...
+%                 'opts', opts, 'cell_idx', cell_idx, 'Pe', Pe, 'regP', regP))
+% 
+%             pars{1,1} = reshape(squeeze(p(:,1,1)) ,[size(Mb0,2), obj.mesh.ncells])'; % At this stage, pars are already known.
+%             cov_pars{1,1} = 0; n_vels{1,1} = ns;
+         end
+         end
 
         function training_idx = split_dataset(obj, cell_idx)
 
@@ -537,6 +547,7 @@ regP = combine_regpars(opts);
             elseif strcmp(obj.opts.cv_mode, 'omit_time') % to be implemented
             end
         end
+    end
 
     methods (Abstract, Access=protected)
         % Get input data for velocity solver

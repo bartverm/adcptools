@@ -41,7 +41,7 @@ classdef SolverOptions < handle
 
         % in case of cv_mode = 'random'
         training_perc = .90; % percentage of data in training set
-        cv_iter = 1; % Re-partitioning iterations into training and validation sets
+        cv_iter = 1; % Re-partitioning iterations into training and validation sets (affects also gen_analysis)
 
         % in case of cv_mode = 'omit_cells' or 'omit_time'
         omit_cells (1,:) double {mustBeInteger} = []; % in case of omit_cells: indices of the cells to omit
@@ -50,7 +50,7 @@ classdef SolverOptions < handle
 
         % Regularization options
 
-        reg_pars (1,5) cell = {[100, 100, 5, 5, 100]}; % Regularization parameters. Can be cell array of double vectors of same length
+        reg_pars (1,:) cell = {[100, 100, 5, 5, 100]}; % Regularization parameters. Can be cell array of double vectors of same length
         
         % Affects both reg_pars and reg_pars_sens
         no_flow = {'right', 'surface', 'left', 'bottom'}; % Declare no-flow boundaries (affects all computations)
@@ -68,7 +68,7 @@ classdef SolverOptions < handle
         % Only reg_iter(1) and reg_iter(3) will play a role if reg_vary =
         % 'coupled'.
         res_near_zero (1,5) double {mustBePositive} = .05*ones(1,5); % The smaller this number,
-        % the more the regularization hyperparameters will be clustered
+        % the more the regularization par will be clustered
         % towards zero in the sensitivity experiment
 
         max_reg_pars (1,5) double {mustBePositive} = [1e3, 1e3, 1e3, 1e3, 1e3]; % vector of maximal regularization hyperparameters
@@ -77,7 +77,7 @@ classdef SolverOptions < handle
 
         reg_pars_sens (1,5) cell = {nan, nan, nan, nan, nan};
 
-        % TO INCLUDE: SENSITIVITY TO ADDITIVE NOISE
+        % TO INCLUDE: SENSITIVITY TO ADDITIVE NOISE options.
     end
 
     methods

@@ -4,6 +4,7 @@ function C1 = assembleC1(LBS)
 cmesh = LBS.mesh;
 ZB = LBS.bathy;
 T = LBS.velocity_model;
+assert(isa(T,"TaylorModel"), "To constrain on continuity, a Taylor model is required");
 eta = LBS.adcp.water_level_object;
 B = 1;
 L = 1;
