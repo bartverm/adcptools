@@ -57,10 +57,9 @@ nmeamsgs=fieldnames(innmea);                                               % Get
 %% Find time and date corresponding to lineids
 
 % Store times and dates and corresponding line ids
-disp('Searching for time and date...')
-linesTime=cell(size(innmea));                                               
+posTime=cell(size(innmea));                                               
 UTCtimes=cell(size(innmea));
-lines=cell(size(innmea));
+char_pos=cell(size(innmea));
 hastime=false(size(innmea));
 for cntmsg=1:length(nmeamsgs)                                              % Loop for all messages
     curmsg=nmeamsgs{cntmsg};                                               % store name of current message
@@ -68,48 +67,51 @@ for cntmsg=1:length(nmeamsgs)                                              % Loo
         if isempty(innmea(cntfile).(curmsg))                               % If current message is empty in this file
             continue                                                       % Continue to next file
         end
-        lines{cntfile}=[lines{cntfile};innmea(cntfile).(curmsg).lineid];   % Append to lines{current file} the lineids of this message
-        if isfield(innmea(cntfile).(curmsg),'UTCtime')                     % If this message contains UTC time
+        char_pos{cntfile}=[char_pos{cntfile};innmea(cntfile).(curmsg).char_pos];   % Append to lines{current file} the lineids of this message
+        if isfield(innmea(cntfile).(curmsg),'utc')                         % If this message contains UTC time
             hastime(cntfile)=true;                                         % set flag for this file indicating this file contains time
-            linesTime{cntfile}=[linesTime{cntfile};innmea(cntfile).(curmsg).lineid]; % Store the ids of the lines containing time for each file
-            UTCtimes{cntfile}=[UTCtimes{cntfile};innmea(cntfile).(curmsg).UTCtime]; % Store the time corresponding to the stored lineids
+            posTime{cntfile}=[posTime{cntfile};innmea(cntfile).(curmsg).char_pos]; % Store the ids of the lines containing time for each file
+            UTCtimes{cntfile}=[UTCtimes{cntfile};innmea(cntfile).(curmsg).utc]; % Store the time corresponding to the stored lineids
         end
     end
 end
 clear curmsg cntmsg cntfile
 % sort time and lines according to lines 
 for cntfile=1:length(innmea)
-    [linesTime{cntfile},idx]=unique(linesTime{cntfile});
+    [posTime{cntfile},idx]=unique(posTime{cntfile});
     UTCtimes{cntfile}=UTCtimes{cntfile}(idx,:);
-    lines{cntfile}=unique(lines{cntfile});
+    char_pos{cntfile}=unique(char_pos{cntfile});
 end
 
 
 if any(hastime)
     %% Find time and date for all lineids
-    timeV=cell(size(innmea));
+    pos_time=cell(size(innmea)); % time for each position in file
     fhastime=find(hastime==1);
-    curdayoffset=0;
+    cur_day_offset=days(0);
     for cfile=1:length(fhastime)                                                       % Loop for all the files
         cntfile=fhastime(cfile);
-        startdate=datenum([2008 1 1 0 0 0]);                               % Make up a date
-        dayoffset=cumsum([curdayoffset;abs(diff(UTCtimes{cntfile}(:,1)))>22]);        % from jumps in hours deduce day jumps and store the day offset
-        curdayoffset=dayoffset(end);
-        tmpdate=repmat(startdate,[size(UTCtimes{cntfile},1),1]);           % Replicate startdate to match the amount of UTC time information
-        tmpdate=datevec(tmpdate+dayoffset);                                % Add the day offset
-        intY=datenum(double([tmpdate(:,1:3),UTCtimes{cntfile}]));          % Making datenumber from the timevector
-        fnan=isnan(intY) | isnan(linesTime{cntfile});                      % find the nans 
-        intY(fnan)=[];                                                     % remove them
-        linesTime{cntfile}(fnan)=[];                                       % remove them
-        [~,idx]=unique(intY,'first');                                              
-        while numel(idx)~=numel(intY)
-            idx2=intersect(1:numel(intY),idx);
-            intY(idx2)=intY(idx2)+1e-6;
-            [~,idx]=unique(intY,'first');
-        end
-        timeV{cntfile}=datevec(interp1(linesTime{cntfile},intY,...
-                               lines{cntfile},'linear'));                  % interpolating time for lines without a time stamp
-        lineswtime=find(all(~isnan(timeV{cntfile}),2));                    % Removing lines with no time 
+        utc_dur = duration(UTCtimes{cntfile}); % get utc time as duration
+        pos = posTime{cntfile};
+        dayoffset = cumsum([cur_day_offset;...
+            days(diff(utc_dur) < hours(-22))]);
+        cur_day_offset=dayoffset(end);
+        utc_dur = utc_dur + dayoffset;
+        fnan=isnan(utc_dur) | isnan(pos);                      % find the nans 
+        utc_dur(fnan)=[];                                                     % remove them
+        pos(fnan)=[];                                       % remove them
+        dt = diff(utc_dur);
+        assert(~any(dt<0),'time is going backward in nmea data');
+
+        % interpolate times to have all unique times
+        f_zero_jump = [false; dt == 0];
+        utc_dur(f_zero_jump) = interp1(...
+            pos(~f_zero_jump),...
+            utc_dur(~f_zero_jump),...
+            pos(f_zero_jump));
+        pos_time{cntfile}=interp1(pos, utc_dur,...
+                               char_pos{cntfile},'linear');                  % interpolating time for lines without a time stamp
+        lineswtime=find(~isnan(pos_time{cntfile}));                    % Removing lines with no time 
         
         %% Find correspondence between time of ADCP and UTCtime
         fadcpfile=find(inadcp.FileNumber==cntfile);
@@ -118,29 +120,29 @@ if any(hastime)
             continue
         end
             
-        fline=(innmea(cntfile).RDENS.lineid >= lines{cntfile}(lineswtime(1)) & ...
-            innmea(cntfile).RDENS.lineid <= lines{cntfile}(lineswtime(end)));         % search for RDENS lines with a timestamp
+        fline=(innmea(cntfile).RDENS.char_pos >= char_pos{cntfile}(lineswtime(1)) & ...
+            innmea(cntfile).RDENS.char_pos <= char_pos{cntfile}(lineswtime(end)));         % search for RDENS lines with a timestamp
         [commens,idxnmea,idxadcp]=intersect(innmea(cntfile).RDENS.ensnum(fline),...
-                                            inadcp.ensnum(fadcpfile)); % find all adcp ensemble with a corresponding RDENS with timestamp
+                                            double(inadcp.ensnum(fadcpfile))); % find all adcp ensemble with a corresponding RDENS with timestamp
         if isempty(commens)
             warning('readNMEAADCP2:noCorrespondance',['No RDENS within utc time fields in file: ',nmeafilename{cntfile}])
             hastime(cntfile)=0;
             continue
         elseif numel(commens)==1
-            dt=datenum(indacp.timeV(fadcpfile(idxadcp),:))-datenum(timeV(lines{cntfile}==innmea(cntfile).RDENS.lineid(idxnmea),:));
+            dt=datetime(inadcp.timeV(fadcpfile(idxadcp),:))-pos_time(char_pos{cntfile}==innmea(cntfile).RDENS.char_pos(idxnmea));
         else
-            dtstart=datenum(double(inadcp.timeV(fadcpfile(idxadcp(1)),:)))-datenum(timeV{cntfile}(lines{cntfile}==innmea(cntfile).RDENS.lineid(idxnmea(1)),:));
-            dtend=datenum(double(inadcp.timeV(fadcpfile(idxadcp(end)),:)))-datenum(timeV{cntfile}(lines{cntfile}==innmea(cntfile).RDENS.lineid(idxnmea(end)),:));
-            if abs(dtstart-dtend)>(5/24/60/60)
+            dtstart=datetime(double(inadcp.timeV(fadcpfile(idxadcp(1)),:)))-pos_time{cntfile}(char_pos{cntfile}==innmea(cntfile).RDENS.char_pos(idxnmea(1)));
+            dtend=datetime(double(inadcp.timeV(fadcpfile(idxadcp(end)),:)))-pos_time{cntfile}(char_pos{cntfile}==innmea(cntfile).RDENS.char_pos(idxnmea(end)));
+            if abs(dtstart-dtend) > seconds(5)
                 warning('readNMEAADCP2:highDT','Time difference between adcp clock and UTCtime is changing too much, something might be wrong') 
             end
             dt=mean([dtstart,dtend],'omitnan');
         end
-       timeV{cntfile}=datevec(datenum(timeV{cntfile})+dt);
+       pos_time{cntfile}=pos_time{cntfile}+dt;
     end
 
     %% Find correspondance between data and timeV
-    nmeamsgs(strcmp(nmeamsgs,'rdens'))=[];   % Remove RDENS
+    nmeamsgs(strcmpi(nmeamsgs,'rdens'))=[];   % Remove RDENS
     tmpdata=struct;
     fhastime=find(hastime==1);
     for cntmsg = 1:length(nmeamsgs)                                            % Loop for all the available messages
@@ -149,7 +151,7 @@ if any(hastime)
         actmsg=nmeamsgs{cntmsg};
         tmpdata.(actmsg)=struct;
         msgdata=fieldnames(innmea(find(cellfun(@isstruct,{innmea(:).(actmsg)}),1,'first')).(actmsg));                                % Get the available data for each message
-        msgdata(strcmp(msgdata,'lineid'))=[];% Remove lineid from list of data availabe in the message
+        msgdata(strcmp(msgdata,'char_pos'))=[];% Remove lineid from list of data availabe in the message
         tmpdata.(actmsg).timeV=[];
         for cntdat=1:length(msgdata)                                           % Loop for all the available data in a message
             actdt=msgdata{cntdat};
@@ -161,39 +163,45 @@ if any(hastime)
             if isempty(innmea(cntfile).(actmsg))
                 continue
             end
-            [~,idxa, idxb]=intersect(lines{cntfile},innmea(cntfile).(actmsg).lineid);
-            ffile=isempty(tmpdata.(actmsg).timeV);
-            if ~ffile
-                lasttime=datenum(tmpdata.(actmsg).timeV(find(any(~isnan(tmpdata.(actmsg).timeV),2),1,'last'),:));
-                tmpdata.(actmsg).timeV=[tmpdata.(actmsg).timeV;datevec(lasttime+0.0001/24/3600)];
-            end
-            tmpdata.(actmsg).timeV=[tmpdata.(actmsg).timeV;timeV{cntfile}(idxa,:)]; %interpolate time for each line from UTCtime
+            [~,idxa, idxb]=intersect(char_pos{cntfile},innmea(cntfile).(actmsg).char_pos);
+%             ffile=isempty(tmpdata.(actmsg).timeV); % first file (for appending)
+%             if ~ffile
+%                 lasttime=tmpdata.(actmsg).timeV(end);
+%                 tmpdata.(actmsg).timeV=[tmpdata.(actmsg).timeV;datevec(lasttime+0.0001/24/3600)];
+%             end
+            tmpdata.(actmsg).timeV=[tmpdata.(actmsg).timeV;pos_time{cntfile}(idxa)]; %interpolate time for each line from UTCtime
             for cntdat=1:length(msgdata)                                           % Loop for all the available data in a message
                 actdt=msgdata{cntdat};
                 if isempty(innmea(cntfile).(actmsg).(actdt))
                     continue
                 end
-                if ~ffile
-                    tmpdata.(actmsg).(actdt)=[tmpdata.(actmsg).(actdt);tmpdata.(actmsg).(actdt)(end,:)*nan];
-                end
+%                 if ~ffile
+%                     tmpdata.(actmsg).(actdt)=[tmpdata.(actmsg).(actdt);tmpdata.(actmsg).(actdt)(end,:)*nan];
+%                 end
                 fempty = idxb > size(innmea(cntfile).(actmsg).(actdt),1);
-                dat_in = nan(size(idxb,1),size(innmea(cntfile).(actmsg).(actdt),2));
+                if isa(innmea(cntfile).(actmsg).(actdt),'datetime')
+                    dat_in = NaT(size(idxb,1),size(innmea(cntfile).(actmsg).(actdt),2));
+                    dat_in.TimeZone = innmea(cntfile).(actmsg).(actdt).TimeZone;
+                else
+                    dat_in = nan(size(idxb,1),size(innmea(cntfile).(actmsg).(actdt),2));
+                end
                 dat_in(~fempty ,:) = innmea(cntfile).(actmsg).(actdt)(idxb(~fempty),:);
                 tmpdata.(actmsg).(actdt)=[tmpdata.(actmsg).(actdt);dat_in];
             end
         end
     end
 
+    %%%%%% UPDATED TILL HERE!!
     %% Find data corresponding to ensembles
     for cntmsg = 1:length(nmeamsgs)
         actmsg=nmeamsgs{cntmsg};
 %         outdata.(actmsg)=struct;
         msgdata=fieldnames(tmpdata.(actmsg));                                  % Get the available data for each message
         msgdata(strcmp(msgdata,'timeV'))=[];
-        [xint,idx]=unique(datenum(tmpdata.(actmsg).timeV));
-        nnan=~isnan(xint);
-        xint=xint(nnan);
-        idx=idx(nnan);
+        [xint,idx]=unique(tmpdata.(actmsg).timeV);
+        nnat=~isnat(xint);
+        xint=xint(nnat);
+        idx=idx(nnat);
 
         for cntdat = 1:length(msgdata)
             actdt=msgdata{cntdat};
@@ -202,11 +210,11 @@ if any(hastime)
             end
             warning('off','MATLAB:interp1:NaNinY');
             if any(strcmp(actdt,{'heading','pitch','roll'}))
-                adcpnmea.(actmsg).(actdt)=atan2(...
-                    interp1(xint,sind(double(tmpdata.(actmsg).(actdt)(idx,:))),datenum(inadcp.timeV),'linear'),...
-                    interp1(xint,cosd(double(tmpdata.(actmsg).(actdt)(idx,:))),datenum(inadcp.timeV),'linear'))/pi*180;            
+                adcpnmea.(actmsg).(actdt)=atan2d(...
+                    interp1(xint,sind(double(tmpdata.(actmsg).(actdt)(idx,:))),datetime(inadcp.timeV),'linear'),...
+                    interp1(xint,cosd(double(tmpdata.(actmsg).(actdt)(idx,:))),datetime(inadcp.timeV),'linear'));            
             else
-                adcpnmea.(actmsg).(actdt)=interp1(xint,double(tmpdata.(actmsg).(actdt)(idx,:)),datenum(inadcp.timeV),'linear');
+                adcpnmea.(actmsg).(actdt)=interp1(xint,tmpdata.(actmsg).(actdt)(idx,:),datetime(inadcp.timeV),'linear');
             end
             warning('on','MATLAB:interp1:NaNinY');
         end
@@ -223,22 +231,22 @@ else                                                           % If there is no 
                 continue                                                   % Continue to next file
             end
             msgdata=fieldnames(innmea(cntfiles).(actmsg));                         % Get the available data for each message
-            msgdata(cat(1,cellfun(@(x) ~isempty(x),regexpi(msgdata,'lineid'))))=[];% Remove lineid from list of data availabe in the message
+            msgdata(cat(1,cellfun(@(x) ~isempty(x),regexpi(msgdata,'char_pos'))))=[];% Remove lineid from list of data availabe in the message
             for cntdat=1:length(msgdata)                                           % Loop for all the available data in a message
                 actdt=msgdata{cntdat};
                 ensids=inadcp.ensnum(inadcp.FileNumber==cntfiles);                                                % Sort all available ensemble numbers
                 for ensid = ensids                                             % Loop for each ensemble number in current adcp file
                     matchEnsADCP=inadcp.ensnum==ensid;                   % Find Ensemble numbers in ADCP file that match the given ensemble number
-                    rdenstmp=[0;innmea(cntfiles).RDENS.lineid];                     % Add a zero to the rd ensemble line id's
+                    rdenstmp=[0;innmea(cntfiles).RDENS.char_pos];                     % Add a zero to the rd ensemble line id's
                     frdens=find(innmea(cntfiles).RDENS.ensnum==ensid);
                     if isempty(frdens)                                          % If no RDENS string is available for the given ensemble number
                        continue                                                % Continue to the next ensemble
                     end
-                    IsInEns=innmea(cntfiles).(actmsg).lineid>rdenstmp(frdens) & innmea(cntfiles).(actmsg).lineid<rdenstmp(frdens+1);               % Search which values are generated between this ensemble and the previous one
+                    IsInEns=innmea(cntfiles).(actmsg).char_pos>rdenstmp(frdens) & innmea(cntfiles).(actmsg).char_pos<rdenstmp(frdens+1);               % Search which values are generated between this ensemble and the previous one
                     if any(strcmp(actdt,{'heading','pitch','roll'}))
-                        adcpnmea.(actmsg).(actdt)(matchEnsADCP,:)=atan2(...
+                        adcpnmea.(actmsg).(actdt)(matchEnsADCP,:)=atan2d(...
                         sind(mean(innmea(cntfiles).(actmsg).(actdt)(IsInEns,:),1,'omitnan')),...
-                        cosd(mean(innmea(cntfiles).(actmsg).(actdt)(IsInEns,:),1,'omitnan')))/pi*180;% average all the data for this ensemble    
+                        cosd(mean(innmea(cntfiles).(actmsg).(actdt)(IsInEns,:),1,'omitnan')));% average all the data for this ensemble    
                     else
                         adcpnmea.(actmsg).(actdt)(matchEnsADCP,:)=...
                         mean(innmea(cntfiles).(actmsg).(actdt)(IsInEns,:),1,'omitnan');% average all the data for this ensemble    
