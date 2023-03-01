@@ -619,10 +619,10 @@ if any(regexpi(flags,'x'))                                                 % If 
                 continue
             else
                 fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
-                tmpdbt{cntens}=getDBT(fileid(cntens),fpos);
+                tmpdbt{cntens}=getNMEA(fileid(cntens),fpos);
             end
         end
-        readDBTint(tmpdbt,nens);
+        readNMEAint(tmpdbt,nmea.DBTMessage);
         clear tmpdbt;    
     end
     if any(AllHeaders(:,1)==8449)                                          % Sama as above but for WR GGA data
@@ -633,10 +633,10 @@ if any(regexpi(flags,'x'))                                                 % If 
                 continue
             else
                 fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
-                tmpgga{cntens}=getGGA(fileid(cntens),fpos);
+                tmpgga{cntens}=getNMEA(fileid(cntens),fpos);
             end
         end
-        readGGAint(tmpgga,nens);
+        readNMEAint(tmpgga,nmea.GGAMessage);
         clear tmpgga
     end
     if any(AllHeaders(:,1)==8450)                                          % Same as above but for WR VTG data
@@ -647,10 +647,10 @@ if any(regexpi(flags,'x'))                                                 % If 
                 continue
             else
                 fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
-                tmpvtg{cntens}=getVTG(fileid(cntens),fpos);
+                tmpvtg{cntens}=getNMEA(fileid(cntens),fpos);
             end
         end
-        readVTGint(tmpvtg,nens);
+        readNMEAint(tmpvtg,nmea.VTGMessage);
         clear tmpvtg;
     end
     if any(AllHeaders(:,1)==8452)                                          % Same as above but for WR HDT data
@@ -661,10 +661,10 @@ if any(regexpi(flags,'x'))                                                 % If 
                 continue
             else
                 fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
-                tmphdt{cntens}=getHDT(fileid(cntens),fpos);
+                tmphdt{cntens}=getNMEA(fileid(cntens),fpos);
             end
         end
-        readHDTint(tmphdt,nens);
+        readNMEAint(tmphdt,nmea.HDTMessage);
         clear tmphdt;
     end
 end
@@ -1156,47 +1156,30 @@ if any(dataID~=[1;33])
 end
 ggastr=fgetl(fid);
 
-function readGGAint(ggastr,nens)
+function dat=expand_nmea(has_data, dat)
+data_fields = fieldnames(dat);
+for cm = 1:numel(data_fields)
+    cur_dat = dat.(data_fields{cm});
+    if isfloat(cur_dat)
+        dat.(data_fields{cm}) = nan(size(cur_dat));
+    end
+    dat.(data_fields{cm})(has_data,:) = cur_dat;
+end
+
+function readNMEAint(ggastr,msg)
 global dataout
-rdi.defineNMEA;
-hasdata=~cellfun(@isempty,regexp(ggastr,patterns.gga));
+hasdata=~cellfun(@isempty,regexp(ggastr,msg.message_pattern));
 if ~any(hasdata)
     return
 end
-disp('WinRiver GGA data found')
-initGGA(nens);
-datgga=rdi.readGGA(ggastr(hasdata));
-dataout.GGA.UTCtime(hasdata,:)=datgga.UTCtime;
-dataout.GGA.lat(hasdata)=datgga.lat;
-dataout.GGA.long(hasdata)=datgga.long;
-dataout.GGA.qualind(hasdata)=datgga.qualind;
-dataout.GGA.numsat(hasdata)=datgga.numsat;
-dataout.GGA.hdop(hasdata)=datgga.hdop;
-dataout.GGA.antalt(hasdata)=datgga.antalt;
-dataout.GGA.geosep(hasdata)=datgga.geosep;
-dataout.GGA.agediff(hasdata)=datgga.agediff;
-dataout.GGA.diffid(hasdata)=datgga.diffid;
+datgga=msg.parse([ggastr{hasdata}]);
+datgga.(msg.name) = expand_nmea(hasdata,datgga.(msg.name));
+dataout.(msg.name) = datgga.(msg.name);
 
 %Read WinRiver HDT data
-function hdtstr=getHDT(fid,fpos)
-fseek(fid,fpos,-1);
-dataID=fread(fid,2,'*uint8');
-if any(dataID~=[4;33])
-    error('readADCP:getHDT:wrongID','WinRiver HDT data ID seems to be wrong')
-end
-hdtstr=fgetl(fid);
-
-function readHDTint(hdtstr,nens)
-global dataout
-rdi.defineNMEA;
-hasdata=~cellfun(@isempty,regexp(hdtstr,patterns.hdt));
-if ~any(hasdata)
-    return
-end
-disp('WinRiver HDT data found')
-initHDT(nens);
-dathdt=rdi.readHDT(hdtstr(hasdata));
-dataout.HDT.heading(hasdata)=dathdt.heading;
+function nmeastr=getNMEA(fid,fpos)
+fseek(fid,fpos+2,-1);
+nmeastr=fgetl(fid);
 
 
 %Read WinRiver DBT data

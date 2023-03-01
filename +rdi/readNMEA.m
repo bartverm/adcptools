@@ -64,8 +64,6 @@ end
 nfiles=length(infiles);   %find number of files
 % NMEA(1:nfiles)=struct();  %initialize an arrray of structures
 
-rdi.defineNMEA;
-
 for cntfile=1:nfiles
     fid=fopen(infiles{cntfile},'r');   %Open file
     if (fid < 0)
