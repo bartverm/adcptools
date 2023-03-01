@@ -971,35 +971,35 @@ global dataout
 fseek(fid,fpos+2,-1);
 ncells = dataout.vbeam_ncells(cntens);
 dataout.vbeam_velocity(1:ncells,cntens) = ...
-    fread(fid,nvels,"*int16");
+    fread(fid,ncells,"*int16");
 
 function readVBeamCorr(fid,fpos,cntens)
 global dataout
 fseek(fid,fpos+2,-1);
 ncells = dataout.vbeam_ncells(cntens);
 dataout.vbeam_corr(1:ncells,cntens) = ...
-    fread(fid,nvels,"*uint8");
+    fread(fid,ncells,"*uint8");
 
 function readVBeamEcho(fid,fpos,cntens)
 global dataout
 fseek(fid,fpos+2,-1);
 ncells = dataout.vbeam_ncells(cntens);
 dataout.vbeam_echo(1:ncells,cntens) = ...
-    fread(fid,nvels,"*uint8");
+    fread(fid,ncells,"*uint8");
 
 function readVBeamPerc(fid,fpos,cntens)
 global dataout
 fseek(fid,fpos+2,-1);
 ncells = dataout.vbeam_ncells(cntens);
 dataout.vbeam_perc(1:ncells,cntens) = ...
-    fread(fid,nvels,"*uint8");
+    fread(fid,ncells,"*uint8");
 
 function readVBeamStat(fid,fpos,cntens)
 global dataout
 fseek(fid,fpos+2,-1);
 ncells = dataout.vbeam_ncells(cntens);
 dataout.vbeam_stat(1:ncells,cntens) = ...
-    fread(fid,nvels,"*uint8");
+    fread(fid,ncells,"*uint8");
 
 function readSLayerVelLeader(fid,fpos,cntens)
     global dataout
