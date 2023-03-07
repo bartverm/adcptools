@@ -87,7 +87,8 @@ classdef ADCP < ADCP
             val = 180-acosd(bom(:,:,:,3));
         end
         function val = get_coordinate_system(obj)
-            cor=obj.raw.Setup.coordinateSystem(obj.raw.file_id);
+            cor=reshape(obj.raw.Setup.coordinateSystem(obj.raw.file_id),...
+                1,[]);
             val = repmat(CoordinateSystem.Beam,size(cor));
             val(cor==1) = CoordinateSystem.Ship;
             val(cor==2) = CoordinateSystem.Earth;

@@ -7,7 +7,7 @@ classdef HeadingInternal < HeadingProvider
                 isfield(adcp.raw.System.Units,'Heading');
         end
         function val = get_heading(~, adcp)
-            val = adcp.raw.System.True_North_ADP_Heading';
+            val = reshape(adcp.raw.System.True_North_ADP_Heading,1,[]);
             unit = adcp.raw.System.Units.Heading(adcp.raw.file_id);
             is_deg = strcmp(unit,'deg');
             is_rad = strcmp(unit,'rad');
@@ -17,8 +17,9 @@ classdef HeadingInternal < HeadingProvider
             assert(all(is_known),'Not all heading angle units are known')
             if isfield(adcp.raw,'Setup') &&...
                     isfield(adcp.raw.Setup,'magneticDeclination')
-                val = val + adcp.raw.Setup.magneticDeclination(...
-                    adcp.raw.file_id);
+                val = val +...
+                    reshape(adcp.raw.Setup.magneticDeclination(...
+                    adcp.raw.file_id),1,[]);
             end
         end
     end
