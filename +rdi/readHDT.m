@@ -1,17 +1,14 @@
-function [NMEA_DBT,discard]=readDBT(instr)
-% readDBT(DBT) interprets a NMEA DBT string
+function [NMEA_HDT,discard]=readHDT(instr)
+% readHDT(hdt) interprets a NMEA HDT string
 %
-%   [DBTstruct]=readDBT(instr) Reads a NMEA sentence in the character array
-%   or cell of strings and returns a structure with the DBT data.
+%   [HDTstruct]=readHDT(instr) Reads a NMEA sentence in the character array
+%   or cell of strings and returns a structure with the hdt data.
 %   
 %   The output structure will contain the following fields:
-%    depthf: Depth under transducer in feet
-%    depthM: Depth under transducer in meters
-%    depthF: Depth under transducer in Fathoms
-%
+%   heading: heading of the gps compass
 %
 %    Author: Bart Vermeulen
-%    Date last edit: 17-12-2009
+%    Date last edit: 21-12-2009
 
 %    Copyright 2009 Bart Vermeulen
 %
@@ -40,9 +37,8 @@ if ischar(instr)
     instr=cellstr(instr);
 end
 
-% tmpdat=textscan([instr{:}],'$ %*2s DBT %f32 f %f32 M %f32 F %*2s',nlines,'Delimiter',',*');
-defineNMEA;
-[tmpdat,split]=regexp([instr{:}],patterns.DBT,'names','split');
+rdi.defineNMEA;
+[tmpdat,split]=regexp([instr{:}],patterns.hdt,'names','split');
 clear instr
 discard=find(~strcmp(split,''));
 fdiscard=[];
@@ -53,8 +49,8 @@ if any(discard)
     end
     discard=fdiscard+(1:length(fdiscard))-1;     
 end
+%tmpdat=textscan([instr{:}],'$ %*2s HDT %f32 T %*2s',nlines,'Delimiter',',*');
 
 %Initialize variable
-NMEA_DBT.depthf=cell2mat(textscan([tmpdat(:).depthf],'%f32','delimiter',','));
-NMEA_DBT.depthM=cell2mat(textscan([tmpdat(:).depthM],'%f32','delimiter',','));
-NMEA_DBT.depthF=cell2mat(textscan([tmpdat(:).depthF],'%f32','delimiter',','));
+NMEA_HDT.heading=cell2mat(textscan([tmpdat(:).heading],'%f32','delimiter',','));
+
