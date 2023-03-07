@@ -14,28 +14,6 @@ function adcpnmea = readNMEAADCP(inadcp,nmeafilename)
 %              When files contain overlapping messages, data is stored from
 %              the last given file
 %
-%              Author: Bart Vermeulen
-%              Last Edit: 23-08-2010
-%              "[~," replaced by "[Dummy," for us in matlab 2009a (Frans)
-
-%    Copyright 2009,2010 Bart Vermeulen, Frans Buschman
-%
-%    This file is part of ADCPTools.
-%
-%    ADCPTools is free software: you can redistribute it and/or modify
-%    it under the terms of the GNU General Public License as published by
-%    the Free Software Foundation, either version 3 of the License, or
-%    (at your option) any later version.
-%
-%    ADCPTools is distributed in the hope that it will be useful,
-%    but WITHOUT ANY WARRANTY; without even the implied warranty of
-%    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-%    GNU General Public License for more details.
-%
-%    You should have received a copy of the GNU General Public License
-%    along with ADCPTools.  If not, see <http://www.gnu.org/licenses/>.
-
-% Assumption: Files are given in chronological order and one series at a time!
 
 inp=inputParser;                                                           % Create an object of the InputParser class
 inp.addRequired('inadcp',@isstruct);                                       % Add required input inadcp
@@ -86,6 +64,8 @@ end
 
 if any(hastime)
     %% Find time and date for all lineids
+    nens = size(inadcp.timeV,1);
+    ens_no_time = true(nens,1); % stores ensembles that have not time stamp
     pos_time=cell(size(innmea)); % time for each position in file
     fhastime=find(hastime==1);
     cur_day_offset=days(0);
@@ -103,12 +83,12 @@ if any(hastime)
         dt = diff(utc_dur);
         assert(~any(dt<0),'time is going backward in nmea data');
 
-        % interpolate times to have all unique times
-        f_zero_jump = [false; dt == 0];
-        utc_dur(f_zero_jump) = interp1(...
-            pos(~f_zero_jump),...
-            utc_dur(~f_zero_jump),...
-            pos(f_zero_jump));
+        % make sure times in lines are unique
+        while any(dt==0)
+            f_zero_jump = [false; dt == 0];
+            utc_dur(f_zero_jump) = utc_dur(f_zero_jump) + milliseconds(1);
+            dt = diff(utc_dur);
+        end
         pos_time{cntfile}=interp1(pos, utc_dur,...
                                char_pos{cntfile},'linear');                  % interpolating time for lines without a time stamp
         lineswtime=find(~isnan(pos_time{cntfile}));                    % Removing lines with no time 
@@ -139,6 +119,7 @@ if any(hastime)
             dt=mean([dtstart,dtend],'omitnan');
         end
        pos_time{cntfile}=pos_time{cntfile}+dt;
+       ens_no_time(fadcpfile(idxadcp)) = false;
     end
 
     %% Find correspondance between data and timeV
@@ -164,20 +145,12 @@ if any(hastime)
                 continue
             end
             [~,idxa, idxb]=intersect(char_pos{cntfile},innmea(cntfile).(actmsg).char_pos);
-%             ffile=isempty(tmpdata.(actmsg).timeV); % first file (for appending)
-%             if ~ffile
-%                 lasttime=tmpdata.(actmsg).timeV(end);
-%                 tmpdata.(actmsg).timeV=[tmpdata.(actmsg).timeV;datevec(lasttime+0.0001/24/3600)];
-%             end
             tmpdata.(actmsg).timeV=[tmpdata.(actmsg).timeV;pos_time{cntfile}(idxa)]; %interpolate time for each line from UTCtime
             for cntdat=1:length(msgdata)                                           % Loop for all the available data in a message
                 actdt=msgdata{cntdat};
                 if isempty(innmea(cntfile).(actmsg).(actdt))
                     continue
                 end
-%                 if ~ffile
-%                     tmpdata.(actmsg).(actdt)=[tmpdata.(actmsg).(actdt);tmpdata.(actmsg).(actdt)(end,:)*nan];
-%                 end
                 fempty = idxb > size(innmea(cntfile).(actmsg).(actdt),1);
                 if isa(innmea(cntfile).(actmsg).(actdt),'datetime')
                     dat_in = NaT(size(idxb,1),size(innmea(cntfile).(actmsg).(actdt),2));
@@ -191,11 +164,9 @@ if any(hastime)
         end
     end
 
-    %%%%%% UPDATED TILL HERE!!
     %% Find data corresponding to ensembles
     for cntmsg = 1:length(nmeamsgs)
         actmsg=nmeamsgs{cntmsg};
-%         outdata.(actmsg)=struct;
         msgdata=fieldnames(tmpdata.(actmsg));                                  % Get the available data for each message
         msgdata(strcmp(msgdata,'timeV'))=[];
         [xint,idx]=unique(tmpdata.(actmsg).timeV);
@@ -216,8 +187,13 @@ if any(hastime)
             else
                 adcpnmea.(actmsg).(actdt)=interp1(xint,tmpdata.(actmsg).(actdt)(idx,:),datetime(inadcp.timeV),'linear');
             end
+            if isa(adcpnmea.(actmsg).(actdt),"datetime")
+                adcpnmea.(actmsg).(actdt)(ens_no_time) = NaT;
+            else
+                adcpnmea.(actmsg).(actdt)(ens_no_time) = nan;
+            end
             warning('on','MATLAB:interp1:NaNinY');
-        end
+        end %%%%%% REMOVE DATA BETWEEN FILES USING IDX_ADCP_STORE!!
     end
 else                                                           % If there is no time information use the old method
     warning('readNMEAADCP2:noTimeFound','Could not find time, using old method...')
