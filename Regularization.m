@@ -29,10 +29,10 @@ classdef Regularization <...
     end
 
     methods
-        function obj = Regularization(solver)
-            obj.par_names_tot = cell([solver.mesh.ncells*sum(solver.data_model.npars),1]);
-            obj.neighbors = zeros([4, solver.mesh.ncells]);
-            obj.domains = zeros([1, solver.mesh.ncells]);
+        function obj = Regularization(bathy, xs, mesh, data_model, water_level)
+            obj.par_names_tot = cell([mesh.ncells*sum(data_model.npars),1]);
+            obj.neighbors = zeros([4, mesh.ncells]);
+            obj.domains = zeros([1, mesh.ncells]);
 
             dx = 2; 
             dy = 2; % meters: for estimating bathymetric gradients using centered differences
@@ -40,34 +40,32 @@ classdef Regularization <...
             ds = 2;
             dn = 2;
 
-            zb = solver.bathy;
-            mesh = solver.mesh;
-
             % Here, the specific orientation of cross-sections becomes
             % important.
-            svec = solver.xs.direction_orthogonal;
-            nvec = solver.xs.direction;
 
-            for idx = 1:solver.mesh.ncells % loop trough every cell
-                for par = 1:sum(solver.data_model.npars) % loop trough parameters within cell
-                    obj.par_names_tot{idx, 1} = sprintf('cell %i: %s', idx, solver.data_model.names{par});
+            svec = xs.direction_orthogonal;
+            nvec = xs.direction;
+
+            for idx = 1:mesh.ncells % loop trough every cell
+                for par = 1:sum(data_model.npars) % loop trough parameters within cell
+                    obj.par_names_tot{idx, 1} = sprintf('cell %i: %s', idx, data_model.names{par});
                 end
-                [obj.neighbors(:,idx), obj.domains(1,idx)] = solver.mesh.get_neighbors(idx);
+                [obj.neighbors(:,idx), obj.domains(1,idx)] = mesh.get_neighbors(idx);
                 % Bathymetry and its gradients in along-channel and
                 % cross-channel directions.
                 obj.zb_0(1,idx) = mesh.zb_middle(mesh.col_to_cell(idx));
 
                 % Centered difference in Cartesian x,y coordinates
-                obj.zb_x(1,idx) = 1/(2*dx)*(zb.get_depth(mesh.x_middle(mesh.col_to_cell(idx))+dx,mesh.y_middle(mesh.col_to_cell(idx)),t)-...
-                    zb.get_depth(mesh.x_middle(mesh.col_to_cell(idx))-dx,mesh.y_middle(mesh.col_to_cell(idx)),mesh.time));
-                obj.zb_y(1,idx) = 1/(2*dy)*(zb.get_depth(mesh.x_middle(mesh.col_to_cell(idx)),mesh.y_middle(mesh.col_to_cell(idx))+dy,t)-...
-                    zb.get_depth(mesh.x_middle(mesh.col_to_cell(idx)),mesh.y_middle(mesh.col_to_cell(idx))-dy,mesh.time));
+                obj.zb_x(1,idx) = 1/(2*dx)*(bathy.get_depth(mesh.x_middle(mesh.col_to_cell(idx))+dx,mesh.y_middle(mesh.col_to_cell(idx)),t)-...
+                    bathy.get_depth(mesh.x_middle(mesh.col_to_cell(idx))-dx,mesh.y_middle(mesh.col_to_cell(idx)),mesh.time));
+                obj.zb_y(1,idx) = 1/(2*dy)*(bathy.get_depth(mesh.x_middle(mesh.col_to_cell(idx)),mesh.y_middle(mesh.col_to_cell(idx))+dy,t)-...
+                    bathy.get_depth(mesh.x_middle(mesh.col_to_cell(idx)),mesh.y_middle(mesh.col_to_cell(idx))-dy,mesh.time));
 
                 % Directional difference in cross-sectional s,n coordinates
-                obj.zb_s(1,idx) = 1/(2*ds)*(zb.get_depth(mesh.x_middle(mesh.col_to_cell(idx))+ds*svec(1), mesh.y_middle(mesh.col_to_cell(idx) + ds*svec(2)),t)-...
-                    zb.get_depth(mesh.x_middle(mesh.col_to_cell(idx)) - ds*svec(1), mesh.y_middle(mesh.col_to_cell(idx) - ds*svec(2)),mesh.time));
-                obj.zb_n(1,idx) = 1/(2*dn)*(zb.get_depth(mesh.x_middle(mesh.col_to_cell(idx))+dn*nvec(1),mesh.y_middle(mesh.col_to_cell(idx))+dn*nvec(2),t)-...
-                    zb.get_depth(mesh.x_middle(mesh.col_to_cell(idx)) - dn*nvec(1),mesh.y_middle(mesh.col_to_cell(idx)) - dn*svec(2),mesh.time));
+                obj.zb_s(1,idx) = 1/(2*ds)*(bathy.get_depth(mesh.x_middle(mesh.col_to_cell(idx))+ds*svec(1), mesh.y_middle(mesh.col_to_cell(idx) + ds*svec(2)),t)-...
+                    bathy.get_depth(mesh.x_middle(mesh.col_to_cell(idx)) - ds*svec(1), mesh.y_middle(mesh.col_to_cell(idx) - ds*svec(2)),mesh.time));
+                obj.zb_n(1,idx) = 1/(2*dn)*(bathy.get_depth(mesh.x_middle(mesh.col_to_cell(idx))+dn*nvec(1),mesh.y_middle(mesh.col_to_cell(idx))+dn*nvec(2),t)-...
+                    bathy.get_depth(mesh.x_middle(mesh.col_to_cell(idx)) - dn*nvec(1),mesh.y_middle(mesh.col_to_cell(idx)) - dn*svec(2),mesh.time));
             end
         end
     end

@@ -5,25 +5,24 @@ classdef ContinuityRegularization < Regularization
     end
     methods(Access = protected)
         function assemble_matrix_private(obj, solver)
-            assert(isa(solver.data_model,"TaylorModel"), "To constrain on continuity, a Taylor model is required");
-            if (solver.data_model.s_order(1) > 0) && (solver.data_model.n_order(2) > 0)...
-                    && (solver.data_model.sigma_order(3) > 0 || solver.data_model.z_order(3) > 0)
+            assert(isa(data_model,"TaylorModel"), "To constrain on continuity, a Taylor data_model is required");
+            if (data_model.s_order(1) > 0) && (data_model.n_order(2) > 0)...
+                    && (data_model.sigma_order(3) > 0 || data_model.z_order(3) > 0)
                 obj.C1 = assemble_continuity_internal(obj, solver);
             else
                 warning('No internal continuity matrix assembled: Include higher order Taylor expansion')
             end
-            if (solver.data_model.s_order(1) > 0)
+            if (data_model.s_order(1) > 0)
                 obj.C2 = assemble_continuity_external(obj, solver);
             else
                 warning('No external continuity matrix assembled: Include alongchannel Taylor expansion')
             end
         end
 
-        function C = assemble_continuity_internal(obj, solver)
+        function C = assemble_continuity_internal(obj, bathy, xs, mesh, data_model, water_level)
             % Function that assembles cell-based continuity equation
-            mesh = solver.mesh;
-            model = solver.data_model;
-            wl = solver.water_level;
+            data_model = data_model;
+            wl = water_level;
 
             nscale = 1; % B and L are possible lateral and longitudinal scaling factors
             sscale = 1;
@@ -31,47 +30,47 @@ classdef ContinuityRegularization < Regularization
             for idx = 1:mesh.ncells
                 sig = mesh.sig_center(idx);
 
-                D0 = solver.water_level.parameters(1) - solver.mesh.zb_middle(mesh.col_to_cell(idx)); % Subtidal depth
+                D0 = water_level.parameters(1) - mesh.zb_middle(mesh.col_to_cell(idx)); % Subtidal depth
                 D0s = -obj.zb_s(idx);                                                                 % Subtidal depth gradient
                 D0n = -obj.zb_n(idx);
 
-                Cj{idx} = zeros([1+2*numel(wl.constituents), sum(model.npars)]);
+                Cj{idx} = zeros([1+2*numel(wl.constituents), sum(data_model.npars)]);
 
-                subtidal_idx = [find(strcmp(model.names, 'd^1u/dx^1: M0A')) , ...
-                    find(strcmp(model.names, 'd^1u/dsig^1: M0A')) , ...
-                    find(strcmp(model.names, 'd^1v/dy^1: M0A')) , ...
-                    find(strcmp(model.names, 'd^1v/dsig^1: M0A')) , ...
-                    find(strcmp(model.names, 'd^1w/dsig^1: M0A'))];
+                subtidal_idx = [find(strcmp(data_model.names, 'd^1u/dx^1: M0A')) , ...
+                    find(strcmp(data_model.names, 'd^1u/dsig^1: M0A')) , ...
+                    find(strcmp(data_model.names, 'd^1v/dy^1: M0A')) , ...
+                    find(strcmp(data_model.names, 'd^1v/dsig^1: M0A')) , ...
+                    find(strcmp(data_model.names, 'd^1w/dsig^1: M0A'))];
 
                 subtidal_terms = [nscale*D0, nscale*(1-sig)*D0s, sscale*D0, sscale*(1-sig)*D0n, sscale*nscale];
                 Cj{idx}(1,subtidal_idx) = subtidal_terms;
 
                 % Second: Tidal equations for each constituent
 
-                if isa(model,"TidalModel")
-                    tidal_idx = cell([numel(model.constituentsU),2]);
-                    tidal_terms = cell([numel(model.constituentsU),2]);
-                    for tid_idx = 1:numel(model.constituentsU) %Fundamental choice: All constituents are the same!!
-                        const = model.constituentsU{tid_idx};
+                if isa(data_model,"TidalModel")
+                    tidal_idx = cell([numel(data_model.constituentsU),2]);
+                    tidal_terms = cell([numel(data_model.constituentsU),2]);
+                    for tid_idx = 1:numel(data_model.constituentsU) %Fundamental choice: All constituents are the same!!
+                        const = data_model.constituentsU{tid_idx};
 
-                        tidal_idx{tid_idx,1} = [find(strcmp(model.names, sprintf('%s%s%s', 'd^1u/dx^1: ', const,'A'))) , ...
-                            find(strcmp(model.names, 'd^1u/dx^1: M0A')) , ...
-                            find(strcmp(model.names, sprintf('%s%s%s', 'd^1u/dsig^1: ', const,'A'))) ,...
-                            find(strcmp(model.names, sprintf('%s%s%s', 'd^1v/dy^1: ', const,'A'))) , ...
-                            find(strcmp(model.names, 'd^1v/dy^1: M0A')) , ...
-                            find(strcmp(model.names, sprintf('%s%s%s', 'd^1v/dsig^1: ', const,'A'))) , ...
-                            find(strcmp(model.names, sprintf('%s%s%s', 'd^1w/dsig^1: ', const,'A')))];
+                        tidal_idx{tid_idx,1} = [find(strcmp(data_model.names, sprintf('%s%s%s', 'd^1u/dx^1: ', const,'A'))) , ...
+                            find(strcmp(data_model.names, 'd^1u/dx^1: M0A')) , ...
+                            find(strcmp(data_model.names, sprintf('%s%s%s', 'd^1u/dsig^1: ', const,'A'))) ,...
+                            find(strcmp(data_model.names, sprintf('%s%s%s', 'd^1v/dy^1: ', const,'A'))) , ...
+                            find(strcmp(data_model.names, 'd^1v/dy^1: M0A')) , ...
+                            find(strcmp(data_model.names, sprintf('%s%s%s', 'd^1v/dsig^1: ', const,'A'))) , ...
+                            find(strcmp(data_model.names, sprintf('%s%s%s', 'd^1w/dsig^1: ', const,'A')))];
 
                         tidal_terms{tid_idx,1} = [nscale*D0, nscale*wl.parameters(2*tid_idx), nscale*(1-sig)*D0s, sscale*D0, nscale*wl.parameters(2*tid_idx), sscale*(1-sig)*D0n, sscale*nscale];
                         Cj{idx}(2*tid_idx,tidal_idx{tid_idx,1}) = tidal_terms{tid_idx,1};
 
-                        tidal_idx{tid_idx,2} = [find(strcmp(model.names, sprintf('%s%s%s', 'd^1u/dx^1: ', const,'B'))) , ...
-                            find(strcmp(model.names, 'd^1u/dx^1: M0A')) , ...
-                            find(strcmp(model.names, sprintf('%s%s%s', 'd^1u/dsig^1: ', const,'B'))) , ...
-                            find(strcmp(model.names, sprintf('%s%s%s', 'd^1v/dy^1: ', const,'B'))) , ...
-                            find(strcmp(model.names, 'd^1v/dy^1: M0A')) , ...
-                            find(strcmp(model.names, sprintf('%s%s%s', 'd^1v/dsig^1: ', const,'B'))) , ...
-                            find(strcmp(model.names, sprintf('%s%s%s', 'd^1w/dsig^1: ', const,'B')))];
+                        tidal_idx{tid_idx,2} = [find(strcmp(data_model.names, sprintf('%s%s%s', 'd^1u/dx^1: ', const,'B'))) , ...
+                            find(strcmp(data_model.names, 'd^1u/dx^1: M0A')) , ...
+                            find(strcmp(data_model.names, sprintf('%s%s%s', 'd^1u/dsig^1: ', const,'B'))) , ...
+                            find(strcmp(data_model.names, sprintf('%s%s%s', 'd^1v/dy^1: ', const,'B'))) , ...
+                            find(strcmp(data_model.names, 'd^1v/dy^1: M0A')) , ...
+                            find(strcmp(data_model.names, sprintf('%s%s%s', 'd^1v/dsig^1: ', const,'B'))) , ...
+                            find(strcmp(data_model.names, sprintf('%s%s%s', 'd^1w/dsig^1: ', const,'B')))];
 
                         tidal_terms{tid_idx,2} = [nscale*D0, nscale*wl.parameters(2*tid_idx+1), nscale*(1-sig)*D0s, sscale*D0, nscale*wl.parameters(2*tid_idx+1), sscale*(1-sig)*D0n, sscale*nscale];
                         Cj{idx}(2*tid_idx+1,tidal_idx{tid_idx,2}) = tidal_terms{tid_idx,2};
@@ -81,11 +80,11 @@ classdef ContinuityRegularization < Regularization
             C = spblkdiag(Cj{:}); % Global matrices can be assembled from element matrices (C1 is block diagonal)
         end
 
-        function C = assemble_continuity_external(obj, solver)
+        function C = assemble_continuity_external(obj, bathy, xs, mesh, data_model, water_level)
 
-            mesh = solver.mesh;
-            model = solver.data_model;
-            wl = solver.water_level;
+            mesh = mesh;
+            data_model = data_model;
+            wl = water_level;
 
             rows = []; cols = []; vals = [];
             row_idx = 1;
@@ -99,7 +98,7 @@ classdef ContinuityRegularization < Regularization
                     row_idx = max(rows) + 1;           
                 end
             end
-            C = sparse(rows, cols, vals, mesh.ncells*(2*length(model.constituentsU)+1), mesh.ncells*sum(model.npars));
+            C = sparse(rows, cols, vals, mesh.ncells*(2*length(data_model.constituentsU)+1), mesh.ncells*sum(data_model.npars));
         end
 
         function  [row, col, val] =  idx2element_mat(obj, idx, tid_name, solver)
@@ -108,7 +107,7 @@ classdef ContinuityRegularization < Regularization
             nscale = 1;
             sscale = 1;
 
-            D0 = solver.water_level.parameters(1) - solver.mesh.zb_middle(mesh.col_to_cell(idx));
+            D0 = water_level.parameters(1) - mesh.zb_middle(mesh.col_to_cell(idx));
             D0s = -obj.zb_s(idx);
             D0n = -obj.zb_n(idx);
 
@@ -170,8 +169,8 @@ classdef ContinuityRegularization < Regularization
 end
 
 
-%                 mesh = solver.mesh;
-%             wl = solver.water_level;
+%                 mesh = mesh;
+%             wl = water_level;
 %
 %             rows = []; cols = []; vals = [];
 %             row_idx = 0;
