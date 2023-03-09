@@ -5,17 +5,15 @@ classdef ModelParameters < handle
     %   Detailed explanation goes here
     
     properties
-        model (1,1) DataModel = DataModel; %Underlying model for scalar or vector quantities
-        
-        M (1,:) double = {}; % matrix M such that b = Mp
+        M (:,:) double % matrix M such that b = Mp
 
-        b (:,1) double = []; %rhs of system of eqs (b = Mp)
+        b (:,1) double; %rhs of system of eqs (b = Mp)
 
-        p (:,:) double = []; % model parameters (b = Mp)
+        p (:,:) double; % model parameters (b = Mp)
 
-        C (1,:) cell = {}; % regularization matrices
+        reg (1,1) Regularization
 
-        cell_idx (:,1) double = [];
+        opts (1,1) SolverOptions
     end
     
     methods
