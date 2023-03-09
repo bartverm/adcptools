@@ -1,4 +1,4 @@
-classdef TaylorTidalModel < DataModel
+classdef TaylorTidalModel < TaylorModel & TidalModel
     %   Velocity model based on Taylor expansions of tidal amplitudes.
     %
     %   @TaylorTidalModel
@@ -154,39 +154,42 @@ classdef TaylorTidalModel < DataModel
         %         TaylorTidalVelocityModel/names names of the different parameter
         %         names. The are coded as
 
-        tidal (1,1) = TidalModel;
-        taylor (1,1) = TaylorModel;
-
     end
 
     properties(Dependent)
-        names
+
     end
 
     methods
+        function obj = TaylorTidalModel(varargin)
+            for ia = 1:2:nargin
+                obj.(varargin{ia}) = varargin{ia+1};
+            end
+        end
+
         function M = get_model(obj, d_t, d_s, d_n, d_z, d_sigma)
             %   [Mu, Mv, Mw]=get_model(obj, time, d_s, d_n, d_z, d_sigma)
             %   procuces the model matrices consisting of Kronecker
             %   products of the Taylor and Tidal velocity models,
             %   respectively.
-            T = obj.tidal.get_model(obj,d_t);
-            S = obj.taylor.get_model(obj, d_t, d_s, d_n, d_z, d_sigma);
+            T = get_model@TidalModel(obj,d_t);
+            S = get_model@TaylorModel(obj, d_t, d_s, d_n, d_z, d_sigma);
 
             % Place copies of T as new columns of S: modified Kronecker
             % Size: n_data x n_pars x n_dim
             M = zeros(size(T,1), size(T,2)*size(S,2), size(T,3));
 
             for dim = 1:obj.ncomponents
-                M(:,:,dim) = obj.kron_modified(T(:,:,dim), S(:,:,dim));
+                M(:,:,dim) = helpers.kron_modified(T(:,:,dim), S(:,:,dim));
             end
         end
 
-        function names = get.names(obj)
-            tayl_names = obj.taylor.names;
-            tid_names = obj.tidal.names;
+        function names = get_names(obj)
+            tayl_names = get_names@TaylorModel(obj);
+            tid_names = get_names@TidalModel(obj);
             names = cell([obj.ncomponents, 1]);
             for dim = 1:obj.ncomponents
-                names{dim,1} = obj.kron_modified_cell(tayl_names{dim, 1}, obj.remove_chars(tid_names{dim, 1}, 1));
+                names{dim,1} = helpers.kron_modified_cell(tayl_names{dim, 1}, helpers.remove_chars(tid_names{dim, 1}, 1));
             end
 
         end
@@ -200,69 +203,14 @@ classdef TaylorTidalModel < DataModel
                 obj.z_order +...
                 obj.sigma_order;
 
-            val = val.*[2*numel(obj.constituentsU) + 1, ...
-                2*numel(obj.constituentsV) + 1, ...
-                2*numel(obj.constituentsW) + 1];
+            val = val.*[2*numel(obj.constituents) + 1, ...
+                2*numel(obj.constituents) + 1, ...
+                2*numel(obj.constituents) + 1];
         end
         function val = get_ncomponents(obj)
             val = numel(obj.components);
         end
-
-
-
-        function C = stack_matrices(mat_cell)
-            if ismatrix(mat_cell)
-                C = mat_cell;
-            elseif iscell(mat_cell)
-                C = zeros(size(mat_cell{1}));
-                for i = 1:length(mat_cell)
-                    C(:,:,i) = mat_cell{i};
-                end
-            end
-        end
-
-        function C = kron_modified_mat(obj, A, B)
-            % Places copies of B in th columns of A after multiplying by
-            % those columns, i.e.
-            % Can be vectorized but is not the main bottleneck.
-            assert((size(A,1)==size(B,1) && ismatrix(A) && ismatrix(B)), 'Design matrix sizes should match')
-
-            C = zeros([size(A,1), size(A,2)*size(B,2)]);
-            idx = 1;
-            for i = 1:size(A,2)
-                col = idx:(idx+size(B,2)-1);
-                C(:,col) = repmat(A(:,i), [1, size(B,2)]).*B;
-                idx = max(col)+1;
-            end
-        end
-
-        function C = kron_modified_cell(obj, A, B)
-            % Does the same as its matrix equivalent, but now by
-            % concatenating the elements of cells.
-            assert(((size(A,1)==1) && (size(B,1) == 1)), 'Only row cells allowed')
-
-            % Function is not vectorized, can be done but does not
-            % influence program performance
-            C = cell([size(A,1), size(A,2)*size(B,2)]);
-            idx = 1;
-            for i = 1:size(A, 2)
-                for j = 1:size(B, 2)
-                    C{1,idx} = [A{i}, B{j}];
-                    idx = idx + 1;
-                end
-            end
-        end
-
-        function C = remove_chars(obj, C, n)
-            % Removes first n characters from every string element
-            % belonging to the 1 x N cell C
-            % Not vectorized
-            for idx = 1:size(C,2)
-                C{idx} = C{idx}((n+1):end);
-            end
-        end
     end
-
 end
 
 

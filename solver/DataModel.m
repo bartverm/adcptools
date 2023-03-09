@@ -43,6 +43,8 @@ classdef DataModel < handle
 
         % ncomponents x ncomponents rotation matrix
         rotation_matrix (:,:) double
+
+        names
     end
     methods
         function obj = DataModel(varargin)
@@ -131,6 +133,12 @@ classdef DataModel < handle
         end
         function val=get.ncomponents(obj)
             val=obj.get_ncomponents();
+        end
+        function names = get.names(obj)
+            names = obj.get_names;
+        end
+        function names = get_names(obj)
+            names = obj.components;
         end
 
         function M = get_model(~, d_time, ~, ~, ~, ~)

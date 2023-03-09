@@ -32,10 +32,9 @@ classdef TidalModel < DataModel
         %
         %   see also: TidalModel, get_tidal_pars
         periods
-        names
-        
-        
+
     end
+
 
 
     methods
@@ -116,7 +115,12 @@ classdef TidalModel < DataModel
             cov_pars_h = helpers.matmult(jac,cov_pars_h,2,3);                  % J * (cov_pars * J')
         end
 
-        function names = get.names(obj)
+        function periods = get.periods(obj)
+            periods = repmat(obj.const_to_periods(), [obj.ncomponents, 1]);
+        end
+    end
+    methods
+        function names = get_names(obj)
 
             % Forms a cell array of dimensions 1xobj.ncomponents
             % Elements of the cell array are cell arrays containing the
@@ -134,17 +138,17 @@ classdef TidalModel < DataModel
                 end
             end
         end
+    
 
-        function periods = get.periods(obj)
-            periods = repmat(obj.const_to_periods(), [obj.ncomponents, 1]);
+
+        function omega = get_omega(obj)
+            omega = 2*pi./obj.periods;
         end
-
     end
-
     methods(Access=protected)
         function val = get_npars(obj)
             %nconsts = sum(isfinite(obj.constituents) &...
-                %obj.constituents ~= 0);
+            %obj.constituents ~= 0);
             val = obj.get_ncomponents*(1+2*obj.get_nconstituents);
         end
 
@@ -156,44 +160,39 @@ classdef TidalModel < DataModel
             val = numel(obj.constituents);
         end
 
-        function omega = get_omega(obj)
-            omega = 2*pi./obj.periods;
-        end
-
-
         function periods = const_to_periods(obj)
-        % Returns vector of tidal constituent periods in seconds.
-        periods = zeros([1, length(obj.constituents)]);
-        for const = 1:numel(obj.constituents)
-            switch obj.constituents{const}
-                case 'M2'
-                    T = 12.4206012;
-                case 'S2'
-                    T = 12;
-                case 'N2'
-                    T = 12.65834751;
-                case 'K1'
-                    T = 23.93447213;
-                case 'M4'
-                    T = 6.210300601;
-                case 'O1'
-                    T = 25.81933871;
-                case 'M6'
-                    T = 4.140200401;
-                case 'MK3'
-                    T = 8.177140247;
-                case 'S4'
-                    T = 6;
-                case 'MN4'
-                    T = 6.269173724;
-                otherwise
-                    error('Unknown tidal constituent')
+            % Returns vector of tidal constituent periods in seconds.
+            periods = zeros([1, length(obj.constituents)]);
+            for const = 1:numel(obj.constituents)
+                switch obj.constituents{const}
+                    case 'M2'
+                        T = 12.4206012;
+                    case 'S2'
+                        T = 12;
+                    case 'N2'
+                        T = 12.65834751;
+                    case 'K1'
+                        T = 23.93447213;
+                    case 'M4'
+                        T = 6.210300601;
+                    case 'O1'
+                        T = 25.81933871;
+                    case 'M6'
+                        T = 4.140200401;
+                    case 'MK3'
+                        T = 8.177140247;
+                    case 'S4'
+                        T = 6;
+                    case 'MN4'
+                        T = 6.269173724;
+                    otherwise
+                        error('Unknown tidal constituent')
+                end
+                periods(1,const) = T*3600; % in seconds
             end
-            periods(1,const) = T*3600; % in seconds
+
+
         end
-
-
-    end
     end
 
 end

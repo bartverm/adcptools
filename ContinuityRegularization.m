@@ -167,22 +167,3 @@ classdef ContinuityRegularization < Regularization
         end
     end
 end
-
-
-%                 mesh = mesh;
-%             wl = water_level;
-%
-%             rows = []; cols = []; vals = [];
-%             row_idx = 0;
-%
-%
-%             for idx = 1:mesh.ncells %rows
-%                 for tid_idx = 1:length(wl.names)
-%                     tid_name = wl.names{tid_idx}(end-2:end); % Last three letters
-%                     [row, col, val] = obj.idx2element_mat(idx, tid_name, solver);
-%                     rows = [rows row_idx+row];
-%                     cols = [cols col];
-%                     vals = [vals val];
-%                     row_idx = max(rows) + 1;
-%                 end
-%             end

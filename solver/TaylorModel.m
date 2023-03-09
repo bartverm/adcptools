@@ -128,39 +128,16 @@ classdef TaylorModel < DataModel
     end
     properties(Dependent, SetAccess=protected, GetAccess = public)
         npars_per_order
-        names
     end
-    methods(Access = protected)
-        function check_components(obj)
-            assert(isequal(...
-                numel(obj.time_order),...
-                numel(obj.s_order),...
-                numel(obj.n_order),...
-                numel(obj.z_order),...
-                numel(obj.sigma_order)...
-                ),...
-                'TaylorModel:NonMatchingComponents',...
-                'Number of components in each expansion variable should be equal');
-        end
-        function val = get_ncomponents(obj)
-            obj.check_components();
-            val = numel(obj.n_order);
-        end
-        function val = lump_orders(obj)
-            obj.check_components();
-            val = [obj.time_order;...
-                obj.s_order;...
-                obj.n_order;...
-                obj.z_order;...
-                obj.sigma_order];
+
+    methods
+
+        function obj = TaylorModel(varargin)
+            for ia = 1:2:nargin
+                obj.(varargin{ia}) = varargin{ia+1};
+            end
         end
 
-        function val = get_npars(obj)
-            val = obj.npars_per_order();
-            val = sum(val,1);
-        end
-    end
-    methods
         function val = get.npars_per_order(obj)
             lo = obj.lump_orders();
             nc = obj.ncomponents;
@@ -200,8 +177,18 @@ classdef TaylorModel < DataModel
                 end
             end
         end
+        function par_name = tayl_name(obj, comp, coord, ord)
+            if ord == 0
+                par_name = sprintf('%s', [comp, '0']);
+            else
+                par_name = sprintf('d^%u%s/d%s^%u', ord, comp, coord, ord);
+            end
+        end
 
-        function names = get.names(obj)
+
+    end
+    methods
+        function names = get_names(obj)
             % Only supports diagonal Hessian matrices
 
             % Forms a cell array of dimensions 1xobj.ncomponents
@@ -222,15 +209,38 @@ classdef TaylorModel < DataModel
                 end
             end
         end
+    end
 
-        function par_name = tayl_name(obj, comp, coord, ord)
-            if ord == 0
-                par_name = sprintf('%s', [comp, '0']);
-            else
-                par_name = sprintf('d^%u%s/d%s^%u', ord, comp, coord, ord);
-            end
+    methods(Access = protected)
+        function check_components(obj)
+            assert(isequal(...
+                numel(obj.time_order),...
+                numel(obj.s_order),...
+                numel(obj.n_order),...
+                numel(obj.z_order),...
+                numel(obj.sigma_order)...
+                ),...
+                'TaylorModel:NonMatchingComponents',...
+                'Number of components in each expansion variable should be equal');
+        end
+        function val = get_ncomponents(obj)
+            obj.check_components();
+            val = numel(obj.n_order);
+        end
+        function val = lump_orders(obj)
+            obj.check_components();
+            val = [obj.time_order;...
+                obj.s_order;...
+                obj.n_order;...
+                obj.z_order;...
+                obj.sigma_order];
         end
 
-
+        function val = get_npars(obj)
+            val = obj.npars_per_order();
+            val = sum(val,1);
+        end
     end
+
+
 end
