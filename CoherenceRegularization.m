@@ -4,13 +4,13 @@ classdef CoherenceRegularization < Regularization
         C4
     end
     methods(Access = protected)
-        function assemble_matrix_private(obj, solver)
+        function assemble_matrix_private(obj, bathy, xs, mesh, data_model, water_level)
             % C3 is the only matrix that can always be assembled
-            % (independent of model)
+            % (independent of data_model)
             obj.C3 = assemble_coherence(obj, solver);
 
-            assert(isa(solver.data_model,"TaylorModel"), "To constrain cell-based gradients, a Taylor model is required");
-            if (all(solver.data_model.n_order > 0)) && (all(solver.data_model.sigma_order > 0) || all(solver.data_model.z_order > 0))
+            assert(isa(data_model,"TaylorModel"), "To constrain cell-based gradients, a Taylor data_model is required");
+            if (all(data_model.n_order > 0)) && (all(data_model.sigma_order > 0) || all(data_model.z_order > 0))
                 % This condition may be relaxed a bit.
                 obj.C4 = assemble_consistency(obj, solver);
             else
@@ -18,12 +18,12 @@ classdef CoherenceRegularization < Regularization
             end
         end
 
-        function C = assemble_coherence(obj, solver)
+        function C = assemble_coherence(obj, bathy, xs, mesh, data_model, water_level)
 
-            Np = sum(solver.data_model.npars);
-            Diag = speye(Np*solver.mesh.ncells);
+            Np = sum(data_model.npars);
+            Diag = speye(Np*mesh.ncells);
             rows = []; cols = []; vals = [];
-            for idx = 1:solver.mesh.ncells %rows
+            for idx = 1:mesh.ncells %rows
                 nb = obj.neighbors(:, idx);
                 nb = nb(~isnan(nb)); nnb = length(nb);
                 for nb_idx = 1:nnb
@@ -43,13 +43,13 @@ classdef CoherenceRegularization < Regularization
 
         end
 
-        function C4 = assemble_consistency(obj, solver)
+        function C4 = assemble_consistency(obj, bathy, xs, mesh, data_model, water_level)
 
             % Matrix that matches cell-based gradients to inter-cell
             % gradients
 
-            mesh = solver.mesh;
-            wl = solver.water_level;
+            mesh = mesh;
+            wl = water_level;
 
             rows = []; cols = []; vals = [];
             row_idx = 1;
@@ -63,11 +63,11 @@ classdef CoherenceRegularization < Regularization
                     row_idx = max(rows) + 1;
                 end
             end
-            C4 = sparse(rows, cols, vals, 6*mesh.ncells*(2*length(solver.data_model.constituentsU)+1), mesh.ncells*sum(solver.data_model.npars));
+            C4 = sparse(rows, cols, vals, 6*mesh.ncells*(2*length(data_model.constituentsU)+1), mesh.ncells*sum(data_model.npars));
         end
 
-        function IM = assemble_incidence(obj, solver)
-            mesh = solver.mesh;
+        function IM = assemble_incidence(obj, bathy, xs, mesh, data_model, water_level)
+            mesh = mesh;
             IM = zeros(mesh.ncells);
             for j = 1:mesh.ncells % loop trough every cell
                 nbreal = obj.neighbors(j,~isnan(obj.neighbors(j,:)));
@@ -77,10 +77,10 @@ classdef CoherenceRegularization < Regularization
             IM = IM + IM';
         end
 
-        function W = assemble_weights(obj, solver)
-            par_names = solver.data_model.names;
-            Np = sum(solver.data_model.npars);
-            mesh = solver.mesh;
+        function W = assemble_weights(obj, bathy, xs, mesh, data_model, water_level)
+            par_names = data_model.names;
+            Np = sum(data_model.npars);
+            mesh = mesh;
             w = ones([Np,1]);
 
             % Apply enhanced regularization for small singular value features using
@@ -109,8 +109,8 @@ classdef CoherenceRegularization < Regularization
             % Helper function for the extended consistency matrix assembly
             % (assembleC4.m)
 
-            sig_center = solver.mesh.sig_center;
-            n_center = solver.mesh.n_middle(mesh.col_to_cell);
+            sig_center = mesh.sig_center;
+            n_center = mesh.n_middle(mesh.col_to_cell);
 
             nb = obj.neighbors(:,idx);
             dom = obj.domains(idx);
@@ -163,7 +163,6 @@ classdef CoherenceRegularization < Regularization
             % 18 terms in the sparse constructor element matrices. Reduce the number of
             % terms when not in the interior of the cross section.
 
-
             if dom == 1
                 keep_idx = 10:18;
             elseif dom == 2
@@ -181,6 +180,7 @@ classdef CoherenceRegularization < Regularization
             elseif dom == 8
                 keep_idx = [];
             end
+
             col = col(keep_idx);
             row = row(keep_idx);
             val = val(keep_idx);

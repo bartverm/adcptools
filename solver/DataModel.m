@@ -14,10 +14,14 @@ classdef DataModel < handle
 %   DataModel methods:
 %   get_velocity - return velocity based on model parameters
 %
-%  see also: TaylorModel, TidaModel, DataSolver
+%  see also: TaylorModel, TidalModel, DataSolver
 
+    properties
+        components = {'u', 'v', 'w'}
+        rotation (1,1) double = 0;
+    end
     properties(Dependent, SetAccess=private)
-        % DataModel/npars (read only) number of parameteris in the model
+        % DataModel/npars (read only) number of parameters in the model
         %
         %   1xNCOMP row vector holding the number of model parameters for each
         %   data components. For DataModel this always returns [1 1
@@ -37,11 +41,22 @@ classdef DataModel < handle
         %   see also: DataModel, get_model
         ncomponents
 
-        % ncomponents x ncomponents
-        rotation (:,:) double
+        % ncomponents x ncomponents rotation matrix
+        rotation_matrix (:,:) double
+
+        names
     end
     methods
+        function obj = DataModel(varargin)
+            % Only properties allowed to set: 
 
+            % components
+            % rotation
+
+            for ia = 1:2:nargin
+                obj.(varargin{ia}) = varargin{ia+1};
+            end
+        end
         function [dat, cov_dat, n_bvels] = get_data(obj, pars, cov_pars, n_bvels, d_time, d_s, d_n, d_z, d_sigma)
         % Compute data values from model parameters.
         %
@@ -119,6 +134,12 @@ classdef DataModel < handle
         function val=get.ncomponents(obj)
             val=obj.get_ncomponents();
         end
+        function names = get.names(obj)
+            names = obj.get_names;
+        end
+        function names = get_names(obj)
+            names = obj.components;
+        end
 
         function M = get_model(~, d_time, ~, ~, ~, ~)
         % build velocity model matrices
@@ -148,6 +169,34 @@ classdef DataModel < handle
 
             M = ones(numel(d_time),1,3);
         end
+
+        function rotation_matrix = get.rotation_matrix(obj)
+            if obj.ncomponents == 1
+                rotation_matrix = 1;
+            elseif obj.ncomponents == 3
+                rotation_matrix = [cos(obj.rotation), -sin(obj.rotation), 0;...
+                    sin(obj.rotation), cos(obj.rotation), 0;...
+                    0, 0, 1];
+            end
+        end
+
+        function Mrot = rotate_matrix(obj, M)
+            % assuming M is a n_data x n_pars x n_comp matrix
+            % Can be done using mat_mult, different implementation here.
+            % The rotation assumes same sizes of Mu, Mv, Mw.
+
+            R = obj.rotation_matrix;
+            Mrot = zeros(size(M));
+            if numel(R) == 1
+                Mrot = M; % Scalar quantity cannot be rotated
+            else
+                for dim = 1:obj.ncomponents
+                    Mrot(:,:,dim) = R(dim,1)*M(:,:,1) + R(dim,2)*M(:,:,2) + R(dim,3)*M(:,:,3); % Vector quantity
+                end
+            end
+        end
+
+
     end
     methods(Access=protected)
         function val=get_npars(~)

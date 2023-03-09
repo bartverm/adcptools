@@ -39,13 +39,11 @@ classdef LocationBasedVelocitySolver < VelocitySolver
 
             % get transformation matrix
             xform = obj.adcp.xform(CoordinateSystem.Beam,CoordinateSystem.Earth); % get Earth to Beam transformation matrix
-            mat = [obj.xs.direction_orthogonal(1), obj.xs.direction_orthogonal(2), 0;
-                   obj.xs.direction(1), obj.xs.direction(2), 0;
-                   0, 0, 1];
+
             xform(:,:,:,4)=[]; % remove Error velocity to beam transformation
             
             % filter and vectorize
-            [vdat, xform] = obj.filter_and_vectorize(vdat, xform)*mat'; %quick and dirty
+            [vdat, xform] = obj.filter_and_vectorize(vdat, xform); %quick and dirty
         end
     end
 
