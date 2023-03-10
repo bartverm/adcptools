@@ -1,4 +1,4 @@
-classdef LocationBasedVelocitySolver < VelocitySolver
+classdef LocationBasedSolver < RegularizedSolver
     % Implements a time based velocity solver
     %
     %   This class solves the water velocity on the given mesh, by 
@@ -32,7 +32,7 @@ classdef LocationBasedVelocitySolver < VelocitySolver
     %   VelocitySolver
     methods(Access=protected)
         function [vpos, vdat, xform, time, wl] = get_solver_input(obj)
-            [vpos, ~, ~, time, wl] = get_solver_input@ADCPDataSolver(obj);
+            [vpos, ~, ~, time, wl] = get_solver_input@RegularizedSolver(obj);
 
             % get velocity data
             vdat = obj.adcp.water_velocity(CoordinateSystem.Beam); % get velocity data

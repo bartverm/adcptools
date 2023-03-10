@@ -14,16 +14,19 @@ classdef RegularizedSolver < Solver
         %   see also: Solver, EnsembleFilter
         ensemble_filter (1,1) EnsembleFilter
 
-        regularization (1,1) Regularization
+        reg (1,1) Regularization
 
-        opts (1,1) SolverOptions
+        opts (1,1) SolverOptions = SolverOptions
     end
     methods
         function obj=RegularizedSolver(varargin)
             obj = obj@Solver(varargin{:})
-            has_vmadcp=false;
-            has_bathy=false;
-            has_xs=false;
+            % All abstract Solver properties have been included
+            has_vmadcp = false;
+            has_bathy = false;
+            has_xs = false;
+            has_opts = false;
+            has_reg = false;
             for cnt_arg=1:nargin
                 cur_arg=varargin{cnt_arg};
                 if isa(cur_arg,'VMADCP')
@@ -32,14 +35,17 @@ classdef RegularizedSolver < Solver
                 elseif isa(cur_arg, 'Bathymetry')
                     has_bathy=true;
                     continue
-                elseif isa(cur_arg,'Filter')
+                elseif isa(cur_arg, 'Filter')
                     var = 'ensemble_filter';
-                elseif isa(cur_arg,'XSection')
+                
+                elseif isa(cur_arg, 'XSection')
                     has_xs=true;
+                    continue
                 elseif isa(cur_arg,'SolverOptions')
+                    has_opts = true;
                     var = 'opts';
                 elseif isa(cur_arg,'Regularization')
-                    var = 'regularization';
+                    var = 'reg';
                     has_reg=true;
                 else
                     continue
@@ -61,9 +67,14 @@ classdef RegularizedSolver < Solver
                 R.assemble_matrices()
                 obj.assign_property('regularization', R);
             end
+
+%             if ~has_opts % This could be done more nicely perhaps
+%                 opts = SolverOptions();
+%                 obj.assign_property('opts', opts)
+%             end
         end
 
-        function mp = get_parameters(obj)
+        function MP = get_parameters(obj)
             % Solve velocity model parameters
             %
             %   [pars, cov_pars, n_vels]=get_parameters_reg(obj) Obtain the
@@ -75,7 +86,7 @@ classdef RegularizedSolver < Solver
             % see also: Solver, get_velocity, Mesh, VMADCP
 
             if ~isscalar(obj)
-                mp = obj.run_method('get_parameters');
+                MP = obj.run_method('get_parameters');
                 return
             end
 
@@ -129,39 +140,46 @@ classdef RegularizedSolver < Solver
             dt = seconds(dt);
 
             % Data matrix: All data
-            M = obj.data_model.get_model(...
-                dt, ds, dn, dz, dsig);
+            M = obj.data_model.get_model(dt, ds, dn, dz, dsig);
 
             Mb0 = [M(:,:,1).*xform(:,1),...
                 M(:,:,2).*xform(:,2),...
                 M(:,:,3).*xform(:,3)]; %Model matrix times unit vectors q
 
             [M, b] = obj.reorder_model_matrix(Mb0, dat, cell_idx);
-            MP = ModelParameters(M = M, b = b, reg = obj.regularization, opts = obj.opts);
-            mp.model = obj.velocity_model;
-            mp.M = M;
-            mp.C = {C1, C2, C3, C4, C5};
-            mp.bc = bc;
+            
+            MP = ModelParameters(M = M, b = b, reg = obj.reg, opts = obj.opts);
 
+            MP.p = obj.solve(M,b);
+        end
+
+        function p = solve(obj, M, b)
             Np = size(M,2);
             % Generate first guess for p <-> estimate parameters
             p = nan([Np,length(obj.opts.reg_pars)]);
-            Mp.p = obj.solve()
+            Mg = M'*M;
             for idx = 1:length(obj.opts.reg_pars)
                 rp = obj.opts.reg_pars{idx};
-                A = M'*M + rp(1)*C1p + rp(2)*C2p + rp(3)*C3p + rp(4)*C4p + rp(5)*C5p;
-                if obj.opts.set_diagcomp
-                    obj.opts.preconditioner_opts.diagcomp = max(sum(abs(A),2)./diag(A))-2;
+                Cg = sparse(0);
+                for reg_idx = 1:numel(obj.reg.Cg)
+                    Cg = Cg + rp(reg_idx)*obj.reg.Cg{reg_idx};
                 end
-                L = ichol(A, obj.opts.preconditioner_opts);
-                p(:,idx) = pcg(A, M'*b + rp(5)*C5'*bc, obj.opts.pcg_tol, obj.opts.pcg_iter, L, L');
+                A = Mg + Cg; % Data plus constraints
+                rhs = M'*b + rp(end)*obj.reg.C{end}'*obj.reg.rhs;
+                [p(:,idx), flag] = obj.solve_single(A, rhs);
+                disp(['Obtained solution using lambda = [', num2str(rp), ']^T after ', num2str(flag), ' iterations.'])
             end
-            mp.p = p;
         end
 
-        function p = solve()
-            % Continue here!
+        function [p, iter] = solve_single(obj, A, rhs)
+            if obj.opts.set_diagcomp
+                obj.opts.preconditioner_opts.diagcomp = max(sum(abs(A),2)./diag(A))-2;
+            end
+            L = ichol(A, obj.opts.preconditioner_opts);
+            [p, ~, ~, iter, resvec] = pcg(A, rhs, obj.opts.pcg_tol, obj.opts.pcg_iter, L, L');
+            
         end
+
 
         function training_idx = split_dataset(obj, cell_idx)
 
@@ -202,8 +220,7 @@ classdef RegularizedSolver < Solver
     methods (Access=protected)
         function [vpos, vdat, xform, time, wl] = get_solver_input(obj)
             vpos = obj.adcp.depth_cell_position; % velocity positions
-            vdat = [];
-            xform = [];
+
             time = obj.adcp.time;
             wl = obj.adcp.water_level;
 
@@ -221,6 +238,19 @@ classdef RegularizedSolver < Solver
             time = reshape(time, [], 1);
             vpos = reshape(vpos, [], 3);
             wl = reshape(wl, [], 1);
+%             [vdat, xform] = obj.filter_and_vectorize(vdat, xform);
+
+            vdat = obj.adcp.water_velocity(CoordinateSystem.Beam); % get velocity data
+
+            % get transformation matrix
+            xform = obj.adcp.xform(CoordinateSystem.Beam,CoordinateSystem.Earth); % get Earth to Beam transformation matrix
+
+            xform(:,:,:,4)=[]; % remove Error velocity to beam transformation
+            
+            % filter and vectorize
+            [vdat, xform] = obj.filter_and_vectorize(vdat, xform);
+
+
         end
 
         function [vdat,xform] = filter_and_vectorize(obj,vdat, xform)
