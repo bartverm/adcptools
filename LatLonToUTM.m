@@ -30,9 +30,9 @@ classdef LatLonToUTM < LatLonToProjection
         %
         %   see also: LatLonToProjection, VMADCP
             if isempty(obj.zone)
-                [x,y,obj.zone]=geo2utm(lat,lon);
+                [x,y,obj.zone]=helpers.geo2utm(lat,lon);
             else
-                [x,y]=geo2utm(lat,lon,obj.zone);
+                [x,y]=helpers.geo2utm(lat,lon,obj.zone);
             end
         end
     end

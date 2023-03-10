@@ -1,4 +1,8 @@
-classdef HeadingProvider < matlab.mixin.Heterogeneous & handle
+classdef HeadingProvider <...
+        matlab.mixin.Heterogeneous &... % Mix subclasses in array
+        matlab.mixin.Copyable & ... % Enable copying of object
+        handle
+
 % Defines interface for classes providing header data
 %
 %   HeadingProvider methods:
@@ -13,7 +17,29 @@ classdef HeadingProvider < matlab.mixin.Heterogeneous & handle
 %
 %   see also: HeadingProviderInternal, HeadingProviderTFiles
     properties
+        % offset between heading and actual ADCP heading
+        %
+        %   heading_misalignment is a scalar double property which
+        %   represents the misalignment of the heading with the actual ADCP
+        %   heading. This is mainly usefull for external heading devices.
+        %
+        % see also: HeadingProvider
         heading_misalignment (1,1) double {mustBeFinite, mustBeReal} = 0;
+
+        % model for the local variation in magnetic field 
+        % 
+        % magnetic_deviation model should be a scalar
+        % MagneticDeviationModel object. The default value is a
+        % MagneticDeviationConstant model set to a deviation of 0 degrees.
+        %
+        % see also: MagneticDevaitionModel, MagneticDeviationConstant,
+        %   MagneticDeviationTwoCycle
+        magnetic_deviation_model (1,1) MagneticDeviationModel = ...
+            MagneticDeviationConstant(0);
+
+        % magentic_variation is the offset between the geographic North and
+        % the magnetic North
+        magnetic_variation (1,1) double {mustBeFinite, mustBeReal} = 0;
     end
     methods (Sealed)
         function val=has_data(obj,adcp)
@@ -43,7 +69,7 @@ classdef HeadingProvider < matlab.mixin.Heterogeneous & handle
     %
     % see also: HeadingProvider, ADCP
             if isscalar(obj)
-                val=obj.get_heading(adcp) + obj.heading_misalignment;
+                val=obj.get_heading(adcp) + obj.heading_corrections(adcp);
             else
                 idx=find(obj.has_data(adcp),1,"first");
                 if isempty(idx)
@@ -51,6 +77,31 @@ classdef HeadingProvider < matlab.mixin.Heterogeneous & handle
                 end
                 val=obj(idx).heading(adcp);
             end
+        end
+        function val = magnetic_deviation(obj,adcp)
+        % compute magnetic deviation
+        %
+        %   val = obj.magnetic_deviation(adcp) returns the magnetic
+        %   deviation for each ensemble in the adcp object. The deviation
+        %   is computed with the model set in the magnetic_deviation_model
+        %   property.
+        %
+        %   see also: HeadingProvider
+            val = obj.magnetic_deviation_model.magnetic_deviation(adcp);
+        end
+        function val = heading_corrections(obj,adcp)
+        % compute total heading correction
+        %
+        %   val = obj.heading_corrections(adcp) returns the total
+        %   correction to the heading, i.e. the sum of heading
+        %   misalingment, magnetic variation and magnetic deviation for
+        %   every ensemble in the adcp object
+        %
+        %   see also: HeadingProvider
+            val =...
+                obj.heading_misalignment +...
+                obj.magnetic_variation + ...
+                obj.magnetic_deviation(adcp);
         end
     end
     methods (Abstract, Access=protected)

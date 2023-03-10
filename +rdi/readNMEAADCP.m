@@ -47,7 +47,7 @@ end
 clear inp
 
 adcpnmea=struct;                                                           % Initialize adcpnmea as a structure
-innmea=readNMEA(nmeafilename);                                             % Read the data from the NMEA files
+innmea=rdi.readNMEA(nmeafilename);                                             % Read the data from the NMEA files
 
 if ~isfield(innmea,'RDENS')                                                % If no RDENS information is found
     error('readNMEAADCP:noRDENS','Cannot find Ensemble information')                 % generate an error

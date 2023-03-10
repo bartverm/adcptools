@@ -35,8 +35,8 @@ function out=readViseaExtern(adcp,filenames,rfiles,varargin)
 %% parse input
 inp=inputParser;     % Create an object of the InputParser class
 inp.addRequired('adcp',@isstruct);                                       % Add required input inadcp
-inp.addRequired('filenames',@(x) (iscellstr(x) | ischar(x)));           % Add the required variable 'mmeafilename' and check for right format
-inp.addParamValue('FieldWidth',25,@(x) isnumeric(x) && isscalar(x) && x>0 && floor(x)==x);    % Param value to set the field width in the visea file (it looks always like 25 chars wide)
+inp.addRequired('filenames',@(x) (iscellstr(x)| isstring(x) | ischar(x)));           % Add the required variable 'mmeafilename' and check for right format
+inp.addParameter('FieldWidth',25,@(x) isnumeric(x) && isscalar(x) && x>0 && floor(x)==x);    % Param value to set the field width in the visea file (it looks always like 25 chars wide)
 inp.parse(adcp,filenames,varargin{:});                                            % Parse input
 if ischar(filenames)
     filenames=cellstr(filenames);                                    % Change character array to cell
@@ -83,7 +83,8 @@ for cf=1:nFiles
     % match ensnum of corresponding adcp file
     ensnum = adcp.ensnum;
     ensnum((adcp.FileNumber ~= rid)) = NaN;
-    [~,idx_visea,idx_adcp]=intersect(dat{7},ensnum); % find matching ensemble numbers
+    [~,idx_visea,idx_adcp]=intersect(dat{7},...
+        mod(ensnum, uint32(intmax("uint16")))); % find matching ensemble numbers (visea files only store the last 16 bits of the ensemble number)
 
     tmptime=[dat{1:6}]; % Temporarily store time from Visea file
     out.timeV(idx_adcp,:)=tmptime(idx_visea,:); % Store visea time in output structure

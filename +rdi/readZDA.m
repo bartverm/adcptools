@@ -1,14 +1,17 @@
-function [NMEA_RDENS,discard]=readRDENS(instr)
-% readRDENS(gga) interprets the RDI propietary NMEA message RDENS
+function [NMEA_ZDA,discard]=readZDA(instr)
+% readZDA(zda) interprets a NMEA ZDA string
 %
-%   [RDENSstruct]=readRDENS(instr) Reads a NMEA sentence in the character 
-%                 array or cell of strings and returns a structure with the
-%                 following fields:
-%                 ensnum: Sequential ensemble number
-%                 pctime: Pc time in centiseconds
+%   [ZDAstruct]=readZDA(instr) Reads a NMEA sentence in the character array
+%   or cell of strings and returns a structure with the zda data.
+%   
+%   The output structure will contain the following fields:
+%   UTCtime : Hour minutes and seconds of the UTC time
+%   date    : Date in year month day
+%   zone    : Timezone expressed in timeshift in hours and minutes
 %
 %    Author: Bart Vermeulen
 %    Date last edit: 21-12-2009
+
 
 %    Copyright 2009 Bart Vermeulen
 %
@@ -37,9 +40,10 @@ if ischar(instr)
     instr=cellstr(instr);
 end
 
-defineNMEA;
 
-[tmpdat,split]=regexp([instr{:}],patterns.rdens,'names','split');
+% tmpdat=textscan_checked([instr{:}],'$ %*2s ZDA %2f32 %2f32 %f32 %u16 %u16 %u16 %d8 %d8 %*2s',nlines,'Delimiter',',*');
+rdi.defineNMEA;
+[tmpdat,split]=regexp([instr{:}],patterns.zda,'names','split');
 clear instr
 discard=find(~strcmp(split,''));
 fdiscard=[];
@@ -53,5 +57,7 @@ end
 
 
 %Initialize variable
-NMEA_RDENS.ensnum=cell2mat(textscan([tmpdat(:).ensnum],'%u32','delimiter',','));
-NMEA_RDENS.pctime=cell2mat(textscan([tmpdat(:).pctime],'%u32','delimiter',','));
+NMEA_ZDA.UTCtime=cell2mat(rdi.textscan_checked([tmpdat(:).utc],'%2f32 %2f32 %f32','delimiter',','));
+NMEA_ZDA.date=fliplr(cell2mat(rdi.textscan_checked([tmpdat(:).date],'%u16 %u16 %u16','delimiter',',')));
+NMEA_ZDA.zone=cell2mat(rdi.textscan_checked([tmpdat(:).zone],'%d8 %d8','delimiter',',*'));
+
