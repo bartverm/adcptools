@@ -30,32 +30,20 @@ classdef LocationBasedVelocitySolver < VelocitySolver
     %
     %   see also: VMADCP, Mesh, Bathymetry, XSection, Filter,
     %   VelocitySolver
-    methods
-        function             obj=LocationBasedVelocitySolver(varargin)
-            obj=obj@VelocitySolver(varargin{:});
-            for cnt_arg=1:nargin
-                cur_arg=varargin{cnt_arg};
-                if isa(cur_arg, 'VMADCP') || isa(cur_arg, 'Mesh') || isa(cur_arg,'Bathymetry') || isa(cur_arg, 'Filter') || isa(cur_arg, 'XSection')
-                    continue
-                else
-                    warning(['Unhandled input of type: ', class(cur_arg), ' on construction of LocationBasedVelocitySolver object'])
-                end
-            end
-        end
-    end
     methods(Access=protected)
-        function [vpos, vdat, xform] = get_solver_input(obj)
-            % Get velocity position and compute sigma coordinates
-            vpos=obj.adcp.depth_cell_position; % velocity positions
-            
+        function [vpos, vdat, xform, time, wl] = get_solver_input(obj)
+            [vpos, ~, ~, time, wl] = get_solver_input@ADCPDataSolver(obj);
+
             % get velocity data
             vdat = obj.adcp.water_velocity(CoordinateSystem.Beam); % get velocity data
 
             % get transformation matrix
             xform = obj.adcp.xform(CoordinateSystem.Beam,CoordinateSystem.Earth); % get Earth to Beam transformation matrix
             xform(:,:,:,4)=[]; % remove Error velocity to beam transformation
+            
+            % filter and vectorize
+            [vdat, xform] = obj.filter_and_vectorize(vdat, xform);
         end
-
     end
 
 end

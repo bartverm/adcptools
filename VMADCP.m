@@ -27,6 +27,7 @@ classdef VMADCP < ADCP
 %   plot_bed_position - plot position of detected bed
 %
 % see also: ADCP
+
     properties
     % VMADCP/shipvel_provider 
     %
@@ -40,7 +41,7 @@ classdef VMADCP < ADCP
     %   see also: VMADCP, LatLonProvider
         shipvel_provider (:,1) ShipVelocityProvider
     end
-    properties (SetObservable)
+    properties (SetObservable, AbortSet)
         water_level_object (1,1) WaterLevel= ConstantWaterLevel(0);
     end
     properties(Dependent, SetAccess=private)
@@ -61,12 +62,10 @@ classdef VMADCP < ADCP
         water_level
     end
     methods
-        %%% Constructor method %%%
-        function obj=VMADCP(varargin)
-            obj=obj@ADCP(varargin{:});
+        function obj = VMADCP(varargin)
+            obj = obj@ADCP(varargin{:})
             obj.water_level_object=ConstantWaterLevel(0);
             obj.vertical_position_provider=ADCPVerticalPositionFromWaterLevel(obj.water_level_object, obj);
-            obj.horizontal_position_provider=[ProjectedCoordinatesFromViseaExtern; LatLonToUTM];
             obj.shipvel_provider=[ShipVelocityFromBT; ShipVelocityFromGPS];
             if numel(obj.filters)==1 && isa(obj.filters,'Filter')
                 obj.filters=SideLobeFilter;
@@ -77,22 +76,18 @@ classdef VMADCP < ADCP
                 end
             end
         end
-        
-        %%% Set and Get methods %%%
-        function r=get.bt_vertical_range(obj)
-            r=shiftdim(double(obj.raw.btrange)/100,-1);
-            r(r==0)=nan;
+        function val = get.slant_range_to_bed(obj)
+            tm = obj.xform(CoordinateSystem.Instrument, CoordinateSystem.Earth);
+            tm(:,:,:,4) = [];
+            tm(:,:,4,:) = [];
+            beam_m = obj.instrument_matrix_provider.beam_orientation_matrix(obj);
+            tm = helpers.matmult(beam_m,tm,3,4);
+            tm(:,:,:,1:2)=[];
+            val = -obj.bt_vertical_range ./ tm;
         end
-        function r=get.slant_range_to_bed(obj)
-            bangle=obj.beam_angle;
-            r=obj.bt_vertical_range./cosd(bangle);
+        function val = get.bt_vertical_range(obj)
+            val = obj.get_bt_vertical_range;
         end
-        
-        %%% Ordinary methods %%%
-        function vel=ship_velocity(obj,dst)
-            vel=obj.shipvel_provider.ship_velocity(obj,dst);
-        end
-        
         function vel=water_velocity(obj,dst)
         % VMADCP/water_velocity returns corrected water velocity
         %
@@ -108,8 +103,7 @@ classdef VMADCP < ADCP
             end
             vel=obj.velocity(dst)+obj.ship_velocity(dst);
         end
-        
-        function btvel=btvel(obj,dst)
+        function btvel = btvel(obj, dst)
         % VMADCP/btvel returns the bottom tracking based ship velocity
         %
         %   btvel=btvel(obj) return the ship velocity as determined with 
@@ -121,15 +115,10 @@ classdef VMADCP < ADCP
         %
         % see also: VMADCP
             if nargin < 2
-                dst=obj.coordinate_system;
+                dst = obj.coordinate_system;
             end
-            btvel=shiftdim(VMADCP.int16_to_double(obj.raw.btvel)/1000,-1);
-             if nargin > 1 && ~all(dst == obj.coordinate_system)
-                tm=obj.xform(dst);
-                btvel=helpers.matmult(tm, btvel);
-            end
+            btvel = obj.get_btvel(dst);
         end
-       
         function pos=bed_offset(obj,dst)
             % Get the offset from the ADCP to the observed bed in m
             %
@@ -143,8 +132,11 @@ classdef VMADCP < ADCP
             if nargin < 2 
                 dst=CoordinateSystem.Earth;
             end
-            tm=-obj.xform(CoordinateSystem.Beam, dst,'UseTilts',true);
+            tm =obj.xform(CoordinateSystem.Instrument, dst,'Geometry',true);
+            beam_m = obj.instrument_matrix_provider.beam_orientation_matrix(obj);
             tm(:,:,:,4)=[];
+            tm(:,:,4,:)=[];
+            tm = helpers.matmult(beam_m,tm);
             pos=tm.*obj.slant_range_to_bed;
         end
         function pos=bed_position(obj)
@@ -158,6 +150,9 @@ classdef VMADCP < ADCP
             pos(:,:,:,1)=pos(:,:,:,1)+repmat(obj.horizontal_position(1,:),[1,1,4]);
             pos(:,:,:,2)=pos(:,:,:,2)+repmat(obj.horizontal_position(2,:),[1,1,4]);
             pos(:,:,:,3)=pos(:,:,:,3)+permute(obj.vertical_position,[3,2,4,1]);
+        end
+        function vel=ship_velocity(obj,dst)
+            vel=obj.shipvel_provider.ship_velocity(obj,dst);
         end
         function wl=get.water_level(obj)
             wl=obj.water_level_object.get_water_level(obj.time);
@@ -247,6 +242,27 @@ classdef VMADCP < ADCP
             hf=plot_backscatter@ADCP(obj);
             add_bed_and_surface(obj,hf,false)
         end
+        function plot_track_velocity(obj)
+            vel = obj.water_velocity(CoordinateSystem.Earth);
+            da_vel = mean(vel,1,"omitnan");
+            ph = obj.horizontal_position;
+            hold_stat = get(gcf,'NextPlot');
+            plot(ph(1,:), ph(2,:),'Color',[.2 .2 .2])
+            axis equal
+            hold on
+            xlabel([obj.horizontal_position_provider.description,' x (m)']);
+            ylabel([obj.horizontal_position_provider.description,' y (m)']);
+            xl = get(gca,'xlim');
+            yl = get(gca,'ylim');
+            xpos = xl(1)+diff(xl)/10;
+            ypos = yl(1)+diff(yl)/10;
+            text(xpos,ypos,'1  m/s','HorizontalAlignment','left',...
+                VerticalAlignment='top',BackgroundColor='w')
+            hq=quiver([ph(1,:) xpos],...
+                [ph(2,:) ypos], [da_vel(1,:,1) 1], [da_vel(1,:,2) 0]);
+            set(gcf,'NextPlot',hold_stat)
+        end
+
         function plot_all(obj)
             plot_all@ADCP(obj)
             figure
@@ -279,5 +295,10 @@ classdef VMADCP < ADCP
                 end
             end
         end
+
+    end
+    methods(Access = protected, Abstract)
+        val = get_bt_vertical_range(obj)
+        val = get_btvel(obj, dst)
     end
 end

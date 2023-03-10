@@ -60,10 +60,37 @@ classdef InstrumentMatrixProvider < matlab.mixin.Heterogeneous
                 TM=obj(fprovider).get_b2i_matrix(adcp);
             end
         end
+
+        function TM = beam_orientation_matrix(obj, adcp)
+        % return the beam orientation matrix
+        %
+        %   TM = cart2beam_to_orient(obj, adcp, tm) returns a matrix
+        %   holding the orientation of the beams
+        %
+        %   see also: InstrumentMatrixProvider
+            validateattributes(adcp,{'ADCP'},{'scalar'})
+            fprovider = find(obj.has_data(adcp), 1);
+            if isempty(fprovider)
+                error('Cannot compute instrument transformation matrix')
+            else
+                TM=obj(fprovider).get_beam_orientation_matrix(adcp);
+            end
+        end
+        function vr = vertical_range_to_cell(obj,adcp)
+            validateattributes(adcp,{'ADCP'},{'scalar'})
+            fprovider = find(obj.has_data(adcp), 1);
+            if isempty(fprovider)
+                error('Cannot compute instrument transformation matrix')
+            else
+                vr=obj(fprovider).get_vertical_range_to_cell(adcp);
+            end
+        end
     end
     methods (Access=protected, Abstract) % methods to implement in subclasses
-        get_has_data(adcp)
-        get_i2b_matrix(adcp)
-        get_b2i_matrix(adcp)
+        get_has_data(obj, adcp)
+        get_i2b_matrix(obj, adcp)
+        get_b2i_matrix(obj, adcp)
+        get_beam_orientation_matrix(obj, adcp)
+        get_vertical_range_to_cell
     end
 end
