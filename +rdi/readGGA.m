@@ -55,7 +55,7 @@ if ischar(instr)
     instr=cellstr(instr);
 end
 
-defineNMEA
+rdi.defineNMEA
 
 % tmpdat=textscan([instr{:}],'$ %*2s GGA %2f32 %2f32 %f32 %2f64 %f64 %s %3f64 %f64 %s %u8 %u8 %f32 %f32 %*1s %f32 %*1s %f32 %u16 %*2s',nlines,'Delimiter',',*');
 [tmpdat,split]=regexp([instr{:}],patterns.gga,'names','split');
@@ -71,9 +71,9 @@ if any(discard)
 end
 
 %read the data
-NMEA_GGA.UTCtime=cell2mat(textscan_checked([tmpdat(:).utc],'%2f32 %2f32 %f32','delimiter',','));
+NMEA_GGA.UTCtime=cell2mat(rdi.textscan_checked([tmpdat(:).utc],'%2f32 %2f32 %f32','delimiter',','));
 if (~isempty([tmpdat(:).lat]))
-    tmplat=textscan_checked([tmpdat(:).lat],'%s %s','delimiter',',');
+    tmplat=rdi.textscan_checked([tmpdat(:).lat],'%s %s','delimiter',',');
     lat = str2double(tmplat{1});
     % GGA coordinates are stored as as seconds (fractions of 60) times 100
     lat = lat/100;
@@ -82,7 +82,7 @@ if (~isempty([tmpdat(:).lat]))
     isneg        = strcmp(tmplat{2},'S');
     NMEA_GGA.lat(isneg)=-NMEA_GGA.lat(isneg);
     clear tmplat
-    tmplong=textscan_checked([tmpdat(:).long],'%s %s','delimiter',',');
+    tmplong=rdi.textscan_checked([tmpdat(:).long],'%s %s','delimiter',',');
     long = str2double(tmplong{1});
     long  = long/100;
     long = fix(long) + (100/60)*(long-fix(long));
@@ -91,13 +91,13 @@ if (~isempty([tmpdat(:).lat]))
     NMEA_GGA.long(isneg)=-NMEA_GGA.long(isneg);
     clear tmplong isneg
 end
-NMEA_GGA.qualind=cell2mat(textscan_checked([tmpdat(:).qualind],'%u8','delimiter',','));
-NMEA_GGA.numsat =cell2mat(textscan_checked([tmpdat(:).numsat],'%u8','delimiter',','));
-NMEA_GGA.hdop   =cell2mat(textscan_checked([tmpdat(:).hdop],'%f32','delimiter',','));
-NMEA_GGA.antalt =cell2mat(textscan_checked([tmpdat(:).antalt],'%f32','delimiter',','));
-NMEA_GGA.geosep =cell2mat(textscan_checked([tmpdat(:).geosep],'%f32','delimiter',','));
-NMEA_GGA.agediff=cell2mat(textscan_checked([tmpdat(:).agediff],'%f32','delimiter',','));
-NMEA_GGA.diffid =cell2mat(textscan_checked([tmpdat(:).diffid],'%u16','delimiter','*'));
+NMEA_GGA.qualind=cell2mat(rdi.textscan_checked([tmpdat(:).qualind],'%u8','delimiter',','));
+NMEA_GGA.numsat =cell2mat(rdi.textscan_checked([tmpdat(:).numsat],'%u8','delimiter',','));
+NMEA_GGA.hdop   =cell2mat(rdi.textscan_checked([tmpdat(:).hdop],'%f32','delimiter',','));
+NMEA_GGA.antalt =cell2mat(rdi.textscan_checked([tmpdat(:).antalt],'%f32','delimiter',','));
+NMEA_GGA.geosep =cell2mat(rdi.textscan_checked([tmpdat(:).geosep],'%f32','delimiter',','));
+NMEA_GGA.agediff=cell2mat(rdi.textscan_checked([tmpdat(:).agediff],'%f32','delimiter',','));
+NMEA_GGA.diffid =cell2mat(rdi.textscan_checked([tmpdat(:).diffid],'%u16','delimiter','*'));
 
 end % function readGGA
 

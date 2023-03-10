@@ -47,7 +47,7 @@ if ischar(instr)
     instr=cellstr(instr);
 end
 
-defineNMEA;
+rdi.defineNMEA;
 
 [tmpdat,split]=regexp([instr{:}],patterns.rmc,'names','split');
 % clear instr

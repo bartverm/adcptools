@@ -1,17 +1,17 @@
-function [NMEA_ZDA,discard]=readZDA(instr)
-% readZDA(zda) interprets a NMEA ZDA string
+function [NMEA_DBS,discard]=readDBS(instr)
+% readDBT(DBT) interprets a NMEA DBT string
 %
-%   [ZDAstruct]=readZDA(instr) Reads a NMEA sentence in the character array
-%   or cell of strings and returns a structure with the zda data.
+%   [DBTstruct]=readDBT(instr) Reads a NMEA sentence in the character array
+%   or cell of strings and returns a structure with the DBT data.
 %   
 %   The output structure will contain the following fields:
-%   UTCtime : Hour minutes and seconds of the UTC time
-%   date    : Date in year month day
-%   zone    : Timezone expressed in timeshift in hours and minutes
+%    depthf: Depth under transducer in feet
+%    depthM: Depth under transducer in meters
+%    depthF: Depth under transducer in Fathoms
+%
 %
 %    Author: Bart Vermeulen
-%    Date last edit: 21-12-2009
-
+%    Date last edit: 17-12-2009
 
 %    Copyright 2009 Bart Vermeulen
 %
@@ -40,10 +40,9 @@ if ischar(instr)
     instr=cellstr(instr);
 end
 
-
-% tmpdat=textscan_checked([instr{:}],'$ %*2s ZDA %2f32 %2f32 %f32 %u16 %u16 %u16 %d8 %d8 %*2s',nlines,'Delimiter',',*');
-defineNMEA;
-[tmpdat,split]=regexp([instr{:}],patterns.zda,'names','split');
+% tmpdat=textscan([instr{:}],'$ %*2s DBT %f32 f %f32 M %f32 F %*2s',nlines,'Delimiter',',*');
+rdi.defineNMEA;
+[tmpdat,split]=regexp([instr{:}],patterns.DBS,'names','split');
 clear instr
 discard=find(~strcmp(split,''));
 fdiscard=[];
@@ -55,9 +54,7 @@ if any(discard)
     discard=fdiscard+(1:length(fdiscard))-1;     
 end
 
-
 %Initialize variable
-NMEA_ZDA.UTCtime=cell2mat(textscan_checked([tmpdat(:).utc],'%2f32 %2f32 %f32','delimiter',','));
-NMEA_ZDA.date=fliplr(cell2mat(textscan_checked([tmpdat(:).date],'%u16 %u16 %u16','delimiter',',')));
-NMEA_ZDA.zone=cell2mat(textscan_checked([tmpdat(:).zone],'%d8 %d8','delimiter',',*'));
-
+NMEA_DBS.depthf=cell2mat(textscan([tmpdat(:).depthf],'%f32','delimiter',','));
+NMEA_DBS.depthM=cell2mat(textscan([tmpdat(:).depthM],'%f32','delimiter',','));
+NMEA_DBS.depthF=cell2mat(textscan([tmpdat(:).depthF],'%f32','delimiter',','));

@@ -242,6 +242,27 @@ classdef VMADCP < ADCP
             hf=plot_backscatter@ADCP(obj);
             add_bed_and_surface(obj,hf,false)
         end
+        function plot_track_velocity(obj)
+            vel = obj.water_velocity(CoordinateSystem.Earth);
+            da_vel = mean(vel,1,"omitnan");
+            ph = obj.horizontal_position;
+            hold_stat = get(gcf,'NextPlot');
+            plot(ph(1,:), ph(2,:),'Color',[.2 .2 .2])
+            axis equal
+            hold on
+            xlabel([obj.horizontal_position_provider.description,' x (m)']);
+            ylabel([obj.horizontal_position_provider.description,' y (m)']);
+            xl = get(gca,'xlim');
+            yl = get(gca,'ylim');
+            xpos = xl(1)+diff(xl)/10;
+            ypos = yl(1)+diff(yl)/10;
+            text(xpos,ypos,'1  m/s','HorizontalAlignment','left',...
+                VerticalAlignment='top',BackgroundColor='w')
+            hq=quiver([ph(1,:) xpos],...
+                [ph(2,:) ypos], [da_vel(1,:,1) 1], [da_vel(1,:,2) 0]);
+            set(gcf,'NextPlot',hold_stat)
+        end
+
         function plot_all(obj)
             plot_all@ADCP(obj)
             figure
