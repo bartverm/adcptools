@@ -1,7 +1,7 @@
 classdef test_readDeployment < matlab.unittest.TestCase
 % Test for readDeployment function
     properties
-        data_path = '~/src/adcptools/doc/demo/raw_data/'
+        data_path = 'doc/demo/raw_data/'
     end
     methods(Test)
         function read_testdata(testCase)
