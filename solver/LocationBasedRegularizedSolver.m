@@ -1,4 +1,4 @@
-classdef LocationBasedSolver < RegularizedSolver
+classdef LocationBasedRegularizedSolver < RegularizedSolver
     % Implements a time based velocity solver
     %
     %   This class solves the water velocity on the given mesh, by 
