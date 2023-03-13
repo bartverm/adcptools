@@ -13,5 +13,17 @@ jobs:
         uses: matlab-actions/run-tests@v1
         with:
           test-results-junit: test-results/results.xml
+          test-results-pdf: test-results/results.pdf
           code-coverage-cobertura: code-coverage/coverage.xml
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: test-results/
+      - name: Upload Code Coverage
+        uses: actions/upload-artifact@v3
+        with:
+          name: code-coverage 
+          path: code-coverage/
+
 
