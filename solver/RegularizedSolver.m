@@ -136,11 +136,16 @@ classdef RegularizedSolver < Solver
             dn = n_pos - n_center(cell_idx); % delta_n
             dz = z_pos - cmesh.z_center(cell_idx); % delta_z
             dsig = sig_pos - cmesh.sig_center(cell_idx); % delta_sig
-            dt = time;% - cmesh.time; % delta time
+%             dt = time;% - cmesh.time; % delta time
 %             dt = seconds(dt);
 
             % Data matrix: All data
-            M = obj.data_model.get_model(dt, ds, dn, dz, dsig);
+            M = obj.data_model.get_model(time, ds, dn, dz, dsig);
+%             obj.data_model.rotation_matrix
+%             obj.data_model.rotation_matrix = inv( obj.data_model.rotation_matrix);
+%             obj.data_model.rotation_matrix
+            M = obj.data_model.rotate_matrix(M);
+
             disp('Assembled model matrices')
             Mb0 = [M(:,:,1).*xform(:,1),...
                 M(:,:,2).*xform(:,2),...
@@ -247,7 +252,7 @@ classdef RegularizedSolver < Solver
             xform = obj.adcp.xform(CoordinateSystem.Beam,CoordinateSystem.Earth); % get Earth to Beam transformation matrix
 
             xform(:,:,:,4)=[]; % remove Error velocity to beam transformation
-            xform = obj.rotate_xform(xform);
+%             xform = obj.rotate_xform(xform);
             % filter and vectorize
             [vdat, xform] = obj.filter_and_vectorize(vdat, xform);
 

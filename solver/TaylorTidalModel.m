@@ -172,11 +172,11 @@ classdef TaylorTidalModel < TaylorModel & TidalModel
             %   procuces the model matrices consisting of Kronecker
             %   products of the Taylor and Tidal velocity models,
             %   respectively.
-            T = get_model@TidalModel(obj,d_t);
+            T = get_model@TidalModel(obj, d_t);
 
             % For a TaylorTidal model, dt is irrelevant. Replace by nan
 
-            S = get_model@TaylorModel(obj, zeros(size(d_s)), d_s, d_n, d_z, d_sigma);
+            S = get_model@TaylorModel(obj, d_t, d_s, d_n, d_z, d_sigma);
 
             % Place copies of T as new columns of S: modified Kronecker
             % Size: n_data x n_pars x n_dim

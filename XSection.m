@@ -61,6 +61,7 @@ classdef XSection < handle & helpers.ArraySupport
         %
         % see also: XSection, origin, direction
         direction_orthogonal (2,1) double {mustBeFinite}
+        angle (1,1) double
     end
     methods
         function obj=XSection(varargin)
@@ -87,6 +88,9 @@ classdef XSection < handle & helpers.ArraySupport
         end
         function set.direction_orthogonal(obj,val)
             obj.direction=[-val(2); val(1)];
+        end
+        function angle = get.angle(obj)
+            angle = atan2(obj.direction_orthogonal(2), obj.direction_orthogonal(1));
         end
         function [varargout]=xy2sn(obj,x,y,u,v)
             % Transform points and vectors from xy to sn coordinates

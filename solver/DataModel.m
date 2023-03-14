@@ -167,7 +167,7 @@ classdef DataModel < handle
             %
             %   see also: Solver, TaylorModel, TidalModel.
 
-            M = ones(numel(d_time),1,3);
+            M = ones(numel(d_time), 1, obj.ncomponents);
         end
 
         function rotation_matrix = get.rotation_matrix(obj)
@@ -188,13 +188,29 @@ classdef DataModel < handle
             R = obj.rotation_matrix;
             Mrot = zeros(size(M));
             if numel(R) == 1
-                Mrot = M; % Scalar quantity cannot be rotated
+                Mrot = M; % Scalar quantity is not rotated
             else
                 for dim = 1:obj.ncomponents
                     Mrot(:,:,dim) = R(dim,1)*M(:,:,1) + R(dim,2)*M(:,:,2) + R(dim,3)*M(:,:,3); % Vector quantity
                 end
             end
         end
+
+%         function Mrot = rotate_matrix(obj, M)
+%             % assuming M is a n_data x n_pars x n_comp matrix
+%             % Can be done using mat_mult, different implementation here.
+%             % The rotation assumes same sizes of Mu, Mv, Mw.
+% 
+%             R = obj.rotation_matrix;
+%             Mrot = zeros(size(M));
+%             if numel(R) == 1
+%                 Mrot = M; % Scalar quantity is not rotated
+%             else
+%                 for dim = 1:obj.ncomponents
+%                     Mrot(:,:,dim) = R(dim,1)*M(:,:,1) + R(dim,2)*M(:,:,2) + R(dim,3)*M(:,:,3); % Vector quantity
+%                 end
+%             end
+%         end
 
         function val=get_npars(~)
             % return number of parameters as a 3x1 row vector, with the number

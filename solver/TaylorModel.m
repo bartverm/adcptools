@@ -152,7 +152,7 @@ classdef TaylorModel < DataModel
             max_np = max(obj.get_npars_tay);
             nc = obj.ncomponents;
             lo = obj.lump_orders;
-
+            % Convert dt to seconds: numerical values
             d_t = seconds(time - mean(time));
 
             M = nan(numel(time), max_np, nc);

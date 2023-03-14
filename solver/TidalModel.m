@@ -59,7 +59,8 @@ classdef TidalModel < DataModel
             ncomp = obj.ncomponents;
             assert(isdatetime(d_time), 'Enter time vector in datetime format.')
             % As datenum is in days, convert to seconds
-            dt = convertTo(d_time,"datenum")*24*3600; %seconds
+%             d_t = convertTo(d_time,"datenum")*24*3600; %seconds
+            d_t = seconds(d_time - d_time(1));
             max_pars = max(npars);
             M = nan(numel(d_time), max_pars, ncomp);
             M(:,1,:) = 1; %residual
@@ -68,9 +69,9 @@ classdef TidalModel < DataModel
                     obj.periods(c_comp,:)~=0);
                 for c_const = 1:n_const
                     M(:,2*c_const, c_comp) = cos(...
-                        2*pi/obj.periods(c_comp,c_const)*dt);
+                        2*pi/obj.periods(c_comp,c_const)*d_t);
                     M(:,2*c_const + 1, c_comp) = sin(...
-                        2*pi/obj.periods(c_comp,c_const)*dt);
+                        2*pi/obj.periods(c_comp,c_const)*d_t);
                 end
             end
         end
