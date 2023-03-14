@@ -267,6 +267,15 @@ classdef RegularizedSolver < Solver
             vdat = reshape(vdat, [], 1);
             xform = reshape(xform, [], size(xform,4));
         end
+
+        function xform = rotate_xform(obj, xform)
+            mat = [obj.xs.direction_orthogonal(1), obj.xs.direction_orthogonal(2), 0;
+                   obj.xs.direction(1), obj.xs.direction(2), 0;
+                   0, 0, 1];
+
+            xform(1,i,:,:) = squeeze(xform(1,i,:,:))*mat'; % Very shady, but 
+
+        end
     end
 
 end
