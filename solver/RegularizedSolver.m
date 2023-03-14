@@ -136,21 +136,22 @@ classdef RegularizedSolver < Solver
             dn = n_pos - n_center(cell_idx); % delta_n
             dz = z_pos - cmesh.z_center(cell_idx); % delta_z
             dsig = sig_pos - cmesh.sig_center(cell_idx); % delta_sig
-            dt = time - cmesh.time; % delta time
-            dt = seconds(dt);
+            dt = time;% - cmesh.time; % delta time
+%             dt = seconds(dt);
 
             % Data matrix: All data
             M = obj.data_model.get_model(dt, ds, dn, dz, dsig);
-
+            disp('Assembled model matrices')
             Mb0 = [M(:,:,1).*xform(:,1),...
                 M(:,:,2).*xform(:,2),...
                 M(:,:,3).*xform(:,3)]; %Model matrix times unit vectors q
-
+            disp('Assembled parameter - data mapping')
             [M, b] = obj.reorder_model_matrix(Mb0, dat, cell_idx);
             
             MP = ModelParameters(M = M, b = b, reg = obj.reg, opts = obj.opts);
 
             MP.p = obj.solve(M,b);
+            disp('Finished')
         end
 
         function p = solve(obj, M, b)

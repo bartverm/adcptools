@@ -173,14 +173,17 @@ classdef TaylorTidalModel < TaylorModel & TidalModel
             %   products of the Taylor and Tidal velocity models,
             %   respectively.
             T = get_model@TidalModel(obj,d_t);
-            S = get_model@TaylorModel(obj, d_t, d_s, d_n, d_z, d_sigma);
+
+            % For a TaylorTidal model, dt is irrelevant. Replace by nan
+
+            S = get_model@TaylorModel(obj, zeros(size(d_s)), d_s, d_n, d_z, d_sigma);
 
             % Place copies of T as new columns of S: modified Kronecker
             % Size: n_data x n_pars x n_dim
             M = zeros(size(T,1), size(T,2)*size(S,2), size(T,3));
 
             for dim = 1:obj.ncomponents
-                M(:,:,dim) = helpers.kron_modified(T(:,:,dim), S(:,:,dim));
+                M(:,:,dim) = helpers.kron_modified_mat(T(:,:,dim), S(:,:,dim));
             end
         end
 
@@ -194,19 +197,25 @@ classdef TaylorTidalModel < TaylorModel & TidalModel
 
         end
 
-    end
-    methods(Access=protected)
         function val = get_npars(obj)
-            val = ones(1,3) +...
-                obj.s_order +...
-                obj.n_order +...
-                obj.z_order +...
-                obj.sigma_order;
-
-            val = val.*[2*numel(obj.constituents) + 1, ...
-                2*numel(obj.constituents) + 1, ...
-                2*numel(obj.constituents) + 1];
+            ntay = get_npars@TaylorModel(obj);
+            ntid = get_npars@TidalModel(obj);
+            val = ntay.*ntid;
+            %             val = ones(1,3) +...
+            %                 obj.s_order +...
+            %                 obj.n_order +...
+            %                 obj.z_order +...
+            %                 obj.sigma_order;
+            %
+            %             val = val.*[2*numel(obj.constituents) + 1, ...
+            %                 2*numel(obj.constituents) + 1, ...
+            %                 2*numel(obj.constituents) + 1];
         end
+
+    end
+
+
+    methods(Access=protected)
         function val = get_ncomponents(obj)
             val = numel(obj.components);
         end

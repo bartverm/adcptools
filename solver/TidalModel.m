@@ -55,7 +55,7 @@ classdef TidalModel < DataModel
             % d_time (seconds)
             % Output:
 
-            npars = obj.npars;
+            npars = obj.get_npars_tid;
             ncomp = obj.ncomponents;
             assert(isdatetime(d_time), 'Enter time vector in datetime format.')
             % As datenum is in days, convert to seconds
@@ -91,7 +91,7 @@ classdef TidalModel < DataModel
             %
             %   see also: TidalModel, Solver
 
-            npars = obj.npars;
+            npars = obj.get_npars_tid;
             subtidal_idx = [1, npars(1) + 1, sum(npars(1:2)) + 1];
             pars_h = zeros(size(pars));
             jac = zeros(size(cov_pars)); % jacobian of the transformation (subtidal independent of other under this transformations)
@@ -118,8 +118,7 @@ classdef TidalModel < DataModel
         function periods = get.periods(obj)
             periods = repmat(obj.const_to_periods(), [obj.ncomponents, 1]);
         end
-    end
-    methods
+
         function names = get_names(obj)
 
             % Forms a cell array of dimensions 1xobj.ncomponents
@@ -138,20 +137,21 @@ classdef TidalModel < DataModel
                 end
             end
         end
-    
-
 
         function omega = get_omega(obj)
             omega = 2*pi./obj.periods;
         end
-    end
-    methods(Access=protected)
+
         function val = get_npars(obj)
-            %nconsts = sum(isfinite(obj.constituents) &...
-            %obj.constituents ~= 0);
-            val = obj.get_ncomponents*(1+2*obj.get_nconstituents);
+            val = get_npars_tid(obj);
         end
 
+        function val = get_npars_tid(obj)
+            val = ones(1, obj.get_ncomponents).*(1 + 2*obj.get_nconstituents);
+        end
+
+    end
+    methods(Access=protected)
         function val = get_ncomponents(obj)
             val = numel(obj.components);
         end

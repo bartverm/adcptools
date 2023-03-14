@@ -147,9 +147,9 @@ classdef TaylorModel < DataModel
                 no1;...        % first order terms
                 (no2.^2+no2)/2]; % second order independent terms: 1+2+...+N = (N^2 + N)/2
         end
-        function M=get_model(obj, time, d_s, d_n, d_z, d_sigma)
+        function M = get_model(obj, time, d_s, d_n, d_z, d_sigma)
             np_per_ord = obj.npars_per_order;
-            max_np = max(obj.npars);
+            max_np = max(obj.get_npars_tay);
             nc = obj.ncomponents;
             lo = obj.lump_orders;
             M = nan(numel(time), max_np, nc);
@@ -209,8 +209,17 @@ classdef TaylorModel < DataModel
                 end
             end
         end
-    end
+    
+        function val = get_npars(obj)
+            val = obj.get_npars_tay;
+        end
 
+        function val = get_npars_tay(obj)
+            val = obj.npars_per_order();
+            val = sum(val,1);
+        end    
+
+    end 
     methods(Access = protected)
         function check_components(obj)
             assert(isequal(...
@@ -236,10 +245,6 @@ classdef TaylorModel < DataModel
                 obj.sigma_order];
         end
 
-        function val = get_npars(obj)
-            val = obj.npars_per_order();
-            val = sum(val,1);
-        end
     end
 
 
