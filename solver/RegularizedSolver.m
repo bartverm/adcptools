@@ -247,11 +247,11 @@ classdef RegularizedSolver < Solver
             xform = obj.adcp.xform(CoordinateSystem.Beam,CoordinateSystem.Earth); % get Earth to Beam transformation matrix
 
             xform(:,:,:,4)=[]; % remove Error velocity to beam transformation
-            
+            xform = obj.rotate_xform(xform);
             % filter and vectorize
             [vdat, xform] = obj.filter_and_vectorize(vdat, xform);
 
-
+            
         end
 
         function [vdat,xform] = filter_and_vectorize(obj,vdat, xform)
@@ -272,8 +272,10 @@ classdef RegularizedSolver < Solver
             mat = [obj.xs.direction_orthogonal(1), obj.xs.direction_orthogonal(2), 0;
                    obj.xs.direction(1), obj.xs.direction(2), 0;
                    0, 0, 1];
-
-            xform(1,i,:,:) = squeeze(xform(1,i,:,:))*mat'; % Very shady, but 
+%             xform(:,:,:,4)=[]; % remove Error velocity to beam transformation
+            for i = 1:size(xform,2)
+                xform(1,i,:,:) = squeeze(xform(1,i,:,:))*mat'; % Very shady, but good results!
+            end
 
         end
     end
