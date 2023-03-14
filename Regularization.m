@@ -456,7 +456,7 @@ classdef Regularization <...
                     D0 = obj.bathy.water_level.parameters(1) - obj.zb0; % Subtidal depth
                 end
             else
-                D0 = obj.bathy.water_level.water_level - obj.zb0;
+                D0 = obj.bathy.water_level.level - obj.zb0;
             end
         end
 

@@ -39,14 +39,14 @@ classdef VaryingWaterLevel < WaterLevel
         %   the class to function properly.
         %
         %   see also: VaryingWaterLevel, time
-        water_level (1,:) double {mustBeReal, mustBeFinite} = 0
+        level (1,:) double {mustBeReal, mustBeFinite} = 0
         parameters
     end
     methods
         function obj=VaryingWaterLevel(varargin)
             for ca=1:nargin
                 if isa(varargin{ca},'double')
-                    obj.water_level=varargin{ca};
+                    obj.level=varargin{ca};
                 elseif isa(varargin{ca},'datetime')
                     obj.time = varargin{ca};
                 elseif isa(varargin{ca}, 'TidalModel')
@@ -59,12 +59,12 @@ classdef VaryingWaterLevel < WaterLevel
 
         function val=get_water_level(obj,time)
             % Without making use of the tidal model
-            val=interp1(obj.time, obj.water_level, time, 'linear');
+            val=interp1(obj.time, obj.level, time, 'linear');
         end
 
         function obj = get_parameters(obj)
             M = obj.model.get_model(obj.time);
-            obj.parameters = (M'*M)\M'*obj.water_level';
+            obj.parameters = (M'*M)\M'*obj.level';
         end
 
         function hp=plot(obj,varargin)
@@ -76,7 +76,7 @@ classdef VaryingWaterLevel < WaterLevel
             %   hp = obj.plot() return the handle to the water level time series
             %
             %   see also: VaryingWaterLevel
-            htmp=plot(obj.time,obj.water_level,varargin{:});
+            htmp=plot(obj.time,obj.level,varargin{:});
             xlabel('Time')
             ylabel('Water level (m)')
             if nargout>0

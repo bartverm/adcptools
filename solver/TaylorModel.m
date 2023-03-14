@@ -152,8 +152,11 @@ classdef TaylorModel < DataModel
             max_np = max(obj.get_npars_tay);
             nc = obj.ncomponents;
             lo = obj.lump_orders;
+
+            d_t = seconds(time - mean(time));
+
             M = nan(numel(time), max_np, nc);
-            dev_vec = [time, d_s, d_n, d_z, d_sigma]; % deviatoric vector (x - a) for first order terms
+            dev_vec = [d_t, d_s, d_n, d_z, d_sigma]; % deviatoric vector (x - a) for first order terms
             dev_vec_sq = helpers.matmult(dev_vec,...
                 permute(dev_vec,[1 3 2]),2,3); %(x - a)^T(x-a) for second order terms
 
