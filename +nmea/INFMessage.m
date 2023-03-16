@@ -26,6 +26,7 @@ classdef INFMessage < nmea.Message
     methods
         function obj=INFMessage()
             obj.name='INF';
+            obj.msg_id_pattern = obj.name;
             obj.fields=nmea.Field('octans_status', "%s", "(?:\w*)?");
         end
     end

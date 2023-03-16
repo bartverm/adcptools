@@ -28,6 +28,7 @@ classdef LINMessage < nmea.Message
     methods
         function obj=LINMessage()
             obj.name='LIN';
+            obj.msg_id_pattern = obj.name;
             cp = nmea.Field.common_patterns;
             obj.fields=[nmea.Field('surge_x',"%f32", cp.float), ...
                  nmea.Field('sway_y', "%f32", cp.float),...
