@@ -1,7 +1,9 @@
 function publish_all_doc()
 %     recursive_publish('./', '../html')
     publish('main.m', outputDir='../html');
-    publish('getting_started.m', outputDir='../html');
+    publish('reading_data.m', outputDir='../html');
+    publish('initial_inspection.m', outputDir='../html');
+    publish('repeat_transect_processing.m', outputDir='../html');
 
     builddocsearchdb('../html')
 

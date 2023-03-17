@@ -1,9 +1,12 @@
 %% ADCPtools toolbox
 % The ADCP toolbox helps to process ADCP data.
 %
-%% Generic classes
-%  <a href="matlab:doc ADCP">ADCP</a>
+% Processing of data consists of a number of steps:
+% 
+% # <reading_data.html Reading of the data> 
+% # <initial_inspection.html Initial inspection of data> 
+% # <repeat_transect_processing.html Repeat transect processing>
+% 
 
-%% Instrument specific classes
 
 
