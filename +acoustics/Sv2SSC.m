@@ -27,7 +27,7 @@ classdef Sv2SSC < handle
         % ADCP objects to be used for calibration
         %
         % see also: Sv2SSC, ADCP
-        adcp (:,1) ADCP
+        adcp (:,1) VMADCP {mustBeScalarOrEmpty} = rdi.VMADCP.empty
         
         % acoustics.Sv2SSC/samples property
         %
