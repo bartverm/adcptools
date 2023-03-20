@@ -62,10 +62,11 @@ end
 
 %% Parse files
 nfiles=length(infiles);   %find number of files
-NMEA(1:nfiles)=struct();  %initialize an arrray of structures
 if ~helpers.load_nmea_package
     warning('rdi.readNMEA:NoNMEAToolbox',...
         'No NMEA toolbox available, not reading external NMEA files.')
+    NMEA(1:nfiles)=struct();  %initialize an arrray of structures
+    return
 end
 for cntfile=1:nfiles
     fid=fopen(infiles{cntfile},'r');   %Open file
