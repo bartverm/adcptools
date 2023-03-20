@@ -1,0 +1,3 @@
+[submodule "+nmea_submodule"]
+	path = +nmea_submodule
+	url = https://github.com/bartverm/nmea-toolbox.git
