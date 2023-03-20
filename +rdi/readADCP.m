@@ -615,7 +615,7 @@ if any(regexpi(flags,'x'))                                                 % If 
         tmpdbt=cell(nens,1);
         for cntens=1:nens
             Ndatablock=find(DataHeader{cntens}(:,1)==8448);
-            if isempty(Ndatablock)
+            if isempty(Ndatablock) || ~helpers.load_nmea_package()
                 continue
             else
                 fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
@@ -629,7 +629,7 @@ if any(regexpi(flags,'x'))                                                 % If 
         tmpgga=cell(nens,1);
         for cntens=1:nens
             Ndatablock=find(DataHeader{cntens}(:,1)==8449);
-            if isempty(Ndatablock)
+            if isempty(Ndatablock) || ~helpers.load_nmea_package()
                 continue
             else
                 fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
@@ -643,7 +643,7 @@ if any(regexpi(flags,'x'))                                                 % If 
         tmpvtg=cell(nens,1);
         for cntens=1:nens
             Ndatablock=find(DataHeader{cntens}(:,1)==8450);
-            if isempty(Ndatablock)
+            if isempty(Ndatablock) || ~helpers.load_nmea_package()
                 continue
             else
                 fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
@@ -657,7 +657,7 @@ if any(regexpi(flags,'x'))                                                 % If 
         tmphdt=cell(nens,1);
         for cntens=1:nens
             Ndatablock=find(DataHeader{cntens}(:,1)==8452);
-            if isempty(Ndatablock)
+            if isempty(Ndatablock) || ~helpers.load_nmea_package()
                 continue
             else
                 fpos=EnsStart{cntens}+DataOffset{cntens}(Ndatablock);
