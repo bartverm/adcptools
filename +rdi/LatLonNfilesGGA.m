@@ -10,11 +10,11 @@ classdef LatLonNfilesGGA < LatLonProvider
         function tf=get_has_data(~,adcp)
             tf=isfield(adcp.raw,'nFiles') && ...
                 isfield(adcp.raw.nFiles,'GGA') && ...
-                all(isfield(adcp.raw.nFiles.GGA,{'lat','long'}));
+                all(isfield(adcp.raw.nFiles.GGA,{'latitude','longitude'}));
         end
         function [lat, lon]=get_lat_lon(~,adcp)
-           lat=reshape(adcp.raw.nFiles.GGA.lat,1,[]);
-           lon=reshape(adcp.raw.nFiles.GGA.long,1,[]);
+           lat=reshape(adcp.raw.nFiles.GGA.latitude,1,[]);
+           lon=reshape(adcp.raw.nFiles.GGA.longitude,1,[]);
         end
     end
 end
