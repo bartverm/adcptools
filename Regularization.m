@@ -49,34 +49,35 @@ classdef Regularization <...
                     obj.C{1} = obj.assemble_continuity_internal();
                 else
                     warning('No internal continuity matrix assembled: Include higher order Taylor expansion')
-                    obj.C{1} = 0;
+                    obj.C{1} = sparse(0);
                 end
                 if (obj.model.s_order(1) > 0)
                     obj.C{2} = obj.assemble_continuity_external();
                 else
                     warning('No external continuity matrix assembled: Include alongchannel Taylor expansion')
-                    obj.C{2} = 0;
+                    obj.C{2} = sparse(0);
                 end
                 if (all(obj.model.n_order > 0)) && (all(obj.model.sigma_order > 0) || all(obj.model.z_order > 0))
                     % This condition may be relaxed a bit.
                     obj.C{4} = obj.assemble_consistency();
                 else
                     warning('No consistency matrix assembled: Fit a sufficient number of Taylor terms')
-                    obj.C{4} = 0;
+                    obj.C{4} = sparse(0);
                 end
                 if (all(obj.model.sigma_order > 0) || all(obj.model.z_order > 0))
                     [obj.C{5}, obj.rhs] = obj.assemble_kinematic();
                 else
                     warning('No kinematic boundary condition matrix assembled: Include higher order Taylor expansion in sigma/z direction')
-                    obj.C{5} = 0;
+                    obj.C{5} = sparse(0);
+                    obj.rhs=sparse(0);
                 end
             else
                 warning("To impose constraints on continuity and boundary conditions, a Taylor model is required. Only assembling coherence operator.");
-                obj.C{1} = 0;
-                obj.C{2} = 0;
-                obj.C{4} = 0;
-                obj.C{5} = 0;
-                obj.rhs = 0;
+                obj.C{1} = sparse(0);
+                obj.C{2} = sparse(0);
+                obj.C{4} = sparse(0);
+                obj.C{5} = sparse(0);
+                obj.rhs = sparse(0);
             end
 
             obj.C{3} = obj.assemble_coherence();
@@ -179,7 +180,7 @@ classdef Regularization <...
                     Cj{cell_idx}(eq,col{eq}) = term{eq};
                 end
             end
-            C1 = spblkdiag(Cj{:});
+            C1 = helpers.spblkdiag(Cj{:});
         end
 
         function C2 = assemble_continuity_external(obj)
@@ -362,7 +363,7 @@ classdef Regularization <...
                     end
                 end
             end
-            C5 = spblkdiag(Cj{:});
+            C5 = helpers.spblkdiag(Cj{:});
             rhsvec = cell2mat(rhsj);
         end
 
