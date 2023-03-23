@@ -13,8 +13,9 @@ classdef ShipBubbleFilter < Filter
            validateattributes(adcp,{'VMADCP'},{'scalar'})
            if isscalar(obj)
                bad = zeros(size(adcp.echo));
-               bs_median = nanmedian(adcp.backscatter,2);   % median backscatter in horizontal direction
-               BS = adcp.backscatter;
+               BS = adcp.backscatter(Filter);
+               bs_median = median(BS,2,'omitnan');   % median backscatter in horizontal direction
+
 
                binsize = adcp.cellsize(1);
                n_topbins = round(obj.max_search_depth/binsize);
