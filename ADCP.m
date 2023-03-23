@@ -219,14 +219,7 @@ classdef ADCP < handle
         %
         % see also: ADCP
         echo
-        
-        % Received Volume Backscatter strength (dB) computed according to
-        % Deines (1999) with the corrections of Gostiaux and van Haren and 
-        % the correction in the FSA-031. The backscatter strength is not 
-        % corrected for attenuation due to sediment.
-        %
-        % see also: ADCP, acoustics, Sv2SSC
-        backscatter
+       
         
         %   2xN matrix holding the x and y coordinates of the
         %   ADCP in m.
@@ -374,9 +367,6 @@ classdef ADCP < handle
         function val = get.echo(obj)
             val = obj.get_echo;
         end
-        function val = get.backscatter(obj)
-            val = obj.get_backscatter;
-        end
         function val=get.horizontal_position(obj)
             val=obj.horizontal_position_provider.horizontal_position(obj);
         end
@@ -392,6 +382,7 @@ classdef ADCP < handle
         function val = get.vertical_range_to_cell(obj)
             val = obj.instrument_matrix_provider.vertical_range_to_cell(obj);
         end
+
         function bad=bad(obj,filter)
             % Mask for profiled data
             %
@@ -554,7 +545,6 @@ classdef ADCP < handle
         val = get_salinity(obj)
         val = get_pressure(obj)
         val = get_echo(obj)
-        val = get_backscatter(obj)
         val = get_transducer(obj)
     end
     methods(Abstract)
@@ -591,6 +581,14 @@ classdef ADCP < handle
         %
         %   see also: ADCP, CoordinateSystem
         vel = velocity(obj,dst,filter)
+
+        % Received Volume Backscatter strength (dB) computed according to
+        % Deines (1999) with the corrections of Gostiaux and van Haren and 
+        % the correction in the FSA-031. The backscatter strength is not 
+        % corrected for attenuation due to sediment.
+        %
+        % see also: ADCP, acoustics, Sv2SSC
+        bs = backscatter(obj, filter)
     end
     methods(Static)
         function inv=invert_xform(tm)
