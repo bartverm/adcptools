@@ -29,16 +29,18 @@ classdef ModelParameters < handle
             end
         end
 
-        function plot_solution(obj, names_selection)
+        function plot_solution(obj, names_selection, par_idx)
             
             if nargin < 2
                 names_selection = [obj.reg.model.names{:}];
             end
-            nreg = size(obj.p, 2);
+
+            P = obj.p(:, par_idx);
+            nreg = size(P, 2);
             nn = length(names_selection);
             nc = obj.reg.mesh.ncells;
             np = sum(obj.reg.model.npars); % Number of parameters in each cell
-            Np = size(obj.p,1); %= nc*np;
+            Np = size(P,1); %= nc*np;
 
             if nreg>1 % Compare different vectors
                 t = tiledlayout(nn, nreg, TileSpacing = "tight", Padding = "tight", TileIndexing = "columnmajor");
@@ -57,7 +59,7 @@ classdef ModelParameters < handle
             for col = 1:nreg
                 for row = 1:nn
                     nexttile;
-                    var = obj.p(par_idx(row):np:Np, col);
+                    var = P(par_idx(row):np:Np, col);
                     obj.reg.mesh.plot(var)
                     %     loc_tit = str,old,new)
                     title(['$', titles{row}, '$'], 'interpreter', 'latex')
