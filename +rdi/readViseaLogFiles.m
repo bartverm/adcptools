@@ -26,7 +26,7 @@ function dat = readViseaLogFiles(inadcp, fname)
 %    along with ADCPTools.  If not, see <http://www.gnu.org/licenses/>.
 
 dat=struct;
-if exist('nmea.Message','class')~=8
+if ~helpers.load_nmea_package
     warning('Nmea toolbox not available, not reading VISEA log files')
     return;
 end

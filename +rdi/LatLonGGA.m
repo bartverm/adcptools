@@ -9,11 +9,11 @@ classdef LatLonGGA < LatLonProvider
     methods(Access=protected)
         function tf=get_has_data(~,adcp)
             tf= isfield(adcp.raw,'GGA') && ...
-                all(isfield(adcp.raw.GGA,{'lat','long'}));
+                all(isfield(adcp.raw.GGA,{'latitude','longitude'}));
         end
         function [lat, lon]=get_lat_lon(~,adcp)
-           lat=reshape(adcp.raw.GGA.lat,1,[]);
-           lon=reshape(adcp.raw.GGA.long,1,[]);
+           lat=reshape(adcp.raw.GGA.latitude,1,[]);
+           lon=reshape(adcp.raw.GGA.longitude,1,[]);
         end
     end
 end
