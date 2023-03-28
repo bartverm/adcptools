@@ -595,12 +595,13 @@ classdef ADCP < ADCP
             cs(csnum==3)=CoordinateSystem.Earth;
         end
         function ang=get_beam_angle(obj)
-            ang=double(obj.raw.HADCPbeamangle);
+            % TODO: check this code
+            ang = nan(1,obj.nensembles);
             ang_sys=reshape(bin2dec(obj.raw.sysconf(9:10,:)'),1,[]);
-            ang(ang==0 & ang_sys==0)=15;
-            ang(ang==0 & ang_sys==2)=20;
-            ang(ang==0 & ang_sys==3)=30;
-            ang(ang==0)=nan;
+            ang(ang_sys==0)=15;
+            ang(ang_sys==2)=20;
+            ang(ang_sys==3)=30;
+            ang(ang_sys==4)=double(obj.raw.HADCPbeamangle(ang_sys==4));
         end
         function nens=get_nensembles(obj)
             nens=size(obj.fileid,2);
