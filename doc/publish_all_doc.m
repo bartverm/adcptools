@@ -4,6 +4,12 @@ function publish_all_doc()
     publish('reading_data.m', outputDir='../html');
     publish('initial_inspection.m', outputDir='../html');
     publish('repeat_transect_processing.m', outputDir='../html');
+    publish('transect_bathymetry.m', outputDir='../html');
+    publish('transect_cross_section.m', outputDir='../html');
+    publish('transect_data_selection.m', outputDir='../html');
+    publish('transect_mesh_construction.m', outputDir='../html');
+    publish('transect_post_processing.m', outputDir='../html');
+    publish('transect_solving_data.m', outputDir='../html');
 
     builddocsearchdb('../html')
 

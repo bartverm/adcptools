@@ -6,7 +6,7 @@
    <!--
 This HTML was auto-generated from MATLAB code.
 To make changes, update the MATLAB code and republish this document.
-      --><title>Repeat transect processing</title><meta name="generator" content="MATLAB 9.14"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2023-03-23"><meta name="DC.source" content="repeat_transect_processing.m"><style type="text/css">
+      --><title>Mesh creation for repeat transect data processing</title><meta name="generator" content="MATLAB 9.14"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2023-03-23"><meta name="DC.source" content="transect_mesh_construction.m"><style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
 
 html { min-height:100%; margin-bottom:1px; }
@@ -67,27 +67,9 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 
 
 
-  </style></head><body><div class="content"><h1>Repeat transect processing</h1><p>The processing of repeat-transect data typically consists of the following steps:</p><div><ol><li><a href="transect_data_selection.html">Data selection</a></li><li><a href="transect_cross_section.html">Determining placement and direction of cross-section</a></li><li><a href="transect_bathymetry.html">Building of a bathymetric model</a></li><li><a href="transect_mesh_construction.html">Construction of a mesh for data projection</a></li><li><a href="transect_solving_data.html">Solving the data on the mesh</a></li><li><a href="transect_post_processing.html">Post-processing and visualizing the data</a></li></ol></div><p>ADCPTools can solve various types of data on the defined mesh, e.g. velocity data, backscatter data, and any other type of external data.</p><p>Depending on the collected data the steps might be slightly different. A dataset collected in a tidal environment will include additional steps to account for significant water level variation during the data collected.</p><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2023a</a><br></p></div><!--
+  </style></head><body><div class="content"><h1>Mesh creation for repeat transect data processing</h1><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2023a</a><br></p></div><!--
 ##### SOURCE BEGIN #####
-%% Repeat transect processing
-% The processing of repeat-transect data typically consists of the
-% following steps:
-% 
-% # <transect_data_selection.html Data selection> 
-% # <transect_cross_section.html Determining placement and direction of
-% cross-section>
-% # <transect_bathymetry.html Building of a bathymetric model>
-% # <transect_mesh_construction.html Construction of a mesh for data
-% projection>
-% # <transect_solving_data.html Solving the data on the mesh>
-% # <transect_post_processing.html Post-processing and visualizing the data>
-%
-% ADCPTools can solve various types of data on the defined mesh, e.g.
-% velocity data, backscatter data, and any other type of external data.
-%
-% Depending on the collected data the steps might be slightly different. A
-% dataset collected in a tidal environment will include additional steps to
-% account for significant water level variation during the data collected.
+%% Mesh creation for repeat transect data processing
 
 ##### SOURCE END #####
 --></body></html>

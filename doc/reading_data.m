@@ -12,15 +12,15 @@
 % * Sontek
 %
 % In order to further process the data, it is necessary to construct an
-% ADCP object for self-contained data and a VMADCP objects for
+% <matlab:doc('ADCP') ADCP> object for self-contained data and a <matlab:doc('VMADCP') VMADCP> objects for
 % vessel-mounted data. These classes contain several functions that allow
 % to process and visualize the data.
 
 %% Reading RDI data
 % ADCP tools always requires a raw, binary PD0 file to be read. For RDI
-% data, the reading of data and construction of ADCP or VMADCP objects is
+% data, the reading of data and construction of <matlab:doc('ADCP') ADCP> or <matlab:doc('VMADCP') VMADCP> objects is
 % done in two separate steps. First the data are read in a structure, and
-% subsequently, the ADCP or VMADCP objects are constructed from these
+% subsequently, the <matlab:doc('ADCP') ADCP> or VMADCP objects are constructed from these
 % structures.
 % To read in a self-contained/moored dataset you can use the rdi.readADCP
 % function:
@@ -33,7 +33,7 @@
 % 
 %   Dataset = rdi.ADCP(dat);
 %
-% This constructs an ADCP object.
+% This constructs an <matlab:doc('rdi.ADCP') rdi.ADCP> object, which is a subclass of <matlab:doc('ADCP') ADCP>.
 %
 % When reading data from a vessel mounted deployment, next to the raw PD0
 % files you will also have external data such as GPS, echo-sounder data or
@@ -46,7 +46,7 @@
 %
 % This will read all data files starting with 'deploymentName'. The
 % optional argument 'path' allows to specify the location of the data. The
-% next step is to create a VMADCP object:
+% next step is to create a <matlab:doc('VMADCP') VMADCP> object:
 %
 %   VMDataset = rdi.VMADCP(dat);
 
@@ -57,7 +57,7 @@
 %
 %   Dataset = nortek.ADCP('filename.ad2cp');
 %
-% This reads all data from the ad2cp file and constructs the ADCP object
+% This reads all data from the ad2cp file and constructs the <matlab:doc('ADCP') ADCP> object
 % for further processing and visualization of the data.
 %
 % For a vessel mounted dataset, data is read as follows:
@@ -65,14 +65,14 @@
 %   VMDataset = nortek.VMADCP('filename.SigVM');
 %
 % This reads the ad2cp data and the gnss data in the SigVM file and
-% constructs the VMADCP object
+% constructs the <matlab:doc('VMADCP') VMADCP> object
 
 %% Reading Sontek data
-% ADCPtools can construct ADCP and VMADCP objects based on the matlab
+% ADCPtools can construct <matlab:doc('ADCP') ADCP> and <matlab:doc('VMADCP') VMADCP> objects based on the matlab
 % exports which can be generated with the RiverSurveyor software from
 % Sontek. Once the .mat files have been generated they can be read as
 % follows:
 %
 %   Dataset = sontek.VMADCP('filename.mat');
 %
-% This constructs the VMADCP object for further processing.
+% This constructs the <matlab:doc('VMADCP') VMADCP> object for further processing.

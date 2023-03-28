@@ -27,6 +27,24 @@
         </tocitem>
         <tocitem target="repeat_transect_processing.html">
             Repeat transect processing
+            <tocitem target="transect_data_selection.html">
+                Data selection
+            </tocitem>
+            <tocitem target="transect_cross_section.html">
+                Setting the cross-section
+            </tocitem>
+            <tocitem target="transect_bathymetry.html">
+                Bathymetry model
+            </tocitem>
+            <tocitem target="transect_mesh_construction.html">
+                Mesh construction
+            </tocitem>
+            <tocitem target="transect_solving_data.html">
+                Solving data on the mesh
+            </tocitem>
+            <tocitem target="transect_post_processing.html">
+                Post processing data
+            </tocitem>
         </tocitem>
     </tocitem>
 </toc>
