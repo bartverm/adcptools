@@ -1,3 +1,4 @@
-[submodule "+nmea_submodule"]
-	path = nmea_submodule
-	url = https://github.com/bartverm/nmea-toolbox.git
+[submodule "loess_submodule/"]
+	url = git@github.com:bartverm/loess.git
+[submodule "nmea_submodule/"]
+	url = git@github.com:bartverm/nmea-toolbox.git
