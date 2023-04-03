@@ -20,6 +20,21 @@ function tf = load_loess_package()
         addpath(loess_path);
     end
 
+    % if loess does not exist and run, and the compile script exist,
+    % compile
+    if ~(loess_exists && loess_runs) && exist("compile_loess.m",'file') == 2
+        current_path = pwd;
+        cd(loess_path)
+        try
+            compile_loess;
+        catch err
+            warning(['Tried to compile loess but failed with error:\n',...
+                err.message])
+        end
+        cd(current_path);
+    end
+  
+
     % check if loess exists and if it runs
     tf = loess_exists && loess_runs;
 end
@@ -33,6 +48,7 @@ function tf = loess_runs()
     try
         loess
     catch err
+
         tf = strcmp(err.identifier,'loess:nargin');
     end
 end
