@@ -30,8 +30,8 @@ end
 if nargin() < 3 || isempty(zone)
     
     % find zone
-    mlat=nanmean(lat);
-    mlong=nanmean(long);
+    mlat=mean(lat,'omitnan');
+    mlong=mean(long,'omitnan');
     lts = [-80:8:72 84]';
     lns = (-180:6:180)';
     latzones = char([67:72 74:78 80:88]');
