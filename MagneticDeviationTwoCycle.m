@@ -97,7 +97,7 @@ classdef MagneticDeviationTwoCycle < MagneticDeviationModel
 
                 scatter(head2,d_ang,'.')
                 hold on
-                plot(head2, mod_bias,'r')
+                plot(head2, mod_bias,'r.')
                 xlabel('Heading (degrees)')
                 ylabel('Heading correction (degrees)')
                 legend('Raw differences','Two cycle correction')
