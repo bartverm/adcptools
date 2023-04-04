@@ -8,9 +8,13 @@ classdef Regularization <...
         xs (1,1) XSection
         mesh (1,1) SigmaZetaMesh
         model (1,1) DataModel
-        C (1,:) cell
-        Cg (1,:) cell
-        rhs (:,1) double
+        
+        weight (1,1) double = 0;
+
+        % Regularization/matrix
+        C (:,:) double {Regularization.mustBeSparse} = sparse(0)
+        Cg (:,:) double {Regularization.mustBeSparse} = sparse(0)
+        rhs (:,1) double {Regularization.mustBeSparse} = sparse(0)
     end
 
     properties(Dependent)
@@ -25,6 +29,12 @@ classdef Regularization <...
     end
     methods(Abstract, Access = protected)
         assemble_matrix_private
+    end
+
+    methods(Static)
+        function mustBeSparse(val)
+            assert(issparse(val),'Value must be sparse')
+        end
     end
 
     methods(Sealed)
@@ -142,190 +152,6 @@ classdef Regularization <...
 
     end
     methods(Access = protected)
-
-        function C2 = assemble_continuity_external(obj)
-
-            wl = obj.bathy.water_level;
-            D0 = obj.get_subtidal_depth();
-            const_names = obj.get_const_names(); % Cell array
-            D0s = -obj.zbsn(1,:);
-            D0n = -obj.zbsn(2,:);
-            
-            sig_center = obj.mesh.sig_center;
-            n_center = obj.mesh.n_middle(obj.mesh.col_to_cell);
-            nscale = 1;
-            sscale = 1;
-
-            nb = obj.neighbors;
-            dom = obj.domains;
-            rows = []; cols = []; terms = [];
-            pnames = obj.names_all;
-            row_idx = 0;
-            for cell_idx = 1:obj.mesh.ncells
-                %cell_idx
-                if dom(cell_idx) == 0
-                    % Extended continuity only works on interior of domain.
-                    dsig = sig_center(nb(2, cell_idx))-sig_center(nb(4, cell_idx));
-                    dn = n_center(nb(1, cell_idx))-n_center(nb(3, cell_idx));
-                    col = cell([1,numel(const_names)]);
-                    term = cell([1,numel(const_names)]);
-                    row = cell([1,numel(const_names)]);
-                    for eq = 1:numel(const_names)
-                        col{eq} = [find(strcmp(pnames, ['cell ',num2str(cell_idx),': d^1u/dx^1', const_names{eq}])) , ...
-                            find(strcmp(pnames, ['cell ',num2str(nb(2, cell_idx)),': u0', const_names{eq}])) , ...
-                            find(strcmp(pnames, ['cell ',num2str(nb(4, cell_idx)),': u0', const_names{eq}])) , ...
-                            find(strcmp(pnames, ['cell ',num2str(nb(1, cell_idx)),': v0', const_names{eq}])) , ...
-                            find(strcmp(pnames, ['cell ',num2str(nb(3, cell_idx)),': v0', const_names{eq}])) , ...
-                            find(strcmp(pnames, ['cell ',num2str(nb(2, cell_idx)),': v0', const_names{eq}])) , ...
-                            find(strcmp(pnames, ['cell ',num2str(nb(4, cell_idx)),': v0', const_names{eq}])) , ...
-                            find(strcmp(pnames, ['cell ',num2str(nb(2, cell_idx)),': w0', const_names{eq}])) , ...
-                            find(strcmp(pnames, ['cell ',num2str(nb(4, cell_idx)),': w0', const_names{eq}]))];
-
-                        term{eq} = [nscale*D0(cell_idx), nscale*(1-sig_center(cell_idx))*D0s(cell_idx)/dsig, -nscale*(1-sig_center(cell_idx))*D0s(cell_idx)/dsig,...
-                            sscale*D0(cell_idx)/dn, -sscale*D0(cell_idx)/dn, sscale*(1-sig_center(cell_idx))*D0n(cell_idx)/dsig, -sscale*(1-sig_center(cell_idx))*D0n(cell_idx)/dsig,...
-                            sscale*nscale/dsig, -sscale*nscale/dsig];
-                        if eq > 1 % For tidal constituents, correlations between water level and velocity in sigma coordinates have to be included.
-                            col{eq}(numel(col{eq}):(numel(col{eq})+1)) = [find(strcmp(pnames, ['cell ',num2str(cell_idx),': d^1u/dx^1', const_names{1}])),...
-                                find(strcmp(pnames, ['cell ',num2str(cell_idx),': d^1u/dx^1', const_names{1}]))];
-                            term{eq}(numel(term{eq}):(numel(term{eq})+1)) = [nscale*wl.parameters(eq),...
-                                nscale*wl.parameters(eq)];
-                        end
-                        row{eq} = row_idx + eq*ones(size(col{eq}));
-                    end
-                    rows = [rows [row{:}]];
-                    cols = [cols [col{:}]];
-                    terms = [terms [term{:}]];
-                    row_idx = max(rows);
-                end
-            end
-            C2 = sparse(rows, cols, terms, obj.mesh.ncells*numel(const_names), obj.mesh.ncells*sum(obj.model.npars));
-        end
-
-        function C3 = assemble_coherence(obj)
-
-            Np = sum(obj.model.npars);
-            Diag = speye(Np*obj.mesh.ncells);
-            rows = []; cols = []; vals = [];
-            nb = obj.neighbors;
-
-            for cell_idx = 1:obj.mesh.ncells %rows
-                %cell_idx
-                nb_ = nb(:,cell_idx);
-                nb_ = nb_(~isnan(nb_)); 
-                nnb = length(nb_);
-                for nb_idx = 1:nnb
-                    col = ((nb_(nb_idx)-1)*Np+1):(nb_(nb_idx)*Np);
-                    row = (cell_idx-1)*Np+1:cell_idx*Np;
-                    val = -1/nnb*ones(1,Np);
-                    rows = [rows row];
-                    cols = [cols col];
-                    vals = [vals val];
-                end
-            end
-            C3 = Diag + sparse(rows, cols, vals, obj.mesh.ncells*Np, obj.mesh.ncells*Np);
-
-            W = obj.assemble_weights();
-
-            C3 = W*C3;
-
-        end
-
-        function C4 = assemble_consistency(obj)
-
-            const_names = obj.get_const_names(); % Cell array
-
-            nb = obj.neighbors;
-            rows = []; cols = []; terms = [];
-            pnames = obj.names_all;
-            row_idx = 1;
-            [dn, dsig] = obj.dom2dndsig();
-            keep_idx = obj.dom2keep_idx();
-            for cell_idx = 1:obj.mesh.ncells
-                for eq = 1:numel(const_names)
-                    col = [obj.findn(pnames, ['cell ',num2str(cell_idx),': d^1u/dy^1', const_names{eq}]) , ...
-                        obj.findn(pnames, ['cell ',num2str(nb(1, cell_idx)),': u0', const_names{eq}]) , ...
-                        obj.findn(pnames, ['cell ',num2str(nb(3, cell_idx)),': u0', const_names{eq}]) , ...
-                        obj.findn(pnames, ['cell ',num2str(cell_idx),': d^1v/dy^1', const_names{eq}]) , ...
-                        obj.findn(pnames, ['cell ',num2str(nb(1, cell_idx)),': v0', const_names{eq}]) , ...
-                        obj.findn(pnames, ['cell ',num2str(nb(3, cell_idx)),': v0', const_names{eq}]) , ...
-                        obj.findn(pnames, ['cell ',num2str(cell_idx),': d^1w/dy^1', const_names{eq}]) , ...
-                        obj.findn(pnames, ['cell ',num2str(nb(1, cell_idx)),': w0', const_names{eq}]) , ...
-                        obj.findn(pnames, ['cell ',num2str(nb(3, cell_idx)),': w0', const_names{eq}]) , ...
-                        obj.findn(pnames, ['cell ',num2str(cell_idx),': d^1u/dsig^1', const_names{eq}]) , ...
-                        obj.findn(pnames, ['cell ',num2str(nb(2, cell_idx)),': u0', const_names{eq}]) , ...
-                        obj.findn(pnames, ['cell ',num2str(nb(4, cell_idx)),': u0', const_names{eq}]) , ...
-                        obj.findn(pnames, ['cell ',num2str(cell_idx),': d^1v/dsig^1', const_names{eq}]) , ...
-                        obj.findn(pnames, ['cell ',num2str(nb(2, cell_idx)),': v0', const_names{eq}]) , ...
-                        obj.findn(pnames, ['cell ',num2str(nb(4, cell_idx)),': v0', const_names{eq}]) , ...
-                        obj.findn(pnames, ['cell ',num2str(cell_idx),': d^1w/dsig^1', const_names{eq}]) , ...                        
-                        obj.findn(pnames, ['cell ',num2str(nb(2, cell_idx)),': w0', const_names{eq}]), ...
-                        obj.findn(pnames, ['cell ',num2str(nb(4, cell_idx)),': w0', const_names{eq}])];
-
-                    row = row_idx + [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5]; % Row incremental index, always the same
-                    term = [1, -1/(dn(cell_idx)), 1/(dn(cell_idx)),...
-                        1, -1/(dn(cell_idx)), 1/(dn(cell_idx)),...
-                        1, -1/(dn(cell_idx)), 1/(dn(cell_idx)),...
-                        1, -1/(dsig(cell_idx)), 1/(dsig(cell_idx)), 1, -1/(dsig(cell_idx)), 1/(dsig(cell_idx)),...
-                        1, -1/(dsig(cell_idx)), 1/(dsig(cell_idx))]; % Value, always the same (but look at order of magnitudes difference between the values...)
-                    
-                    rows = [rows row(keep_idx{cell_idx})];
-                    cols = [cols col(keep_idx{cell_idx})];%(keep_idx{cell_idx})];
-                    terms = [terms term(keep_idx{cell_idx})];
-                    if ~isempty(rows)
-                        row_idx = max(rows) + 1;
-                    end
-                end
-            end
-            C4 = sparse(rows, cols, terms, 6*obj.mesh.ncells*numel(const_names), obj.mesh.ncells*sum(obj.model.npars));
-        end
-
-        function [C5, rhsvec] = assemble_kinematic(obj)
-
-            % Function that assembles cell-based kinematic boundary conditions.
-
-            const_names = obj.get_const_names(); % Cell array
-            zbs = obj.zbsn(1,:);
-            zbn = obj.zbsn(2,:);
-            dom = obj.domains;
-            col = cell([1, numel(const_names)]);
-            pnames = obj.flatten_names();
-            for eq = 1:numel(const_names)
-                col{eq} = [find(strcmp(pnames, ['u0', const_names{eq}])) , ...
-                    find(strcmp(pnames, ['d^1u/dsig^1', const_names{eq}])) , ...
-                    find(strcmp(pnames, ['v0', const_names{eq}])) , ...
-                    find(strcmp(pnames, ['d^1v/dsig^1', const_names{eq}])) , ...
-                    find(strcmp(pnames, ['w0', const_names{eq}])) , ...
-                    find(strcmp(pnames, ['d^1w/dsig^1', const_names{eq}]))];
-            end
-            % Now, the indices of the relevant terms are known. Proceed to fill in
-            Cj = cell([obj.mesh.ncells,1]);
-            rhsj = cell([obj.mesh.ncells,1]);
-
-            for cell_idx = 1:obj.mesh.ncells
-                Cj{cell_idx} = zeros([numel(const_names),sum(obj.model.npars)]);
-                rhsj{cell_idx} = zeros([numel(const_names),1]);
-
-                if dom(cell_idx)==0 || dom(cell_idx)==1 || dom(cell_idx) == 5 % Internal cells (in terms of sigma)
-                    % Do nothing -> No lateral boundary conditions
-                else
-                    bot = (dom(cell_idx) ==6 || dom(cell_idx)==7|| dom(cell_idx)==8);  %Bottom cells
-                    surf = (dom(cell_idx) ==2 || dom(cell_idx)==3|| dom(cell_idx)==4); %Surface cells
-                    if surf
-                        dsig = 1 - obj.mesh.sig_center(cell_idx); % per definition of sigma. Positive
-                        terms = [0, 0, 0, 0, 1, dsig];
-                        rhsj{cell_idx} = obj.water_level2rhs_element;
-                    elseif bot % Bottom cells
-                        dsig = obj.mesh.sig_center(cell_idx); %
-                        terms = [zbs(cell_idx), -dsig*zbs(cell_idx), zbn(cell_idx), -dsig*zbn(cell_idx), -1, dsig];
-                    end
-                    for eq = 1:numel(const_names)
-                        Cj{cell_idx}(eq, col{eq}) = terms;
-                    end
-                end
-            end
-            C5 = helpers.spblkdiag(Cj{:});
-            rhsvec = cell2mat(rhsj);
-        end
 
         function IM = assemble_incidence(obj)
             obj.mesh = obj.mesh;
