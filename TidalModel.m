@@ -74,6 +74,7 @@ classdef TidalModel < DataModel
                         2*pi/obj.periods(c_comp,c_const)*d_t);
                 end
             end
+            %M = obj.rotate_matrix(M);
         end
 
         function [pars_h, cov_pars_h] = get_tidal_pars(obj, pars, cov_pars)

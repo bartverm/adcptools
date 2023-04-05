@@ -292,6 +292,7 @@ classdef XSection < handle & helpers.ArraySupport
             asp=get(gca,'dataaspectratio');
             set(gca,'dataaspectratio',[max(asp(1:2))*[1 1] asp(3)])
             set(gca,'nextplot',hold_stat)
+            legend('tangential', 'orthogonal')
             if nargout>0
                 varargout{1}=h;
             end

@@ -8,9 +8,10 @@ classdef Regularization <...
         xs (1,1) XSection
         mesh (1,1) SigmaZetaMesh
         model (1,1) DataModel
-        C (1,:) cell
-        Cg (1,:) cell
-        rhs (:,1) double
+        C (1,:) cell = {sparse(0), sparse(0), sparse(0), sparse(0), sparse(0)}
+        Cg (1,:) cell = {sparse(0), sparse(0), sparse(0), sparse(0), sparse(0)}
+        rhs (:,1) double = sparse(0);
+        assembled (1,1) boolean = false
     end
 
     properties(Dependent)
@@ -24,16 +25,6 @@ classdef Regularization <...
 
     end
 
-    %     methods(Sealed)
-    %         function C = assemble_matrices(obj, solver)
-    %             if ~isscalar(obj)
-    %                 C = obj.run_method('assemble_matrices', solver);
-    %             else
-    %                 C = obj.assemble_matrix_private();
-    %             end
-    %         end
-    %     end
-
     methods
         function obj = Regularization(varargin)
             % Constructor
@@ -42,30 +33,30 @@ classdef Regularization <...
             end
         end
 
-        function assemble_matrices(obj)
+        function assemble_matrices(obj, opts)
             if(isa(obj.model,"TaylorModel"))
                 if (obj.model.s_order(1) > 0) && (obj.model.n_order(2) > 0)...
                         && (obj.model.sigma_order(3) > 0 || obj.model.z_order(3) > 0)
-                    obj.C{1} = obj.assemble_continuity_internal();
+                    obj.C{1} = obj.assemble_continuity_internal(opts);
                 else
                     warning('No internal continuity matrix assembled: Include higher order Taylor expansion')
                     obj.C{1} = sparse(0);
                 end
                 if (obj.model.s_order(1) > 0)
-                    obj.C{2} = obj.assemble_continuity_external();
+                    obj.C{2} = obj.assemble_continuity_external(opts);
                 else
                     warning('No external continuity matrix assembled: Include alongchannel Taylor expansion')
                     obj.C{2} = sparse(0);
                 end
                 if (all(obj.model.n_order > 0)) && (all(obj.model.sigma_order > 0) || all(obj.model.z_order > 0))
                     % This condition may be relaxed a bit.
-                    obj.C{4} = obj.assemble_consistency();
+                    obj.C{4} = obj.assemble_consistency(opts);
                 else
                     warning('No consistency matrix assembled: Fit a sufficient number of Taylor terms')
                     obj.C{4} = sparse(0);
                 end
                 if (all(obj.model.sigma_order > 0) || all(obj.model.z_order > 0))
-                    [obj.C{5}, obj.rhs] = obj.assemble_kinematic();
+                    [obj.C{5}, obj.rhs] = obj.assemble_kinematic(opts);
                 else
                     warning('No kinematic boundary condition matrix assembled: Include higher order Taylor expansion in sigma/z direction')
                     obj.C{5} = sparse(0);
@@ -80,8 +71,9 @@ classdef Regularization <...
                 obj.rhs = sparse(0);
             end
 
-            obj.C{3} = obj.assemble_coherence();
+            obj.C{3} = obj.assemble_coherence(opts);
             obj.gramian_matrices()
+            obj.assembled = true;
         end
 
         function names_all = get.names_all(obj)
@@ -139,7 +131,7 @@ classdef Regularization <...
 
     end
     methods(Access = protected)
-        function C1 = assemble_continuity_internal(obj)
+        function C1 = assemble_continuity_internal(obj, opts)
             % Function that assembles cell-based continuity equation
             wl = obj.bathy.water_level;
 
@@ -183,7 +175,7 @@ classdef Regularization <...
             C1 = helpers.spblkdiag(Cj{:});
         end
 
-        function C2 = assemble_continuity_external(obj)
+        function C2 = assemble_continuity_external(obj, opts)
 
             wl = obj.bathy.water_level;
             D0 = obj.get_subtidal_depth();
@@ -241,7 +233,7 @@ classdef Regularization <...
             C2 = sparse(rows, cols, terms, obj.mesh.ncells*numel(const_names), obj.mesh.ncells*sum(obj.model.npars));
         end
 
-        function C3 = assemble_coherence(obj)
+        function C3 = assemble_coherence(obj, opts)
 
             Np = sum(obj.model.npars);
             Diag = speye(Np*obj.mesh.ncells);
@@ -264,13 +256,13 @@ classdef Regularization <...
             end
             C3 = Diag + sparse(rows, cols, vals, obj.mesh.ncells*Np, obj.mesh.ncells*Np);
 
-            W = obj.assemble_weights();
+            W = obj.assemble_weights(opts);
 
             C3 = W*C3;
 
         end
 
-        function C4 = assemble_consistency(obj)
+        function C4 = assemble_consistency(obj, opts)
 
             const_names = obj.get_const_names(); % Cell array
 
@@ -319,7 +311,7 @@ classdef Regularization <...
             C4 = sparse(rows, cols, terms, 6*obj.mesh.ncells*numel(const_names), obj.mesh.ncells*sum(obj.model.npars));
         end
 
-        function [C5, rhsvec] = assemble_kinematic(obj)
+        function [C5, rhsvec] = assemble_kinematic(obj, opts)
 
             % Function that assembles cell-based kinematic boundary conditions.
 
@@ -378,7 +370,7 @@ classdef Regularization <...
             IM = IM + IM';
         end
 
-        function W = assemble_weights(obj)
+        function W = assemble_weights(obj, opts)
 
             par_names = obj.flatten_names;
             Np = sum(obj.model.npars);

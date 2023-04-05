@@ -37,7 +37,6 @@ classdef RegularizedSolver < Solver
                     continue
                 elseif isa(cur_arg, 'Filter')
                     var = 'ensemble_filter';
-                
                 elseif isa(cur_arg, 'XSection')
                     has_xs=true;
                     continue
@@ -67,11 +66,6 @@ classdef RegularizedSolver < Solver
                 R.assemble_matrices()
                 obj.assign_property('regularization', R);
             end
-
-%             if ~has_opts % This could be done more nicely perhaps
-%                 opts = SolverOptions();
-%                 obj.assign_property('opts', opts)
-%             end
         end
 
         function MP = get_parameters(obj)
@@ -136,26 +130,27 @@ classdef RegularizedSolver < Solver
             dn = n_pos - n_center(cell_idx); % delta_n
             dz = z_pos - cmesh.z_center(cell_idx); % delta_z
             dsig = sig_pos - cmesh.sig_center(cell_idx); % delta_sig
-%             dt = time;% - cmesh.time; % delta time
-%             dt = seconds(dt);
 
             % Data matrix: All data
             M = obj.data_model.get_model(time, ds, dn, dz, dsig);
 %             obj.data_model.rotation_matrix
 %             obj.data_model.rotation_matrix = inv( obj.data_model.rotation_matrix);
 %             obj.data_model.rotation_matrix
-            M = obj.data_model.rotate_matrix(M);
+%             M = obj.data_model.rotate_matrix(M);
 
             disp('Assembled model matrices')
+
+            xform = xform*obj.data_model.rotation_matrix;
             Mb0 = [M(:,:,1).*xform(:,1),...
                 M(:,:,2).*xform(:,2),...
                 M(:,:,3).*xform(:,3)]; %Model matrix times unit vectors q
             disp('Assembled parameter - data mapping')
-            [M, b] = obj.reorder_model_matrix(Mb0, dat, cell_idx);
+            [M, b, ns] = obj.reorder_model_matrix(Mb0, dat, cell_idx);
             
             MP = ModelParameters(M = M, b = b, reg = obj.reg, opts = obj.opts);
 
             MP.p = obj.solve(M,b);
+            MP.ns = ns;
             disp('Finished')
         end
 
@@ -187,26 +182,8 @@ classdef RegularizedSolver < Solver
         end
 
 
-        function training_idx = split_dataset(obj, cell_idx)
 
-            training_idx = ones(size(cell_idx));
-
-            if strcmp(obj.opts.cv_mode, 'none')
-                training_idx = ones(size(cell_idx));
-            elseif strcmp(obj.opts.cv_mode, 'random')
-                tp = obj.opts.training_perc;
-                rand0 = rand(size(training_idx));
-                training_idx = (rand0 <= tp);
-            elseif strcmp(obj.opts.cv_mode, 'omit_cells')
-                oc = obj.opts.omit_cells;
-                for occ = 1:length(oc)
-                    training_idx(cell_idx==oc(occ)) = 0;
-                end
-            elseif strcmp(obj.opts.cv_mode, 'omit_time') % to be implemented
-            end
-        end
-
-        function [M, b] = reorder_model_matrix(obj, Mb0, dat, cell_idx)
+        function [M, b, ns] = reorder_model_matrix(obj, Mb0, dat, cell_idx)
             Mj = cell([obj.mesh.ncells,1]); 
             ns = zeros([obj.mesh.ncells,1]); 
             bj = cell([obj.mesh.ncells,1]);
@@ -217,6 +194,7 @@ classdef RegularizedSolver < Solver
             end
             b = vertcat(bj{:});
             M = helpers.spblkdiag(Mj{:});
+            
         end
 
     end
@@ -249,9 +227,9 @@ classdef RegularizedSolver < Solver
             vdat = obj.adcp.water_velocity(CoordinateSystem.Beam); % get velocity data
 
             % get transformation matrix
-            xform = obj.adcp.xform(CoordinateSystem.Beam,CoordinateSystem.Earth); % get Earth to Beam transformation matrix
+            xform = obj.adcp.xform(CoordinateSystem.Beam, CoordinateSystem.Earth); % get Earth to Beam transformation matrix
 
-            xform(:,:,:,4)=[]; % remove Error velocity to beam transformation
+            xform(:,:,:,4) = []; % remove Error velocity to beam transformation
 %             xform = obj.rotate_xform(xform);
             % filter and vectorize
             [vdat, xform] = obj.filter_and_vectorize(vdat, xform);

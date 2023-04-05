@@ -141,7 +141,7 @@ classdef DataModel < handle
             names = obj.components;
         end
 
-        function M = get_model(~, d_time, ~, ~, ~, ~)
+        function M = get_model(obj, d_time, ~, ~, ~, ~)
             % build velocity model matrices
             %
             %   M is NEnsembles x NPars x Ncomp

@@ -14,6 +14,8 @@ classdef ModelParameters < handle
         reg (1,1) Regularization
 
         opts (1,1) SolverOptions
+
+        ns (:,:) double
     end
     properties(Dependent)
         vel_cmap
@@ -145,6 +147,27 @@ classdef ModelParameters < handle
 
         function pmap = get.phi_cmap(obj)
             pmap = [obj.vel_cmap ;flipud(obj.vel_cmap)];
+        end
+
+
+        
+        function training_idx = split_dataset(obj, cell_idx)
+
+            training_idx = ones(size(cell_idx));
+
+            if strcmp(obj.opts.cv_mode, 'none')
+                training_idx = ones(size(cell_idx));
+            elseif strcmp(obj.opts.cv_mode, 'random')
+                tp = obj.opts.training_perc;
+                rand0 = rand(size(training_idx));
+                training_idx = (rand0 <= tp);
+            elseif strcmp(obj.opts.cv_mode, 'omit_cells')
+                oc = obj.opts.omit_cells;
+                for occ = 1:length(oc)
+                    training_idx(cell_idx==oc(occ)) = 0;
+                end
+            elseif strcmp(obj.opts.cv_mode, 'omit_time') % to be implemented
+            end
         end
 
     end  
