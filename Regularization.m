@@ -11,7 +11,7 @@ classdef Regularization <...
         C (1,:) cell = {sparse(0), sparse(0), sparse(0), sparse(0), sparse(0)}
         Cg (1,:) cell = {sparse(0), sparse(0), sparse(0), sparse(0), sparse(0)}
         rhs (:,1) double = sparse(0);
-        assembled (1,1) boolean = false
+        assembled (1,1) logical = false
     end
 
     properties(Dependent)

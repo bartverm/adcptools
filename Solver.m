@@ -117,7 +117,7 @@ classdef Solver < helpers.ArraySupport
             end
         end
 
-        function [pars, cov_pars, n_vels] = get_parameters(obj)
+        function MP = get_parameters(obj)
             % Solve velocity model parameters
             %
             %   [pars, cov_pars, n_vels]=get_parameters(obj) Obtain the
@@ -187,6 +187,9 @@ classdef Solver < helpers.ArraySupport
             disp('Assembled model matrices')
             % From here, different solvers are used depending on the
             % SolverOptions opts
+
+            
+
             switch obj.opts.algorithm
                 case "lscov"
                     % combine velocity input to earth matrix with velocity
@@ -258,9 +261,10 @@ classdef Solver < helpers.ArraySupport
                         @(x) shiftdim(x, -1), ...
                         t_pars, ...
                         'UniformOutput',false);
-                    pars = vertcat(t_pars{:});
-                    cov_pars = vertcat(t_cov_pars{:});
-                    n_vels = vertcat(t_n_bvels{:});
+                    MP = ModelParameters(opts = obj.opts);
+                    MP.pars = vertcat(t_pars{:});
+                    MP.cov_pars = vertcat(t_cov_pars{:});
+                    MP.ns = vertcat(t_n_bvels{:});
                 case "pcg"
                     xform = xform*obj.data_model.rotation_matrix;
                     Mb0 = [M(:,:,1).*xform(:,1),...
@@ -268,9 +272,7 @@ classdef Solver < helpers.ArraySupport
                         M(:,:,3).*xform(:,3)]; %Model matrix times unit vectors q
                     disp('Assembled parameter - data mapping')
                     [M, b, ns] = obj.reorder_model_matrix(Mb0, dat, cell_idx);
-
-                    MP = ModelParameters(M = M, b = b, reg = obj.reg, opts = obj.opts);
-
+                    MP = ModelParameters(M = M, b = b, regularization = obj.regularization, opts = obj.opts);
                     MP.p = obj.solve(M,b);
                     MP.ns = ns;
                     disp('Finished')
@@ -330,15 +332,15 @@ classdef Solver < helpers.ArraySupport
                 Np = size(M,2);
                 % Generate first guess for p <-> estimate parameters
                 p = nan([Np,length(obj.opts.reg_pars)]);
-                Mg = M'*M;
+                Mg = M'*M; % Expensive operation -> minimize number of calls
                 for idx = 1:length(obj.opts.reg_pars)
                     rp = obj.opts.reg_pars{idx};
                     Cg = sparse(0);
-                    for reg_idx = 1:numel(obj.reg.Cg)
-                        Cg = Cg + rp(reg_idx)*obj.reg.Cg{reg_idx};
+                    for reg_idx = 1:numel(obj.regularization.Cg)
+                        Cg = Cg + rp(reg_idx)*obj.regularization.Cg{reg_idx};
                     end
                     A = Mg + Cg; % Data plus constraints
-                    rhs = M'*b + rp(end)*obj.reg.C{end}'*obj.reg.rhs;
+                    rhs = M'*b + rp(end)*obj.regularization.C{end}'*obj.regularization.rhs;
                     [p(:,idx), flag] = obj.solve_single(A, rhs);
                     disp(['Obtained solution using lambda = [', num2str(rp), ']^T after ', num2str(flag), ' iterations.'])
                 end
@@ -349,7 +351,7 @@ classdef Solver < helpers.ArraySupport
                     obj.opts.preconditioner_opts.diagcomp = max(sum(abs(A),2)./diag(A))-2;
                 end
                 L = ichol(A, obj.opts.preconditioner_opts);
-                [p, ~, ~, iter, resvec] = pcg(A, rhs, obj.opts.pcg_tol, obj.opts.pcg_iter, L, L');
+                [p, ~, ~, iter, ~] = pcg(A, rhs, obj.opts.pcg_tol, obj.opts.pcg_iter, L, L');
 
             end
 

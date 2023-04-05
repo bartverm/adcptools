@@ -11,7 +11,11 @@ classdef ModelParameters < handle
 
         p (:,:) double; % model parameters (b = Mp)
 
-        reg (1,1) Regularization
+        pars (:,:) double;
+
+        cov_pars (:,:,:) double;
+
+        regularization (1,1) Regularization
 
         opts (1,1) SolverOptions
 
@@ -34,14 +38,14 @@ classdef ModelParameters < handle
         function plot_solution(obj, names_selection, par_idx)
             
             if nargin < 2
-                names_selection = [obj.reg.model.names{:}];
+                names_selection = [obj.regularization.model.names{:}];
             end
 
             P = obj.p(:, par_idx);
             nreg = size(P, 2);
             nn = length(names_selection);
-            nc = obj.reg.mesh.ncells;
-            np = sum(obj.reg.model.npars); % Number of parameters in each cell
+            nc = obj.regularization.mesh.ncells;
+            np = sum(obj.regularization.model.npars); % Number of parameters in each cell
             Np = size(P,1); %= nc*np;
 
             if nreg>1 % Compare different vectors
@@ -62,7 +66,7 @@ classdef ModelParameters < handle
                 for row = 1:nn
                     nexttile;
                     var = P(par_idx(row):np:Np, col);
-                    obj.reg.mesh.plot(var)
+                    obj.regularization.mesh.plot(var)
                     %     loc_tit = str,old,new)
                     title(['$', titles{row}, '$'], 'interpreter', 'latex')
 
@@ -118,7 +122,7 @@ classdef ModelParameters < handle
         function par_idx = get_par_idx(obj, names_selection)
             par_idx = nan([1,numel(names_selection)]);
             for name_idx = 1:numel(names_selection)
-                par_idx(name_idx) = find(strcmp([obj.reg.model.names{:}], names_selection{name_idx}));
+                par_idx(name_idx) = find(strcmp([obj.regularization.model.names{:}], names_selection{name_idx}));
             end
         end
 
