@@ -275,7 +275,8 @@ classdef Solver < helpers.ArraySupport
                     MP.ns = ns;
                     disp('Finished')
                 otherwise
-                    error("Enter correct algorithm in SolverOptions: lscov (cell-based) or pcg (regularized, global)")
+                    error("Enter correct algorithm in SolverOptions: lscov (only data, cell-based) or pcg (regularized, global)")
+            end
             end
 
             function [varargout] = get_data(obj, varargin)
