@@ -1,21 +1,22 @@
 classdef Regularization <...
         handle &... % handle object
-        helpers.ArraySupport&... % add array functionality
-        matlab.mixin.Heterogeneous  % allow arrays of different subclasses
+        helpers.ArraySupport &... % add array functionality
+        matlab.mixin.Heterogeneous &...  % allow arrays of different subclasses
+        helpers.ClassParamsInputHandling % add support for class and name-value arguements
 
     properties
-        bathy
-        xs (1,1) XSection
-        mesh (1,1) SigmaZetaMesh
-        model (1,1) DataModel      
-        weight (1,1) double = 0;
+        bathy (1,1) Bathymetry = BathymetryScatteredPoints
+        xs (1,1) XSection = XSection
+        mesh (1,1) Mesh = SigmaZetaMesh
+        model (1,1) DataModel = DataModel
 
+    end
+    properties(SetAccess = protected)
         % Regularization/matrix
         C (:,:) double {Regularization.mustBeSparse} = sparse(0)
         Cg (:,:) double {Regularization.mustBeSparse} = sparse(0)
         rhs (:,1) double {Regularization.mustBeSparse} = sparse(0)
         assembled (1,1) logical = false
-
     end
 
     properties(Dependent)
@@ -46,13 +47,18 @@ classdef Regularization <...
             end
         end
     end
-
+    methods (Static, Sealed, Access=protected)
+        function obj = getDefaultScalarElement
+        % Default object used in array construction
+            obj = CoherenceRegularization;
+        end
+    end
     methods
         function obj = Regularization(varargin)
-            % Constructor
-            for ia = 1:2:nargin
-                obj.(varargin{ia}) = varargin{ia+1};
-            end
+            % call array constructor
+            obj = obj@helpers.ArraySupport(varargin{:})
+                      
+            obj.parse_class_params_inputs(varargin{:});
         end
 
         % function assemble_matrices(obj)

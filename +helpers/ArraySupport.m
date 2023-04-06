@@ -38,8 +38,10 @@ classdef ArraySupport < handle & matlab.mixin.Copyable
                     'Size of all non-scalar input should match')
                 siz_obj = num2cell(siz_nscal{1});
                 obj(siz_obj{:})=copy(obj);
+                for co = 2:numel(obj)-1 % needed for heterogeneous classes
+                    obj(co) = copy(obj(1));
+                end
             end
-
         end
     end
     methods(Access = protected, Sealed)
