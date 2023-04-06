@@ -179,6 +179,7 @@ classdef TaylorModel < DataModel
                     end
                 end
             end
+            %M = obj.rotate_matrix(M);
         end
         function par_name = tayl_name(obj, comp, coord, ord)
             if ord == 0

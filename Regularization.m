@@ -7,14 +7,15 @@ classdef Regularization <...
         bathy
         xs (1,1) XSection
         mesh (1,1) SigmaZetaMesh
-        model (1,1) DataModel
-        
+        model (1,1) DataModel      
         weight (1,1) double = 0;
 
         % Regularization/matrix
         C (:,:) double {Regularization.mustBeSparse} = sparse(0)
         Cg (:,:) double {Regularization.mustBeSparse} = sparse(0)
         rhs (:,1) double {Regularization.mustBeSparse} = sparse(0)
+        assembled (1,1) logical = false
+
     end
 
     properties(Dependent)
@@ -30,7 +31,6 @@ classdef Regularization <...
     methods(Abstract, Access = protected)
         assemble_matrix_private
     end
-
     methods(Static)
         function mustBeSparse(val)
             assert(issparse(val),'Value must be sparse')
@@ -97,6 +97,7 @@ classdef Regularization <...
         %     obj.gramian_matrices()
         % end
 
+
         function names_all = get.names_all(obj)
             flat_names = obj.flatten_names();
             cells_vec = cell([1,obj.mesh.ncells]);
@@ -152,7 +153,6 @@ classdef Regularization <...
 
     end
     methods(Access = protected)
-
         function IM = assemble_incidence(obj)
             obj.mesh = obj.mesh;
             IM = zeros(obj.mesh.ncells);
@@ -164,7 +164,7 @@ classdef Regularization <...
             IM = IM + IM';
         end
 
-        function W = assemble_weights(obj)
+        function W = assemble_weights(obj, opts)
 
             par_names = obj.flatten_names;
             Np = sum(obj.model.npars);
