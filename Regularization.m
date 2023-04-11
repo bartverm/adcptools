@@ -33,30 +33,30 @@ classdef Regularization <...
             end
         end
 
-        function assemble_matrices(obj, opts)
+        function assemble_matrices(obj)
             if(isa(obj.model,"TaylorModel"))
                 if (obj.model.s_order(1) > 0) && (obj.model.n_order(2) > 0)...
                         && (obj.model.sigma_order(3) > 0 || obj.model.z_order(3) > 0)
-                    obj.C{1} = obj.assemble_continuity_internal(opts);
+                    obj.C{1} = obj.assemble_continuity_internal();
                 else
                     warning('No internal continuity matrix assembled: Include higher order Taylor expansion')
                     obj.C{1} = sparse(0);
                 end
                 if (obj.model.s_order(1) > 0)
-                    obj.C{2} = obj.assemble_continuity_external(opts);
+                    obj.C{2} = obj.assemble_continuity_external();
                 else
                     warning('No external continuity matrix assembled: Include alongchannel Taylor expansion')
                     obj.C{2} = sparse(0);
                 end
                 if (all(obj.model.n_order > 0)) && (all(obj.model.sigma_order > 0) || all(obj.model.z_order > 0))
                     % This condition may be relaxed a bit.
-                    obj.C{4} = obj.assemble_consistency(opts);
+                    obj.C{4} = obj.assemble_consistency();
                 else
                     warning('No consistency matrix assembled: Fit a sufficient number of Taylor terms')
                     obj.C{4} = sparse(0);
                 end
                 if (all(obj.model.sigma_order > 0) || all(obj.model.z_order > 0))
-                    [obj.C{5}, obj.rhs] = obj.assemble_kinematic(opts);
+                    [obj.C{5}, obj.rhs] = obj.assemble_kinematic();
                 else
                     warning('No kinematic boundary condition matrix assembled: Include higher order Taylor expansion in sigma/z direction')
                     obj.C{5} = sparse(0);
@@ -71,7 +71,7 @@ classdef Regularization <...
                 obj.rhs = sparse(0);
             end
 
-            obj.C{3} = obj.assemble_coherence(opts);
+            obj.C{3} = obj.assemble_coherence();
             obj.gramian_matrices()
             obj.assembled = true;
         end
@@ -131,7 +131,7 @@ classdef Regularization <...
 
     end
     methods(Access = protected)
-        function C1 = assemble_continuity_internal(obj, opts)
+        function C1 = assemble_continuity_internal(obj)
             % Function that assembles cell-based continuity equation
             wl = obj.bathy.water_level;
 
@@ -175,7 +175,7 @@ classdef Regularization <...
             C1 = helpers.spblkdiag(Cj{:});
         end
 
-        function C2 = assemble_continuity_external(obj, opts)
+        function C2 = assemble_continuity_external(obj)
 
             wl = obj.bathy.water_level;
             D0 = obj.get_subtidal_depth();
@@ -233,7 +233,7 @@ classdef Regularization <...
             C2 = sparse(rows, cols, terms, obj.mesh.ncells*numel(const_names), obj.mesh.ncells*sum(obj.model.npars));
         end
 
-        function C3 = assemble_coherence(obj, opts)
+        function C3 = assemble_coherence(obj)
 
             Np = sum(obj.model.npars);
             Diag = speye(Np*obj.mesh.ncells);
@@ -262,7 +262,7 @@ classdef Regularization <...
 
         end
 
-        function C4 = assemble_consistency(obj, opts)
+        function C4 = assemble_consistency(obj)
 
             const_names = obj.get_const_names(); % Cell array
 
@@ -312,7 +312,7 @@ classdef Regularization <...
             C4 = sparse(rows, cols, terms, 6*obj.mesh.ncells*numel(const_names), obj.mesh.ncells*sum(obj.model.npars));
         end
 
-        function [C5, rhsvec] = assemble_kinematic(obj, opts)
+        function [C5, rhsvec] = assemble_kinematic(obj)
 
             % Function that assembles cell-based kinematic boundary conditions.
 
@@ -371,7 +371,7 @@ classdef Regularization <...
             IM = IM + IM';
         end
 
-        function W = assemble_weights(obj, opts)
+        function W = assemble_weights(obj)
 
             par_names = obj.flatten_names;
             Np = sum(obj.model.npars);
