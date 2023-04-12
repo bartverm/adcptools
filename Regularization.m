@@ -60,7 +60,6 @@ classdef Regularization <...
                       
             obj.parse_class_params_inputs(varargin{:});
         end
-
         % function assemble_matrices(obj)
         %     if(isa(obj.model,"TaylorModel"))
         %         if (obj.model.s_order(1) > 0) && (obj.model.n_order(2) > 0)...
@@ -102,7 +101,6 @@ classdef Regularization <...
         %     obj.C{3} = obj.assemble_coherence();
         %     obj.gramian_matrices()
         % end
-
 
         function names_all = get.names_all(obj)
             flat_names = obj.flatten_names();
@@ -170,7 +168,7 @@ classdef Regularization <...
             IM = IM + IM';
         end
 
-        function W = assemble_weights(obj, opts)
+        function W = assemble_weights(obj)
 
             par_names = obj.flatten_names;
             Np = sum(obj.model.npars);
@@ -291,7 +289,7 @@ classdef Regularization <...
             for cell_idx = 1:obj.mesh.ncells
                 if dom(cell_idx)==0 || dom(cell_idx)==1 || dom(cell_idx) == 5 % Internal cells (in terms of sigma)
                     dsig(cell_idx) = sig_center(nb(2, cell_idx))-sig_center(nb(4, cell_idx)); % central difference
-                elseif dom(cell_idx) ==2 || dom(cell_idx) == 3|| dom(cell_idx)==4                           %Surface cells (deprecated: replaced by boundary condition matrix)
+                elseif dom(cell_idx) ==2 || dom(cell_idx) == 3|| dom(cell_idx)==4 %Surface cells (deprecated: replaced by boundary condition matrix)
                     dsig(cell_idx) = sig_center(cell_idx)-sig_center(nb(4, cell_idx)); % one-sided difference
                 else                                                        % Bottom cells (deprecated: replaced by boundary condition matrix)
                     dsig(cell_idx) = sig_center(nb(2, cell_idx))-sig_center(cell_idx); % one-sided difference
