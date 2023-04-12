@@ -1,7 +1,19 @@
-classdef ExternalContinuityRegularization < Regularization
+classdef ExternalContinuityRegularization < TaylorBasedRegularization
 methods (Access = protected)
-        function C2 = assemble_matrix_private(obj)
-
+        function assemble_matrix_private(obj)
+            assemble_matrix_private@TaylorBasedRegularization(obj);
+            if ~obj.model_is_taylor
+                return
+            end
+            if obj.model.s_order(1) < 1
+                warning(['ExternalContinuityRegularization:',...
+                    'TaylorOrderTooLow'],...
+                    ['For external continuity regularization, Taylor ',...
+                    'expansion in along channel direction of ',...
+                    'downstream velocity component should be',...
+                    ' at least of first order.'])
+                return
+            end
             wl = obj.bathy.water_level;
             D0 = obj.get_subtidal_depth();
             const_names = obj.get_const_names(); % Cell array
@@ -55,7 +67,7 @@ methods (Access = protected)
                     row_idx = max(rows);
                 end
             end
-            C2 = sparse(rows, cols, terms, obj.mesh.ncells*numel(const_names), obj.mesh.ncells*sum(obj.model.npars));
+            obj.C = sparse(rows, cols, terms, obj.mesh.ncells*numel(const_names), obj.mesh.ncells*sum(obj.model.npars));
         end
 
 end

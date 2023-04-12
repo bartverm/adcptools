@@ -1,9 +1,20 @@
-classdef KinematicRegularization < Regularization
-    properties
-        C5
-    end
+classdef KinematicRegularization < TaylorBasedRegularization
     methods(Access = protected)
-        function [C5, rhsvec] = assemble_kinematic(obj)
+        function assemble_matrix_private(obj)
+            assemble_matrix_private@TaylorBasedRegularization(obj);
+            if ~obj.model_is_taylor
+                return
+            end
+            if ~(...
+                    all(obj.model.sigma_order > 0) ||...
+                    all(obj.model.z_order > 0) ...
+                )
+                warning('KinematicRegularization:TaylorOrderTooLow',...
+                    ['No kinematic boundary condition matrix ',...
+                    'assembled: Include higher order Taylor expansion',...
+                    'in sigma/z direction'])
+                return
+            end
 
             % Function that assembles cell-based kinematic boundary conditions.
 
@@ -47,8 +58,8 @@ classdef KinematicRegularization < Regularization
                     end
                 end
             end
-            C5 = helpers.spblkdiag(Cj{:});
-            rhsvec = cell2mat(rhsj);
+            obj.C = helpers.spblkdiag(Cj{:});
+            obj.rhs = sparse(cell2mat(rhsj));
         end
     end
 end

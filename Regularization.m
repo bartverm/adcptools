@@ -29,8 +29,11 @@ classdef Regularization <...
         zbsn (2,:) double
 
     end
-    methods(Abstract, Access = protected)
-        assemble_matrix_private
+    methods(Access = protected)
+        function assemble_matrix_private(obj)
+            obj.C = sparse(0);
+            obj.rhs = sparse(0);
+        end
     end
     methods(Static)
         function mustBeSparse(val)
@@ -39,11 +42,12 @@ classdef Regularization <...
     end
 
     methods(Sealed)
-        function C = assemble_matrices(obj, solver)
+        function assemble_matrices(obj)
             if ~isscalar(obj)
-                C = obj.run_method('assemble_matrix_private', solver);
+                obj.run_method('assemble_matrices');
             else
-                C = obj.assemble_matrix_private();
+                obj.assemble_matrix_private();
+                obj.gramian_matrix;
             end
         end
     end
@@ -60,48 +64,6 @@ classdef Regularization <...
                       
             obj.parse_class_params_inputs(varargin{:});
         end
-        % function assemble_matrices(obj)
-        %     if(isa(obj.model,"TaylorModel"))
-        %         if (obj.model.s_order(1) > 0) && (obj.model.n_order(2) > 0)...
-        %                 && (obj.model.sigma_order(3) > 0 || obj.model.z_order(3) > 0)
-        %             obj.C{1} = obj.assemble_continuity_internal();
-        %         else
-        %             warning('No internal continuity matrix assembled: Include higher order Taylor expansion')
-        %             obj.C{1} = sparse(0);
-        %         end
-        %         if (obj.model.s_order(1) > 0)
-        %             obj.C{2} = obj.assemble_continuity_external();
-        %         else
-        %             warning('No external continuity matrix assembled: Include alongchannel Taylor expansion')
-        %             obj.C{2} = sparse(0);
-        %         end
-        %         if (all(obj.model.n_order > 0)) && (all(obj.model.sigma_order > 0) || all(obj.model.z_order > 0))
-        %             % This condition may be relaxed a bit.
-        %             obj.C{4} = obj.assemble_consistency();
-        %         else
-        %             warning('No consistency matrix assembled: Fit a sufficient number of Taylor terms')
-        %             obj.C{4} = sparse(0);
-        %         end
-        %         if (all(obj.model.sigma_order > 0) || all(obj.model.z_order > 0))
-        %             [obj.C{5}, obj.rhs] = obj.assemble_kinematic();
-        %         else
-        %             warning('No kinematic boundary condition matrix assembled: Include higher order Taylor expansion in sigma/z direction')
-        %             obj.C{5} = sparse(0);
-        %             obj.rhs=sparse(0);
-        %         end
-        %     else
-        %         warning("To impose constraints on continuity and boundary conditions, a Taylor model is required. Only assembling coherence operator.");
-        %         obj.C{1} = sparse(0);
-        %         obj.C{2} = sparse(0);
-        %         obj.C{4} = sparse(0);
-        %         obj.C{5} = sparse(0);
-        %         obj.rhs = sparse(0);
-        %     end
-        % 
-        %     obj.C{3} = obj.assemble_coherence();
-        %     obj.gramian_matrices()
-        % end
-
         function names_all = get.names_all(obj)
             flat_names = obj.flatten_names();
             cells_vec = cell([1,obj.mesh.ncells]);
@@ -196,11 +158,8 @@ classdef Regularization <...
             W = helpers.spblkdiag(wj{:});
         end
 
-        function gramian_matrices(obj)
-            obj.Cg = cell(size(obj.C));
-            for idx = 1:length(obj.C)
-                obj.Cg{idx} = obj.C{idx}'*obj.C{idx};
-            end
+        function gramian_matrix(obj)
+            obj.Cg = obj.C'*obj.C;
         end
         
         function keep_idx = dom2keep_idx(obj)

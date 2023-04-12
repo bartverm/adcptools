@@ -1,7 +1,24 @@
-classdef ConsistencyRegularization
+classdef ConsistencyRegularization < TaylorBasedRegularization
 methods(Access = protected)
-        function C4 = assemble_consistency(obj)
-
+    function assemble_matrix_private(obj)
+            assemble_matrix_private@TaylorBasedRegularization(obj);
+            if ~obj.model_is_taylor
+                return
+            end
+            if ~(...
+                    all(obj.model.n_order > 0) &&...
+                    (...
+                    all(obj.model.sigma_order > 0) ||...
+                    all(obj.model.z_order > 0) ...
+                    ) ...
+                    )
+                % This condition may be relaxed a bit.
+                warning('ConsistencyRegularization:TaylorOrderTooLow',...
+                    ['No consistency matrix assembled: order of Taylor',...
+                    'expansions too low.'])
+                return
+            end
+            
             const_names = obj.get_const_names(); % Cell array
 
             nb = obj.neighbors;
@@ -46,7 +63,7 @@ methods(Access = protected)
                     end
                 end
             end
-            C4 = sparse(rows, cols, terms, 6*obj.mesh.ncells*numel(const_names), obj.mesh.ncells*sum(obj.model.npars));
+            obj.C = sparse(rows, cols, terms, 6*obj.mesh.ncells*numel(const_names), obj.mesh.ncells*sum(obj.model.npars));
         end
 end
 end

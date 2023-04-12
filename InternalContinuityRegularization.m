@@ -1,6 +1,20 @@
-classdef InternalContinuityRegularization < Regularization
+classdef InternalContinuityRegularization < TaylorBasedRegularization
     methods(Access=protected)
-        function C1=assemble_matrix_private(obj)
+        function assemble_matrix_private(obj)
+            assemble_matrix_private@TaylorBasedRegularization(obj);
+            if ~obj.model_is_taylor
+                return
+            end
+            if ~((obj.model.s_order(1) > 0) && (obj.model.n_order(2) > 0)...
+                    && (obj.model.sigma_order(3) > 0 ||...
+                    obj.model.z_order(3) > 0))
+                warning(['InternalContinuityRegularization:',...
+                    'TaylorOrderTooLow'],...
+                    ['Internal continuity matrix requires Taylor',...
+                    'expansion of first order or higher in all spatial',...
+                    'directions'])
+                return
+            end
             % Function that assembles cell-based continuity equation
             wl = obj.bathy.water_level;
 
@@ -13,6 +27,7 @@ classdef InternalContinuityRegularization < Regularization
             D0n = -obj.zbsn(2,:);
             sig = obj.mesh.sig_center;
             Cj = cell([obj.mesh.ncells,1]);
+
             % C1 is block diagonal and can thus be assembled per cell
             pnames = obj.flatten_names();
 
@@ -25,7 +40,8 @@ classdef InternalContinuityRegularization < Regularization
                     find(strcmp(pnames, ['d^1v/dsig^1', const_names{eq}])) , ...
                     find(strcmp(pnames, ['d^1w/dsig^1', const_names{eq}]))];
                 if eq > 1 % For tidal constituents, correlations between water level and velocity in sigma coordinates have to be included.
-                    col{eq}((numel(col{eq})+1):(numel(col{eq})+2)) = [find(strcmp(pnames, ['d^1u/dx^1', const_names{1}])),...
+                    col{eq}((numel(col{eq})+1):(numel(col{eq})+2)) =...
+                        [find(strcmp(pnames, ['d^1u/dx^1', const_names{1}])),...
                         find(strcmp(pnames, ['d^1v/dy^1', const_names{1}]))];
                 end
             end
@@ -41,9 +57,7 @@ classdef InternalContinuityRegularization < Regularization
                     Cj{cell_idx}(eq,col{eq}) = term{eq};
                 end
             end
-            C1 = helpers.spblkdiag(Cj{:});
-
-
+            obj.C = helpers.spblkdiag(Cj{:});
         end
     end
 end

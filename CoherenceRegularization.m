@@ -1,7 +1,7 @@
 classdef CoherenceRegularization < Regularization
     methods(Access = protected)
-        function C3 = assemble_matrix_private(obj)
-
+        function assemble_matrix_private(obj)
+            assemble_matrix_private@Regularization(obj);
             Np = sum(obj.model.npars);
             Diag = speye(Np*obj.mesh.ncells);
             rows = []; cols = []; vals = [];
@@ -21,11 +21,11 @@ classdef CoherenceRegularization < Regularization
                     vals = [vals val];
                 end
             end
-            C3 = Diag + sparse(rows, cols, vals, obj.mesh.ncells*Np, obj.mesh.ncells*Np);
+            obj.C = Diag + sparse(rows, cols, vals, obj.mesh.ncells*Np, obj.mesh.ncells*Np);
 
             W = obj.assemble_weights();
 
-            C3 = W*C3;
+            obj.C = W*obj.C;
 
         end
     end
