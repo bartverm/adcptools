@@ -4,11 +4,12 @@ classdef Regularization <...
         matlab.mixin.Heterogeneous &...  % allow arrays of different subclasses
         helpers.ClassParamsInputHandling % add support for class and name-value arguements
 
-    properties
+    properties(SetObservable)
         bathy (1,1) Bathymetry = BathymetryScatteredPoints
         xs (1,1) XSection = XSection
         mesh (1,1) Mesh = SigmaZetaMesh
         model (1,1) DataModel = DataModel
+        weight (1,:) double
 
     end
     properties(SetAccess = protected)
@@ -31,13 +32,19 @@ classdef Regularization <...
     end
     methods(Access = protected)
         function assemble_matrix_private(obj)
-            obj.C = sparse(0);
-            obj.rhs = sparse(0);
+            obj.assembled = true;
         end
     end
-    methods(Static)
+    methods(Static)     
         function mustBeSparse(val)
             assert(issparse(val),'Value must be sparse')
+        end
+        function regs = get_all_regs(varargin)
+            regs = [InternalContinuityRegularization(varargin{:});...
+                    ExternalContinuityRegularization(varargin{:});
+                    CoherenceRegularization(varargin{:});...
+                    ConsistencyRegularization(varargin{:});...
+                    KinematicRegularization(varargin{:})];
         end
     end
 
@@ -46,15 +53,12 @@ classdef Regularization <...
             if ~isscalar(obj)
                 obj.run_method('assemble_matrices');
             else
-                obj.assemble_matrix_private();
-                obj.gramian_matrix;
+                if obj.assembled == false
+                    obj.assemble_matrix_private();
+                    obj.gramian_matrix;
+                    obj.assembled = true;
+                end
             end
-        end
-    end
-    methods (Static, Sealed, Access=protected)
-        function obj = getDefaultScalarElement
-        % Default object used in array construction
-            obj = CoherenceRegularization;
         end
     end
     methods
@@ -63,8 +67,11 @@ classdef Regularization <...
             obj = obj@helpers.ArraySupport(varargin{:})
                       
             obj.parse_class_params_inputs(varargin{:});
+            
+
         end
         function names_all = get.names_all(obj)
+            % -> TaylorBasedRegular.
             flat_names = obj.flatten_names();
             cells_vec = cell([1,obj.mesh.ncells]);
             for idx = 1:obj.mesh.ncells % loop trough every cell
@@ -74,6 +81,7 @@ classdef Regularization <...
         end
 
         function neighbors = get.neighbors(obj)
+            % get neighbors for each mesh cell -> Mesh
             neighbors = zeros([4,obj.mesh.ncells]);
             for idx = 1:obj.mesh.ncells % loop trough every cell
                 [neighbors(:,idx), ~] = obj.mesh.get_neighbors(idx);
@@ -81,6 +89,7 @@ classdef Regularization <...
         end
 
         function domains = get.domains(obj)
+            % get domain -> Mesh
             domains = zeros([1,obj.mesh.ncells]);
             for idx = 1:obj.mesh.ncells % loop trough every cell
                 [~, domains(1,idx)] = obj.mesh.get_neighbors(idx);
@@ -88,9 +97,11 @@ classdef Regularization <...
         end
 
         function zb0 = get.zb0(obj)
+            % get bed elevation
             zb0(1,:) = obj.mesh.zb_middle(obj.mesh.col_to_cell);
         end
         function zbxy = get.zbxy(obj)
+            % compute dzb/dx dzb/dy for each mesh cell -> Mesh
             dx = 2;
             dy = 2; % meters: for estimating bathymetric gradients using centered differences
             % Centered difference in Cartesian x,y coordinates
@@ -100,7 +111,7 @@ classdef Regularization <...
                 obj.bathy.get_depth(obj.mesh.x_middle(obj.mesh.col_to_cell),obj.mesh.y_middle(obj.mesh.col_to_cell)-dy,obj.mesh.time));
         end
         function zbsn = get.zbsn(obj)
-
+            % same as above, rotated to xs directions
             ds = 2;
             dn = 2;
 
@@ -120,6 +131,7 @@ classdef Regularization <...
     end
     methods(Access = protected)
         function IM = assemble_incidence(obj)
+            % unused -> remove?
             obj.mesh = obj.mesh;
             IM = zeros(obj.mesh.ncells);
             for j = 1:obj.mesh.ncells % loop trough every cell
@@ -131,7 +143,7 @@ classdef Regularization <...
         end
 
         function W = assemble_weights(obj)
-
+            % scaling for Coherence -> CoherenceRegularization
             par_names = obj.flatten_names;
             Np = sum(obj.model.npars);
             w = ones([Np,1]);
@@ -163,6 +175,7 @@ classdef Regularization <...
         end
         
         function keep_idx = dom2keep_idx(obj)
+            % -> ConsistencyRegularization
             keep_idx = cell([obj.mesh.ncells,1]);
             dom = obj.domains;
             for cell_idx = 1:obj.mesh.ncells
@@ -211,7 +224,7 @@ classdef Regularization <...
         end
 
         function flat_names = flatten_names(obj)
-            flat_names = [obj.model.names{:}];
+            flat_names = obj.model.all_names{:};
         end
 
         function res = findn(obj, cell_of_str, str)

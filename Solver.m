@@ -65,7 +65,7 @@ classdef Solver < helpers.ArraySupport
         %   Velocity model to use when solving for velocity
         %
         %   see also: Solver, DataModel
-        data_model (1,1) DataModel = DataModel;
+        data_model (1,1) DataModel = VelocityModel;
 
         % Solver/regularization
         %
@@ -73,7 +73,7 @@ classdef Solver < helpers.ArraySupport
         %   empty object will be created.
         %
         %   see also: Solver, DataModel
-        regularization (1,1) Regularization
+        regularization (1,:) Regularization
 
 
         % Solver/opts
@@ -188,7 +188,7 @@ classdef Solver < helpers.ArraySupport
             % From here, different solvers are used depending on the
             % SolverOptions opts
 
-            
+
 
             switch obj.opts.algorithm
                 case "lscov"
@@ -279,126 +279,126 @@ classdef Solver < helpers.ArraySupport
                 otherwise
                     error("Enter correct algorithm in SolverOptions: lscov (only data, cell-based) or pcg (regularized, global)")
             end
-            end
-
-            function [varargout] = get_data(obj, varargin)
-                %   Get data from model parameters
-                %
-                %   vel=get_data(obj)
-                %
-                %   [vel,cov_vel] = get_data(obj)
-
-                % Handle non-scalar call
-                varargout = cell(1,nargout);
-                if ~isscalar(obj)
-                    [varargout{:}] = obj.run_method('get_data',varargin{:});
-                    return
-                end
-
-                % scalar call
-                if nargin == 1
-                    varargin = cell(1,3);
-                    [varargin{:}] = get_parameters(obj);
-                end
-                if nargin > 1
-                    if nargin - 1 < nargout
-                        error('VelocitySolver:WrongInputNumber',...
-                            'Please pass no input other than object, or as many inputs as required outputs')
-                    end
-                end
-                varargout = cell(1,nargout);
-                [varargout{:}] = ...
-                    obj.data_model.get_data(varargin{:});
-            end
-
         end
 
-        methods(Access=protected)
-            function [idx_mesh,idx_ef]=make_indices(obj)
-                nrp=max(numel(obj.ensemble_filter),numel(obj.mesh));
-                idx_mesh=ones(nrp,1);
-                idx_ef=ones(nrp,1);
-                if ~isscalar(obj.mesh)
-                    idx_mesh=cumsum(idx_mesh);
-                    assert(numel(obj.mesh)==nrp,'number of elements of mesh and ensemble_filter properties should match')
-                end
-                if ~isscalar(obj.ensemble_filter)
-                    idx_ef=cumsum(idx_ef);
-                    assert(numel(obj.ensemble_filter)==nrp,'number of elements of mesh and ensemble_filter properties should match')
-                end
-            end
-
-            function p = solve(obj, M, b)
-                Np = size(M,2);
-                % Generate first guess for p <-> estimate parameters
-                p = nan([Np,length(obj.opts.reg_pars)]);
-                Mg = M'*M; % Expensive operation -> minimize number of calls
-                for idx = 1:length(obj.opts.reg_pars)
-                    rp = obj.opts.reg_pars{idx};
-                    Cg = sparse(0);
-                    for reg_idx = 1:numel(obj.regularization.Cg)
-                        Cg = Cg + rp(reg_idx)*obj.regularization.Cg{reg_idx};
-                    end
-                    A = Mg + Cg; % Data plus constraints
-                    rhs = M'*b + rp(end)*obj.regularization.C{end}'*obj.regularization.rhs;
-                    [p(:,idx), flag] = obj.solve_single(A, rhs);
-                    disp(['Obtained solution using lambda = [', num2str(rp), ']^T after ', num2str(flag), ' iterations.'])
-                end
-            end
-
-            function [p, iter] = solve_single(obj, A, rhs)
-                if obj.opts.set_diagcomp
-                    obj.opts.preconditioner_opts.diagcomp = max(sum(abs(A),2)./diag(A))-2;
-                end
-                L = ichol(A, obj.opts.preconditioner_opts);
-                [p, ~, ~, iter, ~] = pcg(A, rhs, obj.opts.pcg_tol, obj.opts.pcg_iter, L, L');
-
-            end
-
-
-
-            function [M, b, ns] = reorder_model_matrix(obj, Mb0, dat, cell_idx)
-                Mj = cell([obj.mesh.ncells,1]);
-                ns = zeros([obj.mesh.ncells,1]);
-                bj = cell([obj.mesh.ncells,1]);
-                for j = 1:obj.mesh.ncells
-                    Mj{j} = Mb0(j==cell_idx,:);
-                    ns(j) = sum(j == cell_idx);
-                    bj{j} = dat(j==cell_idx);
-                end
-                b = vertcat(bj{:});
-                M = helpers.spblkdiag(Mj{:});
-
-            end
-        end
-
-        methods (Abstract, Access=protected)
-            % Get input data for velocity solver
-            %       [vpos, vdat, xform, time] = get_solver_input(obj) returns the velocity
-            %       position, the velocity data, the transformation matrix  to get
-            %       from the velocity data to velocity components in earth
-            %       coordinates and the time of the data
+        function [varargout] = get_data(obj, varargin)
+            %   Get data from model parameters
             %
-            %       Subclasses should implement this function
-            [vpos, vdat, xform, time, wl] = get_solver_input(obj)
+            %   vel=get_data(obj)
+            %
+            %   [vel,cov_vel] = get_data(obj)
+
+            % Handle non-scalar call
+            varargout = cell(1,nargout);
+            if ~isscalar(obj)
+                [varargout{:}] = obj.run_method('get_data',varargin{:});
+                return
+            end
+
+            % scalar call
+            if nargin == 1
+                varargin = cell(1,3);
+                [varargin{:}] = get_parameters(obj);
+            end
+            if nargin > 1
+                if nargin - 1 < nargout
+                    error('VelocitySolver:WrongInputNumber',...
+                        'Please pass no input other than object, or as many inputs as required outputs')
+                end
+            end
+            varargout = cell(1,nargout);
+            [varargout{:}] = ...
+                obj.data_model.get_data(varargin{:});
+        end
+
+    end
+
+    methods(Access=protected)
+        function [idx_mesh,idx_ef]=make_indices(obj)
+            nrp=max(numel(obj.ensemble_filter),numel(obj.mesh));
+            idx_mesh=ones(nrp,1);
+            idx_ef=ones(nrp,1);
+            if ~isscalar(obj.mesh)
+                idx_mesh=cumsum(idx_mesh);
+                assert(numel(obj.mesh)==nrp,'number of elements of mesh and ensemble_filter properties should match')
+            end
+            if ~isscalar(obj.ensemble_filter)
+                idx_ef=cumsum(idx_ef);
+                assert(numel(obj.ensemble_filter)==nrp,'number of elements of mesh and ensemble_filter properties should match')
+            end
+        end
+
+        function p = solve(obj, M, b)
+            Np = size(M,2);
+            % Generate first guess for p <-> estimate parameters
+            p = nan([Np,length(obj.opts.reg_pars)]);
+            Mg = M'*M; % Expensive operation -> minimize number of calls
+            for idx = 1:length(obj.opts.reg_pars)
+                rp = obj.opts.reg_pars{idx};
+                Cg = sparse(0);
+                for reg_idx = 1:numel(obj.regularization.Cg)
+                    Cg = Cg + rp(reg_idx)*obj.regularization.Cg{reg_idx};
+                end
+                A = Mg + Cg; % Data plus constraints
+                rhs = M'*b + rp(end)*obj.regularization.C{end}'*obj.regularization.rhs;
+                [p(:,idx), flag] = obj.solve_single(A, rhs);
+                disp(['Obtained solution using lambda = [', num2str(rp), ']^T after ', num2str(flag), ' iterations.'])
+            end
+        end
+
+        function [p, iter] = solve_single(obj, A, rhs)
+            if obj.opts.set_diagcomp
+                obj.opts.preconditioner_opts.diagcomp = max(sum(abs(A),2)./diag(A))-2;
+            end
+            L = ichol(A, obj.opts.preconditioner_opts);
+            [p, ~, ~, iter, ~] = pcg(A, rhs, obj.opts.pcg_tol, obj.opts.pcg_iter, L, L');
+
         end
 
 
-        methods(Static, Access=protected)
-            function [model_pars, n_dat, cov_matrix] = fit_model(vel, varargin)
-                % This function fits the given model to the existing data
 
-                n_dat = numel(vel); % number of velocity data
-                model_mat = [varargin{:}];  % model matrix
-                n_pars = size(model_mat, 2); % number of model parameters
-                % handle rank deficient model matrices
-                if rank(model_mat) < n_pars
-                    model_pars = nan(n_pars, 1);
-                    cov_matrix = nan(n_pars, n_pars);
-                    return
-                end
-                % fit model tot data
-                [model_pars, ~, ~, cov_matrix] = lscov(model_mat, vel);
+        function [M, b, ns] = reorder_model_matrix(obj, Mb0, dat, cell_idx)
+            Mj = cell([obj.mesh.ncells,1]);
+            ns = zeros([obj.mesh.ncells,1]);
+            bj = cell([obj.mesh.ncells,1]);
+            for j = 1:obj.mesh.ncells
+                Mj{j} = Mb0(j==cell_idx,:);
+                ns(j) = sum(j == cell_idx);
+                bj{j} = dat(j==cell_idx);
             end
+            b = vertcat(bj{:});
+            M = helpers.spblkdiag(Mj{:});
+
         end
     end
+
+    methods (Abstract, Access=protected)
+        % Get input data for velocity solver
+        %       [vpos, vdat, xform, time] = get_solver_input(obj) returns the velocity
+        %       position, the velocity data, the transformation matrix  to get
+        %       from the velocity data to velocity components in earth
+        %       coordinates and the time of the data
+        %
+        %       Subclasses should implement this function
+        [vpos, vdat, xform, time, wl] = get_solver_input(obj)
+    end
+
+
+    methods(Static, Access=protected)
+        function [model_pars, n_dat, cov_matrix] = fit_model(vel, varargin)
+            % This function fits the given model to the existing data
+
+            n_dat = numel(vel); % number of velocity data
+            model_mat = [varargin{:}];  % model matrix
+            n_pars = size(model_mat, 2); % number of model parameters
+            % handle rank deficient model matrices
+            if rank(model_mat) < n_pars
+                model_pars = nan(n_pars, 1);
+                cov_matrix = nan(n_pars, n_pars);
+                return
+            end
+            % fit model tot data
+            [model_pars, ~, ~, cov_matrix] = lscov(model_mat, vel);
+        end
+    end
+end

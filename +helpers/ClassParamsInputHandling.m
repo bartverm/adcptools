@@ -1,6 +1,29 @@
 classdef ClassParamsInputHandling < helpers.ArraySupport
+% class adding support for class and parameter based inputs
+%
+%  ClassParamsInputHandling methods:
+%   parse_class_params_inputs - parses inputs
+%
+%   see also: helpers
+
     methods
-        function unhandled = parse_class_params_inputs(obj,varargin)
+        function out = parse_class_params_inputs(obj,varargin)
+% Assign inputs to the class properties based on parameter name or class
+%
+%   obj.parse_class_params_inputs(varargin) assigns any 'parameterName', 
+%   parameterValue pair to an objects' property whenever the 
+%   'parameterName' matches an assignable object property. All inputs that 
+%   do not fullfill above requirements and that are handle objects, are 
+%   assigned to objects property when their class matches an assignable 
+%   property's class. 
+%
+%   unhandled = obj.parse_class_params_inputs(varargin) returns the number
+%   of the unhandles input parameters.
+%
+%   The method warns for unhandled inputs
+%
+%   see also: ClassParamsInputHandling
+
             %%% find assignable properties in class
             mc = metaclass(obj);
             propnames = {mc.PropertyList.Name};
@@ -43,6 +66,10 @@ classdef ClassParamsInputHandling < helpers.ArraySupport
             fpars_success_class = true(size(f_unproc));
             % assign inputs based on class
             for cp = 1:numel(f_unproc)
+                if ~isa(varargin{f_unproc(cp)},'handle')
+                    fpars_success_class(cp) = false;
+                    continue
+                end
                 fmatch = cellfun(@(x) isa(varargin{f_unproc(cp)},x),props_class);
                 if any(fmatch)
                     obj.assign_property(propnames{fmatch},varargin{f_unproc(cp)})
@@ -57,19 +84,21 @@ classdef ClassParamsInputHandling < helpers.ArraySupport
                 [fpars_success_pars fpars_success_class]);
 
             %%% Generate warning or error if needed
-            if isempty(unhandled)
-                return
+            if ~isempty(unhandled)
+                if numel(unhandled) == 1
+                    inp_num_str = sprintf('%d',unhandled);
+                else
+                    inp_num_str = sprintf('%d, ',unhandled(1:end-1));
+                    inp_num_str(end-1:end)=[];
+                    inp_num_str = [inp_num_str ' and ' sprintf('%d',unhandled(end))];
+                end
+                msg_id = 'ClassParamsInputHandling:unhadled_inputs';
+                msg = ['Could not handle inputs number ', inp_num_str];
+                warning(msg_id, msg)
             end
-            if numel(unhandled) == 1
-                inp_num_str = sprintf('%d',unhandled);
-            else
-                inp_num_str = sprintf('%d, ',unhandled(1:end-1));
-                inp_num_str(end-1:end)=[];
-                inp_num_str = [inp_num_str ' and ' sprintf('%d',unhandled(end))];
+            if nargout > 0
+                out = unhandled;
             end
-            msg_id = 'ClassParamsInputHandling:unhadled_inputs';
-            msg = ['Could not handle inputs number ', inp_num_str];
-            warning(msg_id, msg)
         end
     end
 end

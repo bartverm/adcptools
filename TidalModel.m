@@ -1,4 +1,4 @@
-classdef TidalModel < DataModel
+classdef TidalModel < VelocityModel
     % Velocity model to include tidal dynamics
     %
     %   TidalModel properties:
@@ -121,6 +121,20 @@ classdef TidalModel < DataModel
             periods = repmat(obj.const_to_periods(), [obj.ncomponents, 1]);
         end
 
+        function omega = get_omega(obj)
+            omega = 2*pi./obj.periods;
+        end
+
+        function val = get_npars_tid(obj)
+            val = ones(1, obj.get_ncomponents).*(1 + 2*obj.get_nconstituents);
+        end
+
+    end
+    methods(Access=protected)
+        function val = get_ncomponents(obj)
+            val = numel(obj.components);
+        end
+
         function names = get_names(obj)
 
             % Forms a cell array of dimensions 1xobj.ncomponents
@@ -140,22 +154,8 @@ classdef TidalModel < DataModel
             end
         end
 
-        function omega = get_omega(obj)
-            omega = 2*pi./obj.periods;
-        end
-
         function val = get_npars(obj)
             val = get_npars_tid(obj);
-        end
-
-        function val = get_npars_tid(obj)
-            val = ones(1, obj.get_ncomponents).*(1 + 2*obj.get_nconstituents);
-        end
-
-    end
-    methods(Access=protected)
-        function val = get_ncomponents(obj)
-            val = numel(obj.components);
         end
 
         function val = get_nconstituents(obj)

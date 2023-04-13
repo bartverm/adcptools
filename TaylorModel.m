@@ -1,4 +1,4 @@
-classdef TaylorModel < DataModel
+classdef TaylorModel < VelocityModel
     % Velocity model based on Taylor expansions.
     %
     %   TaylorModel properties:
@@ -12,7 +12,7 @@ classdef TaylorModel < DataModel
     %   get_velocity - return velocity based on model parameters
     %
     %  see also: DataModel
-
+    
     properties
         % TaylorModel/time-order order of expansion in time
         %
@@ -191,7 +191,7 @@ classdef TaylorModel < DataModel
 
 
     end
-    methods
+    methods (Access = protected)
         function names = get_names(obj)
             % Only supports diagonal Hessian matrices
 

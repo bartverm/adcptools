@@ -156,10 +156,6 @@ classdef TaylorTidalModel < TaylorModel & TidalModel
 
     end
 
-    properties(Dependent)
-
-    end
-
     methods
         function obj = TaylorTidalModel(varargin)
             for ia = 1:2:nargin
@@ -187,6 +183,13 @@ classdef TaylorTidalModel < TaylorModel & TidalModel
             end
         end
 
+
+
+
+    end
+
+
+    methods(Access=protected)
         function names = get_names(obj)
             tayl_names = get_names@TaylorModel(obj);
             tid_names = get_names@TidalModel(obj);
@@ -196,7 +199,6 @@ classdef TaylorTidalModel < TaylorModel & TidalModel
             end
 
         end
-
         function val = get_npars(obj)
             ntay = get_npars@TaylorModel(obj);
             ntid = get_npars@TidalModel(obj);
@@ -211,11 +213,6 @@ classdef TaylorTidalModel < TaylorModel & TidalModel
             %                 2*numel(obj.constituents) + 1, ...
             %                 2*numel(obj.constituents) + 1];
         end
-
-    end
-
-
-    methods(Access=protected)
         function val = get_ncomponents(obj)
             val = numel(obj.components);
         end

@@ -1,8 +1,6 @@
 classdef TaylorBasedRegularization < Regularization
     methods(Access = protected)
         function assemble_matrix_private(obj,varargin)
-            assemble_matrix_private@Regularization(obj,...
-                varargin{:});
             if ~obj.model_is_taylor
                 warning("TaylorBasedRegularizon:NoTaylorModel",...
                     "Regularization requires a TaylorModel");

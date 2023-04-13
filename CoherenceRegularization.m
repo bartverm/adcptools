@@ -1,7 +1,6 @@
 classdef CoherenceRegularization < Regularization
     methods(Access = protected)
         function assemble_matrix_private(obj)
-            assemble_matrix_private@Regularization(obj);
             Np = sum(obj.model.npars);
             Diag = speye(Np*obj.mesh.ncells);
             rows = []; cols = []; vals = [];

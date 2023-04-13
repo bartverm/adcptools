@@ -1,4 +1,6 @@
-classdef DataModel < handle
+classdef DataModel <...
+        handle &...
+        helpers.ClassParamsInputHandling 
     % Model for Cartesian velocity components
     %
     %   This base class implements a dummy model, i.e. each velocity is
@@ -16,10 +18,6 @@ classdef DataModel < handle
     %
     %  see also: TaylorModel, TidalModel, DataSolver
 
-    properties
-        components = {'u', 'v', 'w'}
-        rotation (1,1) double = 0;
-    end
     properties(Dependent, SetAccess=private)
         % DataModel/npars (read only) number of parameters in the model
         %
@@ -41,22 +39,11 @@ classdef DataModel < handle
         %   see also: DataModel, get_model
         ncomponents
 
-        % ncomponents x ncomponents rotation matrix
-        rotation_matrix (:,:) double
-
         names
+
+        all_names
     end
     methods
-        function obj = DataModel(varargin)
-            % Only properties allowed to set:
-
-            % components
-            % rotation
-
-            for ia = 1:2:nargin
-                obj.(varargin{ia}) = varargin{ia+1};
-            end
-        end
         function [dat, cov_dat, n_bvels] = get_data(obj, pars, cov_pars, n_bvels, d_time, d_s, d_n, d_z, d_sigma)
             % Compute data values from model parameters.
             %
@@ -136,12 +123,25 @@ classdef DataModel < handle
         end
         function names = get.names(obj)
             names = obj.get_names;
+            assert(iscell(names),...
+                'Parameter names should be given as a cell')
+            assert(numel(names) == obj.ncomponents, ...
+                ['Number of cell elements should match number of',...
+                ' components'])
+            assert(all(cellfun(@(x) iscellstr(x) || isstring(x), names))...
+                , ['Names for each component should be given as cell',...
+                ' of character vectors or as strings'])
+            assert(isequal(...
+                reshape(cellfun(@numel, names),1,[]),...
+                obj.npars),...
+                ['Number of parameter names for each component should',...
+                ' match the number of parameters for each component.'])
         end
-        function names = get_names(obj)
-            names = obj.components;
+        function val = get.all_names(obj)
+            val = [obj.names{:}];
         end
-
-        function M = get_model(obj, d_time, ~, ~, ~, ~)
+    end
+    methods(Abstract)
             % build velocity model matrices
             %
             %   M is NEnsembles x NPars x Ncomp
@@ -166,63 +166,11 @@ classdef DataModel < handle
             %   difference with the mesh time.
             %
             %   see also: Solver, TaylorModel, TidalModel.
-
-            M = ones(numel(d_time), 1, obj.ncomponents);
-        end
-
-        function rotation_matrix = get.rotation_matrix(obj)
-            if obj.ncomponents == 1
-                rotation_matrix = 1;
-            elseif obj.ncomponents == 3
-                rotation_matrix = [cos(obj.rotation), -sin(obj.rotation), 0;...
-                    sin(obj.rotation), cos(obj.rotation), 0;...
-                    0, 0, 1];
-            end
-        end
-
-        function Mrot = rotate_matrix(obj, M)
-            % assuming M is a n_data x n_pars x n_comp matrix
-            % Can be done using mat_mult, different implementation here.
-            % The rotation assumes same sizes of Mu, Mv, Mw.
-
-            R = obj.rotation_matrix;
-            Mrot = zeros(size(M));
-            if numel(R) == 1
-                Mrot = M; % Scalar quantity is not rotated
-            else
-                for dim = 1:obj.ncomponents
-                    Mrot(:,:,dim) = R(dim,1)*M(:,:,1) + R(dim,2)*M(:,:,2) + R(dim,3)*M(:,:,3); % Vector quantity
-                end
-            end
-        end
-
-%         function Mrot = rotate_matrix(obj, M)
-%             % assuming M is a n_data x n_pars x n_comp matrix
-%             % Can be done using mat_mult, different implementation here.
-%             % The rotation assumes same sizes of Mu, Mv, Mw.
-% 
-%             R = obj.rotation_matrix;
-%             Mrot = zeros(size(M));
-%             if numel(R) == 1
-%                 Mrot = M; % Scalar quantity is not rotated
-%             else
-%                 for dim = 1:obj.ncomponents
-%                     Mrot(:,:,dim) = R(dim,1)*M(:,:,1) + R(dim,2)*M(:,:,2) + R(dim,3)*M(:,:,3); % Vector quantity
-%                 end
-%             end
-%         end
-
-        function val=get_npars(~)
-            % return number of parameters as a 3x1 row vector, with the number
-            % of parameters for the x,y and z components, respectively.
-            val=[1 1 1];
-        end
-        
+            get_model(obj, d_time, ~, ~, ~, ~)
     end
-    methods(Access=protected)
-
-        function val = get_ncomponents(~)
-            val = 3;
-        end
+    methods(Abstract, Access=protected)
+        get_names
+        get_ncomponents
+        get_npars
     end
 end
