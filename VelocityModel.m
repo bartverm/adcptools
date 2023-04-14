@@ -16,10 +16,6 @@ classdef VelocityModel < DataModel
         rotation_matrix (:,:) double {mustBeFiniate, mustBeReal}
     end
     methods
-        function obj = VelocityModel(varargin)
-            obj.parse_class_params_inputs(varargin{:})
-        end
-
         function rotation_matrix = get.rotation_matrix(obj)
             rotation_matrix = [cos(obj.rotation), -sin(obj.rotation), 0;...
                 sin(obj.rotation), cos(obj.rotation), 0;...

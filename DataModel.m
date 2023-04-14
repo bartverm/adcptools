@@ -44,6 +44,9 @@ classdef DataModel <...
         all_names
     end
     methods
+        function obj = DataModel(varargin)
+            obj.parse_class_params_inputs(varargin{:})
+        end
         function [dat, cov_dat, n_bvels] = get_data(obj, pars, cov_pars, n_bvels, d_time, d_s, d_n, d_z, d_sigma)
             % Compute data values from model parameters.
             %

@@ -18,7 +18,7 @@ classdef TidalModel < VelocityModel
         constituents = {};
     end
 
-    properties(Dependent)
+    properties(Dependent, SetAccess = protected)
         % TidalModel/constituents constituents to fit data with
         %
         %   MxN array defining tidal constituents to be included in the model
@@ -38,12 +38,6 @@ classdef TidalModel < VelocityModel
 
 
     methods
-        function obj = TidalModel(varargin)
-            for ia = 1:2:nargin
-                obj.(varargin{ia}) = varargin{ia+1};
-            end
-        end
-
 
         function M = get_model(obj, d_time, ~, ~, ~, ~)
             % This model fits the following parameters to the velocity

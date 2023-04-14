@@ -31,10 +31,6 @@ classdef ClassParamsInputHandling < helpers.ArraySupport
                 ~[mc.PropertyList.Dependent] & ...
                 ~[mc.PropertyList.Constant] ;
             propnames = propnames(f_props);
-            props_class = cellfun(@(x) class(obj(1).(x)),propnames,...
-                'UniformOutput',false);
-            [props_class,idx] = unique(props_class);
-            propnames = propnames(idx);
 
             %%% find parameter inputs and assign them
 
@@ -50,18 +46,34 @@ classdef ClassParamsInputHandling < helpers.ArraySupport
             fpars(fpars == numel(varargin))=[];
 
             fpars_success_pars = true(size(fpars));
+            prop_assigned=false(size(propnames));
             for ia = 1:numel(fpars)
                 try
                     obj.assign_property(varargin{fpars(ia)},varargin{fpars(ia)+1});
-                catch % if assignment is unsuccesfull, remove it from
+                catch err% if assignment is unsuccesfull, remove it from
                     % successfull assignments
                     fpars_success_pars(ia)=false;
+                    warning(['Failed to assign property %s with error: ',...
+                        err.message],varargin{fpars(ia)})
+                end
+                if fpars_success_pars(ia)
+                    prop_assigned = true;
                 end
             end
             fpars_success_pars = fpars(fpars_success_pars);
             fpars_success_pars = [fpars_success_pars fpars_success_pars+1];
 
             %%% find class based inputs and assign them
+            propnames(prop_assigned) = []; % remove assigned properties from assignable ones
+
+            % only assign properties based on class if there is only one
+            % property with that particular class
+            props_class = cellfun(@(x) class(obj(1).(x)),propnames,...
+                'UniformOutput',false);
+            [props_class,idx] = unique(props_class);
+            propnames = propnames(idx);
+             
+
             f_unproc = setdiff(1:numel(varargin), fpars_success_pars);
             fpars_success_class = true(size(f_unproc));
             % assign inputs based on class

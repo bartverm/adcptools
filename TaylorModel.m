@@ -131,13 +131,6 @@ classdef TaylorModel < VelocityModel
     end
 
     methods
-
-        function obj = TaylorModel(varargin)
-            for ia = 1:2:nargin
-                obj.(varargin{ia}) = varargin{ia+1};
-            end
-        end
-
         function val = get.npars_per_order(obj)
             lo = obj.lump_orders();
             nc = obj.ncomponents;
