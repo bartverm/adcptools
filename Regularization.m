@@ -256,7 +256,7 @@ classdef Regularization <...
             end
             C3 = Diag + sparse(rows, cols, vals, obj.mesh.ncells*Np, obj.mesh.ncells*Np);
 
-            W = obj.assemble_weights(opts);
+            W = obj.assemble_weights;
 
             C3 = W*C3;
 
