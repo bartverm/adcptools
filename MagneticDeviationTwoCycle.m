@@ -77,10 +77,19 @@ classdef MagneticDeviationTwoCycle < MagneticDeviationModel
 
             obj.set_deviation_correction(vmadcp)
 
-            % find outliers and gaps
+            % find time jumps
             fgood = dt < median(dt)*3;
+
+            % find zero steps
+            fgood = fgood &...
+                gps_dx ~=0 &...
+                gps_dy ~=0 &...
+                bt_dx ~=0 &...
+                bt_dy ~=0;
+
+            % find
             lratio = hypot(bt_dx,bt_dy)./hypot(gps_dx,gps_dy);
-            std_lratio = std(lratio,'omitmissing');
+            std_lratio = std(lratio(isfinite(lratio)),'omitnan');
             fgood = fgood &...
                 lratio > lratio-std_lratio &...
                 lratio < lratio+std_lratio;
