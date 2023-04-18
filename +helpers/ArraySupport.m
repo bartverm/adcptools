@@ -1,4 +1,4 @@
-classdef ArraySupport < matlab.mixin.Copyable
+classdef ArraySupport < handle & matlab.mixin.Copyable
 % Class to help onstruct object arrays based on array input to constructor
 %
 %   obj = ArraySupport(...) constructs obj. The size of any non-scalar
@@ -13,14 +13,13 @@ classdef ArraySupport < matlab.mixin.Copyable
 %   
 %
 %   Example construction:
-%   classdef MyClass < helpers.ArrayOnConstruct
+%   classdef MyClass < helpers.ArraySupport
 %       methods
 %           function obj = MyClass(varargin)
-%               obj = obj@helpers.ArrayOnConstruct(varargin{:});
-%               % object is now
+%               obj = obj@helpers.ArraySupport(varargin{:});
 %           end
 %  
-%   see also:
+
     methods
         function obj = ArraySupport(varargin)
             if isempty(varargin)
@@ -43,7 +42,7 @@ classdef ArraySupport < matlab.mixin.Copyable
 
         end
     end
-    methods(Access = protected)
+    methods(Access = protected, Sealed)
         function assign_property(obj, var_name, var)
 % Assign elements of an array to property of object array
 %

@@ -607,12 +607,18 @@ classdef ADCP < ADCP
             cs(csnum==3)=CoordinateSystem.Earth;
         end
         function ang=get_beam_angle(obj)
-            ang=double(obj.raw.HADCPbeamangle);
+            % get beam angle according to PDD_Helper.c (rdi code)
+            ang = nan(1,obj.nensembles);
             ang_sys=reshape(bin2dec(obj.raw.sysconf(9:10,:)'),1,[]);
-            ang(ang==0 & ang_sys==0)=15;
-            ang(ang==0 & ang_sys==2)=20;
-            ang(ang==0 & ang_sys==3)=30;
-            ang(ang==0)=nan;
+            ang(ang_sys==0)=15;
+            ang(ang_sys==2)=20;
+            ang(ang_sys==3)=30;
+            has_no_ang = ~ismember(ang_sys, [0 2 3]);
+            is_horz_or_sent = ismember(obj.type,...
+                [rdi.ADCP_Type.WH_HORIZONTAL_11,...
+                rdi.ADCP_Type.SENTINELV_66]);
+            ang(has_no_ang & is_horz_or_sent) = 25;
+            ang(has_no_ang & ~is_horz_or_sent) = 40; 
         end
         function nens=get_nensembles(obj)
             nens=size(obj.fileid,2);

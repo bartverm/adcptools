@@ -5,17 +5,17 @@ classdef test_readDeployment < matlab.unittest.TestCase
     end
     methods(Test)
         function read_testdata(testCase)
-            dat = readDeployment('trans', testCase.data_path);
+            dat = rdi.readDeployment('trans', testCase.data_path);
             testCase.assertClass(dat,'struct');
         end
         function wrong_depname(testCase)
             testCase.verifyError(...
-                @()readDeployment('wrong', testCase.data_path), ...
+                @()rdi.readDeployment('wrong', testCase.data_path), ...
                 'readDeployment:NoFileFound')
         end
         function wrong_path(testCase)
             testCase.verifyError(...
-                @()readDeployment('trans', 'whatever'), ...
+                @()rdi.readDeployment('trans', 'whatever'), ...
                 'readDeployment:InexistentPath')
         end
     end
