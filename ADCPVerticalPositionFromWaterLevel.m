@@ -1,50 +1,47 @@
 classdef ADCPVerticalPositionFromWaterLevel < ADCPVerticalPosition
 % Defines ADCP vertical position based on the water level
 %
-%   Subclasses should implement the get_water_level method
-%
 %   Constructor:
-%   obj=ADCPVerticalPositionFromWaterLevel(...) constructs water level
-%   object. Arguments passed to the constructor are handled according to
-%   the type:
-%   - WaterLevel objects are assigned to the water_level property
-%   - double inputs are assigned to the depth_transducer property
-%   - VMADCP objects are used to create a listener that updates the
-%       water_level property, when the water_level_object property is
-%       changed in the VMADCP object.
+%   obj=ADCPVerticalPositionFromWaterLevel(...)
 %
 %   WaterLevel methods:
 %   get_water_level - returns the water level for each given time
-%   get_depth - compute the depth for a given time and elevation
 %
-%   see also: ConstantWaterLevel
+%   see also: ADCPVerticalPosition
     properties
         depth_transducer (1,:) double {mustBeFinite, mustBeReal} = 0;
         water_level(1,1) WaterLevel = ConstantWaterLevel(0)
     end
     methods
-        function obj=ADCPVerticalPositionFromWaterLevel(varargin)
-            for ca=1:numel(varargin)
-                arg=varargin{ca};
-                if isa(arg, 'WaterLevel')
-                    obj.water_level=arg;
-                elseif isa(arg,'double')
-                    obj.depth_transducer=arg;
-                elseif isa(arg,'VMADCP')
-                    addlistener(arg,'water_level_object','PostSet',@obj.set_wl);
-                else
-                    warning(['Unhandled input of type: ', class(arg)])
-                end
-            end
+        function val =  get.water_level(obj)
+            warning(['water_level property is set for removal. Use the ',...
+                'water_level_object property of the ADCP object to ',...
+                'set the water level'])
+            val = obj.water_level;
         end
-        function val=get_vertical_position(obj,adcp)
+        function set.water_level(obj, val)
+            warning(['water_level property is set for removal. Use the ',...
+                'water_level_object property of the ADCP object to ',...
+                'set the water level'])
+            obj.water_level = val;
+        end
+        function val =  get.depth_transducer(obj)
+            warning(['depth_transducer property is set for removal. Use the ',...
+                'depth_tranducer property of the VMADCP object to ',...
+                'set the depth of the transducer'])
+            val = obj.depth_transducer;
+        end
+        function set.depth_transducer(obj, val)
+            warning(['depth_transducer property is set for removal. Use the ',...
+                'depth transducer property of the VMADCP object to ',...
+                'set the depth of the transducer'])
+            obj.depth_transducer = val;
+        end        
+        function val=get_vertical_position(~,vmadcp)
 %             if all(obj.depth_transducer==0)
 %                 warning('Set depth of transducer for correct results')
 %             end
-            val=obj.water_level.get_water_level(adcp.time)-obj.depth_transducer;
-        end
-        function set_wl(obj, ~, prop_evt)
-            obj.water_level=prop_evt.AffectedObject.water_level_object;
+            val=vmadcp.water_level - vmadcp.depth_transducer;
         end
     end
 end

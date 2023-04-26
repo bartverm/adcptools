@@ -40,9 +40,15 @@ classdef VMADCP < ADCP
     %
     %   see also: VMADCP, LatLonProvider
         shipvel_provider (:,1) ShipVelocityProvider
-    end
-    properties (SetObservable, AbortSet)
-        water_level_object (1,1) WaterLevel= ConstantWaterLevel(0);
+
+    % VMADCP/depth_transducer
+    %
+    %   Sets the depth of the transducer below the water surface. The value
+    %   is always a scalar, non-negative value. The default is 0.
+    %
+    %   see also: VMADCP
+        depth_transducer (1,1) double {mustBeFinite, mustBeReal,...
+            mustBeNonnegative} = 0
     end
     properties(Dependent, SetAccess=private)
         % VMADCP/bt_vertical_range read only property.
@@ -59,13 +65,12 @@ classdef VMADCP < ADCP
         % see also: VMADCP
         slant_range_to_bed
 
-        water_level
     end
     methods
         function obj = VMADCP(varargin)
             obj = obj@ADCP(varargin{:})
             obj.water_level_object=ConstantWaterLevel(0);
-            obj.vertical_position_provider=ADCPVerticalPositionFromWaterLevel(obj.water_level_object, obj);
+            obj.vertical_position_provider=ADCPVerticalPositionFromWaterLevel();
             obj.shipvel_provider=[ShipVelocityFromBT; ShipVelocityFromGPS];
             if numel(obj.filters)==1 && isa(obj.filters,'Filter')
                 obj.filters=SideLobeFilter;
@@ -153,9 +158,6 @@ classdef VMADCP < ADCP
         end
         function vel=ship_velocity(obj,dst)
             vel=obj.shipvel_provider.ship_velocity(obj,dst);
-        end
-        function wl=get.water_level(obj)
-            wl=obj.water_level_object.get_water_level(obj.time);
         end
         function pos=depth_cell_position(obj)
             % Get the geographic position of the depth cells
@@ -291,7 +293,8 @@ classdef VMADCP < ADCP
                     t=obj.time;
                     t=seconds(t-t(1));
                     plot(cg,t,bed_pos(:,cb),'k','Linewidth',2)
-                    set(cg,'ylim',[min(bed_pos(:)) 0])
+                    plot(cg,t,obj.water_level,'b','Linewidth',2)
+                    set(cg,'ylim',[min(bed_pos(:)) max(obj.water_level)])
                 end
             end
         end
