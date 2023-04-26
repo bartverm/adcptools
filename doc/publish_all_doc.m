@@ -1,19 +1,20 @@
 function publish_all_doc()
 %     recursive_publish('./', '../html')
-    publish('main.m', outputDir='../html');
-    publish('reading_data.m', outputDir='../html');
-    publish('initial_inspection.m', outputDir='../html');
-    publish('repeat_transect_processing.m', outputDir='../html');
-    publish('transect_bathymetry.m', outputDir='../html');
-    publish('transect_cross_section.m', outputDir='../html');
-    publish('transect_data_selection.m', outputDir='../html');
-    publish('transect_mesh_construction.m', outputDir='../html');
-    publish('transect_post_processing.m', outputDir='../html');
-    publish('transect_solving_data.m', outputDir='../html');
+    hdir = fullfile(helpers.adcptools_root, 'html');
+    publish('main.m', outputDir=hdir);
+    publish('reading_data.m', outputDir=hdir);
+    publish('initial_inspection.m', outputDir=hdir);
+    publish('repeat_transect_processing.m', outputDir=hdir);
+    publish('transect_bathymetry.m', outputDir=hdir);
+    publish('transect_cross_section.m', outputDir=hdir);
+    publish('transect_data_selection.m', outputDir=hdir);
+    publish('transect_mesh_construction.m', outputDir=hdir);
+    publish('transect_post_processing.m', outputDir=hdir);
+    publish('transect_solving_data.m', outputDir=hdir);
 
-    builddocsearchdb('../html')
+    builddocsearchdb(hdir)
 
-    web('../html/main.html')
+    web(fullfile(hdir, 'main.html'))
 
 function recursive_publish(path, outpath)
     files = dir(fullfile(path, '*.m'));
