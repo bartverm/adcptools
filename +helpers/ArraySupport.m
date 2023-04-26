@@ -1,11 +1,11 @@
-classdef ArraySupport < handle
+classdef ArraySupport < handle & matlab.mixin.Copyable
 % Class to help onstruct object arrays based on array input to constructor
 %
 %   obj = ArraySupport(...) constructs obj. The size of any non-scalar
 %   cell or handle class input determines the size of the output object
 %   array. All non scalar inputs of type cell or handle class will need to
 %   have the same size. To use this constructor subclass from
-%   ArrayOnConstruct and call the superclass constructor in your class.
+%   ArraySupport and call the superclass constructor in your class.
 %
 %   ArraySupport methods (protected):
 %   assign_property - Assign elements of an array to property of obj array
@@ -13,15 +13,12 @@ classdef ArraySupport < handle
 %   
 %
 %   Example construction:
-%   classdef MyClass < helpers.ArrayOnConstruct
+%   classdef MyClass < helpers.ArraySupport
 %       methods
 %           function obj = MyClass(varargin)
-%               obj = obj@helpers.ArrayOnConstruct(varargin{:});
-%               % object is now
+%               obj = obj@helpers.ArraySupport(varargin{:});
 %           end
 %  
-%   see also:
-%   ArrayMethods
 
     methods
         function obj = ArraySupport(varargin)
@@ -40,12 +37,12 @@ classdef ArraySupport < handle
                     'Solver:NonMatchingInputSize',...
                     'Size of all non-scalar input should match')
                 siz_obj = num2cell(siz_nscal{1});
-                obj(siz_obj{:})=obj;
+                obj(siz_obj{:})=copy(obj);
             end
 
         end
     end
-    methods(Access = protected)
+    methods(Access = protected, Sealed)
         function assign_property(obj, var_name, var)
 % Assign elements of an array to property of object array
 %
