@@ -8,10 +8,10 @@
 % We start by reading the data:
 
 %%
-% raw_dat = rdi.readDeployment('trans',...
-%     fullfile(helpers.adcptools_root, 'doc','sample_data',...
-%     'rdi_muara_muntai_bend'));
-%
+raw_dat = rdi.readDeployment('trans',...
+    fullfile(helpers.adcptools_root, 'doc','sample_data',...
+    'rdi_muara_muntai_bend'));
+
 %%
 % Next we construct a VMADCP object:
 
