@@ -493,13 +493,12 @@ classdef ADCP < handle
             %   system
             %
             %   see also: ADCP
-            sv_pos=obj.depth_cell_offset;
+            sv_pos=obj.depth_cell_position;
             sv_pos=mean(sv_pos(:,:,:,3),3,'omitnan');
             sv=obj.backscatter;
             t=obj.time;
             t=seconds(t-t(1));
             nb=size(sv,3);
-            hf=gcf;
             axh=nan(nb,1);
             for cb=1:nb
                 axh(cb)=subplot(nb,1,cb);
