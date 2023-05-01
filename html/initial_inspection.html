@@ -6,7 +6,7 @@
    <!--
 This HTML was auto-generated from MATLAB code.
 To make changes, update the MATLAB code and republish this document.
-      --><title>Initial inspection of ADCP data</title><meta name="generator" content="MATLAB 9.14"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2023-04-26"><meta name="DC.source" content="initial_inspection.m"><style type="text/css">
+      --><title>Initial inspection of ADCP data</title><meta name="generator" content="MATLAB 9.14"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2023-05-01"><meta name="DC.source" content="initial_inspection.m"><style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
 
 html { min-height:100%; margin-bottom:1px; }
@@ -67,59 +67,20 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 
 
 
-  </style></head><body><div class="content"><h1>Initial inspection of ADCP data</h1><!--introduction--><p>The classes <a href="matlab:doc('ADCP')">ADCP</a> and <a href="matlab:doc('VMADCP')">VMADCP</a> implement a number of methods that help the user to inspect the data. These functions are mostly plot functions</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Reading the data</a></li><li><a href="#5">Instrument orientation</a></li><li><a href="#8">Ship track</a></li><li><a href="#10">Detected bed elevation</a></li><li><a href="#22">Depth averaged velocity</a></li><li><a href="#24">Velocity data</a></li></ul></div><h2 id="1">Reading the data</h2><p>We start by reading the data:</p><pre class="codeinput">raw_dat = rdi.readDeployment(<span class="string">'trans'</span>,<span class="keyword">...</span>
-    fullfile(helpers.adcptools_root, <span class="string">'doc'</span>,<span class="string">'sample_data'</span>,<span class="keyword">...</span>
-    <span class="string">'rdi_muara_muntai_bend'</span>));
-</pre><pre class="codeoutput">Reading ADCP raw data files...
-Found 12352 valid ensembles in file: /home/bartvermeulen/src/adcptools/doc/sample_data/rdi_muara_muntai_bend/trans25aug000r.000
-Found 3431 valid ensembles in file: /home/bartvermeulen/src/adcptools/doc/sample_data/rdi_muara_muntai_bend/trans25aug002r.000
-Found 15783 valid ensebles
-Reading data...
-Warning: No ambient sound data found. 
-Reading navigation files...
-</pre><p>Next we construct a VMADCP object:</p><pre class="codeinput">v = rdi.VMADCP(raw_dat);
-</pre><h2 id="5">Instrument orientation</h2><p>Insepct the tilts of the instrument during deployment:</p><pre class="codeinput">v.plot_orientations
-</pre><img vspace="5" hspace="5" src="initial_inspection_01.png" alt=""> <p>The orientations are within reasonable limits for ship borne deployments</p><h2 id="8">Ship track</h2><p>We can plot the ship track as follows:</p><pre class="codeinput">figure
-v.plot_track
-</pre><img vspace="5" hspace="5" src="initial_inspection_02.png" alt=""> <h2 id="10">Detected bed elevation</h2><p>The bed elevations as detected by each of the acoustic beams and corrected for tilts of the instrument can be displayed with:</p><pre class="codeinput">figure
-v.plot_bed_position
-</pre><img vspace="5" hspace="5" src="initial_inspection_03.png" alt=""> <p>This plot displays the elevation of the bed. For this computation to properly work the elevation of the ADCP needs to be known. These data were collected in a river with negligible elevation changes. The way the vertical position is determined, is defined in the <a href="matlab:doc('ADCP.vertical_position_provider')">vertical_position_provider</a> property of the ADCP object.</p><pre class="codeinput">v.vertical_position_provider
-</pre><pre class="codeoutput">
-ans = 
-
-Warning: depth_transducer property is set for removal. Use the depth_tranducer
-property of the VMADCP object to set the depth of the transducer 
-Warning: water_level property is set for removal. Use the water_level_object
-property of the ADCP object to set the water level 
-  ADCPVerticalPositionFromWaterLevel with properties:
-
-    depth_transducer: 0
-         water_level: [1&times;1 ConstantWaterLevel]
-
-</pre><p>The vertical position is provided by an <a href="matlab:doc('ADCPVerticalPositionFromWaterLevel')">ADCPVerticalPositionFromWaterLevel</a> object. This object has a <a href="matlab:doc('ADCPVerticalPositionFromWaterLevel.water_level')">water_level</a> property that defines the waterlevel. This is currently set to <a href="matlab:doc('ConstantWaterLevel')">ConstantWaterLevel</a> object. Furthermore the <a href="matlab:doc('ADCPVerticalPositionFromWaterLevel.depth_transducer')">depth_transducer</a> property defines how deep the transducer is inserted in the water. For a depth of 40 cm we would set this property as:</p><pre class="codeinput">v.vertical_position_provider.depth_transducer = 0.4;
-</pre><pre class="codeoutput">Warning: depth_transducer property is set for removal. Use the depth transducer
-property of the VMADCP object to set the depth of the transducer 
-</pre><p>We can take a further look at the <a href="matlab:doc('ADCPVerticalPositionFromWaterLevel.water_level')">water_level</a> property</p><pre class="codeinput">v.vertical_position_provider.water_level
-</pre><pre class="codeoutput">Warning: water_level property is set for removal. Use the water_level_object
-property of the ADCP object to set the water level 
-
-ans = 
-
-  ConstantWaterLevel with properties:
-
-    level: 60
-
-</pre><p>The <a href="matlab:doc('ConstantWaterLevel')">ConstantWaterLevel</a> object has the property <a href="matlab:doc('ConstantWaterLevel.level')">level</a> set to 0. This means the water level is at an elevation of  0 m. You may want to change this to have all position computations with respect to a given datum. Suppose the water level was at 60 m above sea level we can set:</p><pre class="codeinput">v.vertical_position_provider.water_level.level = 60;
-</pre><pre class="codeoutput">Warning: water_level property is set for removal. Use the water_level_object
-property of the ADCP object to set the water level 
-</pre><p>We will see the changes reflected in the bed elevation computation:</p><pre class="codeinput">figure
-v.plot_bed_position;
-</pre><img vspace="5" hspace="5" src="initial_inspection_04.png" alt=""> <h2 id="22">Depth averaged velocity</h2><p>The depth averaged velocity is plotted as:</p><pre class="codeinput">figure
-v.plot_track_velocity
-</pre><img vspace="5" hspace="5" src="initial_inspection_05.png" alt=""> <h2 id="24">Velocity data</h2><p>The velocity data can be inspected as follows:</p><pre class="codeinput">figure
-v.plot_velocity
+  </style></head><body><div class="content"><h1>Initial inspection of ADCP data</h1><!--introduction--><p>The classes <a href="matlab:doc('ADCP')">ADCP</a> and <a href="matlab:doc('VMADCP')">VMADCP</a> implement a number of methods that help the user to inspect the data. These functions are mostly plot functions</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Reading data</a></li><li><a href="#2">Instrument orientation</a></li><li><a href="#5">Ship track</a></li><li><a href="#7">Detected bed elevation</a></li><li><a href="#10">Depth averaged velocity</a></li><li><a href="#12">Velocity data</a></li><li><a href="#15">Acoustic backscatter</a></li></ul></div><h2 id="1">Reading data</h2><p>For instructions on how to read ADCP data see: <a href="reading_data.html">Reading the data</a></p><h2 id="2">Instrument orientation</h2><p>Inspect the tilts of the instrument during deployment:</p><pre class="codeinput">mmbend.plot_orientations
+</pre><img vspace="5" hspace="5" src="initial_inspection_01.png" alt=""> <p>The orientations are within reasonable limits for ship borne deployments</p><h2 id="5">Ship track</h2><p>We can plot the ship track as follows:</p><pre class="codeinput">figure
+mmbend.plot_track
+</pre><img vspace="5" hspace="5" src="initial_inspection_02.png" alt=""> <h2 id="7">Detected bed elevation</h2><p>The bed elevations as detected by each of the acoustic beams and corrected for tilts of the instrument can be displayed with:</p><pre class="codeinput">figure
+mmbend.plot_bed_position
+</pre><img vspace="5" hspace="5" src="initial_inspection_03.png" alt=""> <p>This plot displays the elevation of the bed.</p><h2 id="10">Depth averaged velocity</h2><p>The depth averaged velocity is plotted as:</p><pre class="codeinput">figure
+mmbend.plot_track_velocity
+</pre><img vspace="5" hspace="5" src="initial_inspection_04.png" alt=""> <h2 id="12">Velocity data</h2><p>The velocity data can be inspected as follows:</p><pre class="codeinput">figure
+mmbend.plot_velocity
 set(gca,<span class="string">'xlim'</span>,[1500 2500]) <span class="comment">% zooming in on portion of the data</span>
-</pre><img vspace="5" hspace="5" src="initial_inspection_06.png" alt=""> <p>Note that by default the velocity is shown in earth coordinate system, i.e. Vx is east velocity, Vy is north velocity and Vz is upward velocity.</p><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2023a</a><br></p></div><!--
+</pre><img vspace="5" hspace="5" src="initial_inspection_05.png" alt=""> <p>Note that by default the velocity is shown in earth coordinate system, i.e. Vx is east velocity, Vy is north velocity and Vz is upward velocity. The changes to the vertical positioning settings are also reflected in the velocity plot.</p><h2 id="15">Acoustic backscatter</h2><p>We can inspect also the backscatter profiles</p><pre class="codeinput">figure
+mmbend.plot_backscatter
+set(gca,<span class="string">'xlim'</span>,[1500 2500]) <span class="comment">% zooming in on portion of the data</span>
+</pre><img vspace="5" hspace="5" src="initial_inspection_06.png" alt=""> <p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2023a</a><br></p></div><!--
 ##### SOURCE BEGIN #####
 %% Initial inspection of ADCP data
 % The classes <matlab:doc('ADCP') ADCP> and <matlab:doc('VMADCP') VMADCP>
@@ -127,25 +88,14 @@ set(gca,<span class="string">'xlim'</span>,[1500 2500]) <span class="comment">% 
 % These functions are mostly plot functions
 %
 
-%% Reading the data
-% We start by reading the data:
-
-%%
-raw_dat = rdi.readDeployment('trans',...
-    fullfile(helpers.adcptools_root, 'doc','sample_data',...
-    'rdi_muara_muntai_bend'));
-
-%%
-% Next we construct a VMADCP object:
-
-%%
-v = rdi.VMADCP(raw_dat);
+%% Reading data
+% For instructions on how to read ADCP data see: <reading_data.html Reading the data>
 
 %% Instrument orientation
-% Insepct the tilts of the instrument during deployment:
+% Inspect the tilts of the instrument during deployment:
 
 %%
-v.plot_orientations
+mmbend.plot_orientations
 
 %%
 % The orientations are within reasonable limits for ship borne deployments
@@ -155,7 +105,7 @@ v.plot_orientations
 
 %%
 figure
-v.plot_track
+mmbend.plot_track
 
 %% Detected bed elevation
 % The bed elevations as detected by each of the acoustic beams and
@@ -163,65 +113,17 @@ v.plot_track
 
 %%
 figure
-v.plot_bed_position
+mmbend.plot_bed_position
 
 %%
-% This plot displays the elevation of the bed. For this computation to
-% properly work the elevation of the ADCP needs to be known. These data
-% were collected in a river with negligible elevation changes. The way the
-% vertical position is determined, is defined in the 
-% <matlab:doc('ADCP.vertical_position_provider') vertical_position_provider>
-% property of the ADCP object.
-
-%%
-v.vertical_position_provider
-
-%%
-% The vertical position is provided by an
-% <matlab:doc('ADCPVerticalPositionFromWaterLevel') ADCPVerticalPositionFromWaterLevel>
-% object. This object has a
-% <matlab:doc('ADCPVerticalPositionFromWaterLevel.water_level') water_level>
-% property that defines the waterlevel. This is currently set to 
-% <matlab:doc('ConstantWaterLevel') ConstantWaterLevel> object. Furthermore
-% the 
-% <matlab:doc('ADCPVerticalPositionFromWaterLevel.depth_transducer') depth_transducer> 
-% property defines how deep the transducer is inserted in the water. For a
-% depth of 40 cm we would set this property as:
-
-%%
-v.vertical_position_provider.depth_transducer = 0.4;
-
-%%
-% We can take a further look at the 
-% <matlab:doc('ADCPVerticalPositionFromWaterLevel.water_level') water_level>
-% property
-
-%%
-v.vertical_position_provider.water_level
-
-%% 
-% The <matlab:doc('ConstantWaterLevel') ConstantWaterLevel> object has the
-% property <matlab:doc('ConstantWaterLevel.level') level> set to 0. This
-% means the water level is at an elevation of  0 m. You may want to change
-% this to have all position computations with respect to a given datum.
-% Suppose the water level was at 60 m above sea level we can set:
-
-%%
-v.vertical_position_provider.water_level.level = 60;
-
-%%
-% We will see the changes reflected in the bed elevation computation:
-
-%%
-figure
-v.plot_bed_position;
+% This plot displays the elevation of the bed. 
 
 %% Depth averaged velocity
 % The depth averaged velocity is plotted as:
 
 %%
 figure
-v.plot_track_velocity
+mmbend.plot_track_velocity
 
 
 %% Velocity data
@@ -229,12 +131,23 @@ v.plot_track_velocity
 
 %%
 figure
-v.plot_velocity
+mmbend.plot_velocity
 set(gca,'xlim',[1500 2500]) % zooming in on portion of the data
 
 %%
 % Note that by default the velocity is shown in earth coordinate system,
 % i.e. Vx is east velocity, Vy is north velocity and Vz is upward velocity.
+% The changes to the vertical positioning settings are also reflected in
+% the velocity plot.
+
+%% Acoustic backscatter
+% We can inspect also the backscatter profiles
+
+%% 
+figure
+mmbend.plot_backscatter
+set(gca,'xlim',[1500 2500]) % zooming in on portion of the data
+
 
 
 

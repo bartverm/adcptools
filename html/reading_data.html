@@ -6,7 +6,7 @@
    <!--
 This HTML was auto-generated from MATLAB code.
 To make changes, update the MATLAB code and republish this document.
-      --><title>Reading data</title><meta name="generator" content="MATLAB 9.14"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2023-04-26"><meta name="DC.source" content="reading_data.m"><style type="text/css">
+      --><title>Reading data</title><meta name="generator" content="MATLAB 9.14"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2023-05-01"><meta name="DC.source" content="reading_data.m"><style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
 
 html { min-height:100%; margin-bottom:1px; }
@@ -67,13 +67,22 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 
 
 
-  </style></head><body><div class="content"><h1>Reading data</h1><!--introduction--><p>How to read data</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Introduction</a></li><li><a href="#2">Reading RDI data</a></li><li><a href="#3">Reading Nortek data</a></li><li><a href="#4">Reading Sontek data</a></li></ul></div><h2 id="1">Introduction</h2><p>The starting point to analyze ADCP data is to load the ADCP data files. The way to read the ADCP data depends on the manufacturer and kind of dataset you want to read in. ADCPtools currently supports the following manufacturers</p><div><ul><li>RDI</li><li>Nortek</li><li>Sontek</li></ul></div><p>In order to further process the data, it is necessary to construct an <a href="matlab:doc('ADCP')">ADCP</a> object for self-contained data and a <a href="matlab:doc('VMADCP')">VMADCP</a> objects for vessel-mounted data. These classes contain several functions that allow to process and visualize the data.</p><h2 id="2">Reading RDI data</h2><p>ADCP tools always requires a raw, binary PD0 file to be read. For RDI data, the reading of data and construction of <a href="matlab:doc('ADCP')">ADCP</a> or <a href="matlab:doc('VMADCP')">VMADCP</a> objects is done in two separate steps. First the data are read in a structure, and subsequently, the <a href="matlab:doc('ADCP')">ADCP</a> or VMADCP objects are constructed from these structures. To read in a self-contained/moored dataset you can use the rdi.readADCP function:</p><pre class="language-matlab">dat = rdi.readADCP(<span class="string">'filename.PD0'</span>);
+  </style></head><body><div class="content"><h1>Reading data</h1><!--introduction--><p>How to read data</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Introduction</a></li><li><a href="#2">Reading RDI data</a></li><li><a href="#6">Reading Nortek data</a></li><li><a href="#7">Reading Sontek data</a></li></ul></div><h2 id="1">Introduction</h2><p>The starting point to analyze ADCP data is to load the ADCP data files. The way to read the ADCP data depends on the manufacturer and kind of dataset you want to read in. ADCPtools currently supports the following manufacturers</p><div><ul><li>RDI</li><li>Nortek</li><li>Sontek</li></ul></div><p>In order to further process the data, it is necessary to construct an <a href="matlab:doc('ADCP')">ADCP</a> object for self-contained data and a <a href="matlab:doc('VMADCP')">VMADCP</a> objects for vessel-mounted data. These classes contain several functions that allow to process and visualize the data.</p><h2 id="2">Reading RDI data</h2><p>ADCP tools always requires a raw, binary PD0 file to be read. For RDI data, the reading of data and construction of <a href="matlab:doc('ADCP')">ADCP</a> or <a href="matlab:doc('VMADCP')">VMADCP</a> objects is done in two separate steps. First the data are read in a structure, and subsequently, the <a href="matlab:doc('ADCP')">ADCP</a> or VMADCP objects are constructed from these structures. To read in a self-contained/moored dataset you can use the rdi.readADCP function:</p><pre class="language-matlab">dat = rdi.readADCP(<span class="string">'filename.PD0'</span>);
 </pre><p>This will read the PD0 data and return a data structure containing all data in the PD0 file. After reading the raw data, an ADCP object can be constructed:</p><pre class="language-matlab">Dataset = rdi.ADCP(dat);
-</pre><p>This constructs an <a href="matlab:doc('rdi.ADCP')">rdi.ADCP</a> object, which is a subclass of <a href="matlab:doc('ADCP')">ADCP</a>.</p><p>When reading data from a vessel mounted deployment, next to the raw PD0 files you will also have external data such as GPS, echo-sounder data or external heading. These data are usually organized in set of files starting with a common part called the deployment name followed by a number which identifies the repeat transect. To read an entire deployment you can use the rdi.readDeployment function:</p><pre class="language-matlab">dat = rdi.readDeployment(<span class="string">'deploymentName'</span>,<span class="string">'path/'</span>)
-</pre><p>This will read all data files starting with 'deploymentName'. The optional argument 'path' allows to specify the location of the data. The next step is to create a <a href="matlab:doc('VMADCP')">VMADCP</a> object:</p><pre class="language-matlab">VMDataset = rdi.VMADCP(dat);
-</pre><h2 id="3">Reading Nortek data</h2><p>The ADCPtools currently supports reading AD2CP files for self-contained deployments and SigVM file for vessel mounted deployments. For self-contained deployments data can be read as:</p><pre class="language-matlab">Dataset = nortek.ADCP(<span class="string">'filename.ad2cp'</span>);
+</pre><p>This constructs an <a href="matlab:doc('rdi.ADCP')">rdi.ADCP</a> object, which is a subclass of <a href="matlab:doc('ADCP')">ADCP</a>.</p><p>When reading data from a vessel mounted deployment, next to the raw PD0 files you will also have external data such as GPS, echo-sounder data or external heading. These data are usually organized in set of files starting with a common part called the deployment name followed by a number which identifies the repeat transect. To read an entire deployment you can use the rdi.readDeployment function:</p><pre class="codeinput">mmbend_raw = rdi.readDeployment(<span class="string">'trans'</span>,<span class="keyword">...</span>
+    fullfile(helpers.adcptools_root, <span class="string">'doc'</span>,<span class="string">'sample_data'</span>,<span class="keyword">...</span>
+    <span class="string">'rdi_muara_muntai_bend'</span>));
+</pre><pre class="codeoutput">Reading ADCP raw data files...
+Found 12352 valid ensembles in file: /home/bartvermeulen/src/adcptools/doc/sample_data/rdi_muara_muntai_bend/trans25aug000r.000
+Found 3431 valid ensembles in file: /home/bartvermeulen/src/adcptools/doc/sample_data/rdi_muara_muntai_bend/trans25aug002r.000
+Found 15783 valid ensebles
+Reading data...
+Warning: No ambient sound data found. 
+Reading navigation files...
+</pre><p>This will read all data files starting with 'deploymentName'. The optional argument 'path' allows to specify the location of the data. The next step is to create a <a href="matlab:doc('VMADCP')">VMADCP</a> object:</p><pre class="codeinput">mmbend = rdi.VMADCP(mmbend_raw);
+</pre><h2 id="6">Reading Nortek data</h2><p>The ADCPtools currently supports reading AD2CP files for self-contained deployments and SigVM file for vessel mounted deployments. For self-contained deployments data can be read as:</p><pre class="language-matlab">Dataset = nortek.ADCP(<span class="string">'filename.ad2cp'</span>);
 </pre><p>This reads all data from the ad2cp file and constructs the <a href="matlab:doc('ADCP')">ADCP</a> object for further processing and visualization of the data.</p><p>For a vessel mounted dataset, data is read as follows:</p><pre class="language-matlab">VMDataset = nortek.VMADCP(<span class="string">'filename.SigVM'</span>);
-</pre><p>This reads the ad2cp data and the gnss data in the SigVM file and constructs the <a href="matlab:doc('VMADCP')">VMADCP</a> object</p><h2 id="4">Reading Sontek data</h2><p>ADCPtools can construct <a href="matlab:doc('ADCP')">ADCP</a> and <a href="matlab:doc('VMADCP')">VMADCP</a> objects based on the matlab exports which can be generated with the RiverSurveyor software from Sontek. Once the .mat files have been generated they can be read as follows:</p><pre class="language-matlab">Dataset = sontek.VMADCP(<span class="string">'filename.mat'</span>);
+</pre><p>This reads the ad2cp data and the gnss data in the SigVM file and constructs the <a href="matlab:doc('VMADCP')">VMADCP</a> object</p><h2 id="7">Reading Sontek data</h2><p>ADCPtools can construct <a href="matlab:doc('ADCP')">ADCP</a> and <a href="matlab:doc('VMADCP')">VMADCP</a> objects based on the matlab exports which can be generated with the RiverSurveyor software from Sontek. Once the .mat files have been generated they can be read as follows:</p><pre class="language-matlab">Dataset = sontek.VMADCP(<span class="string">'filename.mat'</span>);
 </pre><p>This constructs the <a href="matlab:doc('VMADCP')">VMADCP</a> object for further processing.</p><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2023a</a><br></p></div><!--
 ##### SOURCE BEGIN #####
 %% Reading data
@@ -119,14 +128,19 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 % starting with a common part called the deployment name followed by a
 % number which identifies the repeat transect. To read an entire deployment
 % you can use the rdi.readDeployment function:
-%
-%   dat = rdi.readDeployment('deploymentName','path/')
-%
+
+%%
+mmbend_raw = rdi.readDeployment('trans',...
+    fullfile(helpers.adcptools_root, 'doc','sample_data',...
+    'rdi_muara_muntai_bend'));
+
+%%
 % This will read all data files starting with 'deploymentName'. The
 % optional argument 'path' allows to specify the location of the data. The
 % next step is to create a <matlab:doc('VMADCP') VMADCP> object:
-%
-%   VMDataset = rdi.VMADCP(dat);
+
+%%
+mmbend = rdi.VMADCP(mmbend_raw);
 
 %% Reading Nortek data
 % The ADCPtools currently supports reading AD2CP files for self-contained

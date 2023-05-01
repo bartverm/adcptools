@@ -1,9 +1,10 @@
 function publish_all_doc()
-%     recursive_publish('./', '../html')
+    close all
     hdir = fullfile(helpers.adcptools_root, 'html');
     publish('main.m', outputDir=hdir);
     publish('reading_data.m', outputDir=hdir);
     publish('initial_inspection.m', outputDir=hdir);
+    publish('vertical_positioning.m', outputDir=hdir);
     publish('repeat_transect_processing.m', outputDir=hdir);
     publish('transect_bathymetry.m', outputDir=hdir);
     publish('transect_cross_section.m', outputDir=hdir);
@@ -12,6 +13,8 @@ function publish_all_doc()
     publish('transect_post_processing.m', outputDir=hdir);
     publish('transect_solving_data.m', outputDir=hdir);
 
+    close all
+    
     builddocsearchdb(hdir)
 
     web(fullfile(hdir, 'main.html'))

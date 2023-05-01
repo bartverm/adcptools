@@ -1,0 +1,170 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Vertical positioning</title><meta name="generator" content="MATLAB 9.14"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2023-05-01"><meta name="DC.source" content="vertical_positioning.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; }
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+span.typesection { color:#A0522D }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1>Vertical positioning</h1><!--introduction--><p>An important step when processing ADCP data is to properly set the vertical positioning of the data. For moored ADCP deployments the vertical position is usually set to a fixed level. For vessel mounted deployments the vertical position of the ADCP follows the water surface. This water surface might be (quasi) constant in a river, but might vary significantly in a tidally affected area.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Moored ADCP: fixed vertical position</a></li><li><a href="#2">Vessel mounted ADCP: constant water surface</a></li><li><a href="#14">Vessel mounted ADCP: varying water surface</a></li></ul></div><h2 id="1">Moored ADCP: fixed vertical position</h2><h2 id="2">Vessel mounted ADCP: constant water surface</h2><p>If we first take a look at the velocity measured by the ADCP:</p><pre class="codeinput">mmbend.plot_velocity
+set(gca,<span class="string">'xlim'</span>,[1500 2500]) <span class="comment">% zooming in on portion of the data</span>
+</pre><img vspace="5" hspace="5" src="vertical_positioning_01.png" alt=""> <p>We can see that by default the water surface is at 0 m elevation, and this position is constant during the entire measurement. These data were collected in a river with negligible elevation changes. The way the vertical position is determined, is defined in the <a href="matlab:doc('ADCP.vertical_position_provider')">vertical_position_provider</a> property of the ADCP object.</p><pre class="codeinput">mmbend.vertical_position_provider
+</pre><pre class="codeoutput">
+ans = 
+
+Warning: depth_transducer property is set for removal. Use the depth_tranducer
+property of the VMADCP object to set the depth of the transducer 
+Warning: water_level property is set for removal. Use the water_level_object
+property of the ADCP object to set the water level 
+  ADCPVerticalPositionFromWaterLevel with properties:
+
+    depth_transducer: 0
+         water_level: [1&times;1 ConstantWaterLevel]
+
+</pre><p>The vertical position is provided by an <a href="matlab:doc('ADCPVerticalPositionFromWaterLevel')">ADCPVerticalPositionFromWaterLevel</a> object. This object uses the <a href="matlab:doc('ADCP.water_level')">water_level</a> and <a href="matlab:doc('VMADCP.depth_transducer')">depth_transducer</a> properties of the <a href="matlab:doc('ADCP')">ADCP</a> object to compute the vertical position of the ADCP. We set the depth of the transducer to 0.4 m:</p><pre class="codeinput">mmbend.depth_transducer = 0.4;
+</pre><p>The <a href="matlab:doc('ADCP.water_level')">water_level</a> property of the <a href="matlab:doc('ADCP')">ADCP</a> object is controlled by the <a href="matlab:doc('ADCP.water_level_object')">water_level_object</a> property</p><pre class="codeinput">mmbend.water_level_object
+</pre><pre class="codeoutput">
+ans = 
+
+  ConstantWaterLevel with properties:
+
+    level: 0
+
+</pre><p>The <a href="matlab:doc('ConstantWaterLevel')">ConstantWaterLevel</a> object has the property <a href="matlab:doc('ConstantWaterLevel.level')">level</a> set to 0. This means the water level is at an elevation of  0 m. You may want to change this to have all position computations with respect to a given datum. Suppose the water level was at 60 m above sea level we can set:</p><pre class="codeinput">mmbend.water_level_object.level = 60;
+</pre><p>We will see the changes reflected in all position computations of the ADCP:</p><pre class="codeinput">figure
+mmbend.plot_velocity;
+set(gca,<span class="string">'xlim'</span>,[1500 2500]) <span class="comment">% zooming in on portion of the data</span>
+</pre><img vspace="5" hspace="5" src="vertical_positioning_02.png" alt=""> <h2 id="14">Vessel mounted ADCP: varying water surface</h2><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2023a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% Vertical positioning
+% An important step when processing ADCP data is to properly set the
+% vertical positioning of the data. For moored ADCP deployments the
+% vertical position is usually set to a fixed level. For vessel mounted
+% deployments the vertical position of the ADCP follows the water surface.
+% This water surface might be (quasi) constant in a river, but might vary
+% significantly in a tidally affected area. 
+
+%% Moored ADCP: fixed vertical position
+
+
+%% Vessel mounted ADCP: constant water surface
+% If we first take a look at the velocity measured by the ADCP:
+
+%%
+mmbend.plot_velocity
+set(gca,'xlim',[1500 2500]) % zooming in on portion of the data
+
+%%
+% We can see that by default the water surface is at 0 m elevation, and
+% this position is constant during the entire measurement. These data
+% were collected in a river with negligible elevation changes. The way the
+% vertical position is determined, is defined in the 
+% <matlab:doc('ADCP.vertical_position_provider') vertical_position_provider>
+% property of the ADCP object.
+
+%%
+mmbend.vertical_position_provider
+
+%%
+% The vertical position is provided by an
+% <matlab:doc('ADCPVerticalPositionFromWaterLevel') ADCPVerticalPositionFromWaterLevel>
+% object. This object uses the 
+% <matlab:doc('ADCP.water_level') water_level> and
+% <matlab:doc('VMADCP.depth_transducer') depth_transducer> properties of the 
+% <matlab:doc('ADCP') ADCP> object to compute the vertical position of the ADCP.
+% We set the depth of the transducer to 0.4 m:
+%%
+mmbend.depth_transducer = 0.4;
+
+%%
+% The <matlab:doc('ADCP.water_level') water_level> property of the 
+% <matlab:doc('ADCP') ADCP> object is controlled by the 
+% <matlab:doc('ADCP.water_level_object') water_level_object> property
+
+%%
+mmbend.water_level_object
+
+%% 
+% The <matlab:doc('ConstantWaterLevel') ConstantWaterLevel> object has the
+% property <matlab:doc('ConstantWaterLevel.level') level> set to 0. This
+% means the water level is at an elevation of  0 m. You may want to change
+% this to have all position computations with respect to a given datum.
+% Suppose the water level was at 60 m above sea level we can set:
+
+%%
+mmbend.water_level_object.level = 60;
+
+%%
+% We will see the changes reflected in all position computations of the
+% ADCP:
+
+%%
+figure
+mmbend.plot_velocity;
+set(gca,'xlim',[1500 2500]) % zooming in on portion of the data
+
+%% Vessel mounted ADCP: varying water surface
+
+##### SOURCE END #####
+--></body></html>

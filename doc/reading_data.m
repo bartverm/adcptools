@@ -41,14 +41,19 @@
 % starting with a common part called the deployment name followed by a
 % number which identifies the repeat transect. To read an entire deployment
 % you can use the rdi.readDeployment function:
-%
-%   dat = rdi.readDeployment('deploymentName','path/')
-%
+
+%%
+mmbend_raw = rdi.readDeployment('trans',...
+    fullfile(helpers.adcptools_root, 'doc','sample_data',...
+    'rdi_muara_muntai_bend'));
+
+%%
 % This will read all data files starting with 'deploymentName'. The
 % optional argument 'path' allows to specify the location of the data. The
 % next step is to create a <matlab:doc('VMADCP') VMADCP> object:
-%
-%   VMDataset = rdi.VMADCP(dat);
+
+%%
+mmbend = rdi.VMADCP(mmbend_raw);
 
 %% Reading Nortek data
 % The ADCPtools currently supports reading AD2CP files for self-contained

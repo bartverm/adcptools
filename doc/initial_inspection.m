@@ -4,25 +4,14 @@
 % These functions are mostly plot functions
 %
 
-%% Reading the data
-% We start by reading the data:
-
-%%
-raw_dat = rdi.readDeployment('trans',...
-    fullfile(helpers.adcptools_root, 'doc','sample_data',...
-    'rdi_muara_muntai_bend'));
-
-%%
-% Next we construct a VMADCP object:
-
-%%
-v = rdi.VMADCP(raw_dat);
+%% Reading data
+% For instructions on how to read ADCP data see: <reading_data.html Reading the data>
 
 %% Instrument orientation
-% Insepct the tilts of the instrument during deployment:
+% Inspect the tilts of the instrument during deployment:
 
 %%
-v.plot_orientations
+mmbend.plot_orientations
 
 %%
 % The orientations are within reasonable limits for ship borne deployments
@@ -32,7 +21,7 @@ v.plot_orientations
 
 %%
 figure
-v.plot_track
+mmbend.plot_track
 
 %% Detected bed elevation
 % The bed elevations as detected by each of the acoustic beams and
@@ -40,65 +29,17 @@ v.plot_track
 
 %%
 figure
-v.plot_bed_position
+mmbend.plot_bed_position
 
 %%
-% This plot displays the elevation of the bed. For this computation to
-% properly work the elevation of the ADCP needs to be known. These data
-% were collected in a river with negligible elevation changes. The way the
-% vertical position is determined, is defined in the 
-% <matlab:doc('ADCP.vertical_position_provider') vertical_position_provider>
-% property of the ADCP object.
-
-%%
-v.vertical_position_provider
-
-%%
-% The vertical position is provided by an
-% <matlab:doc('ADCPVerticalPositionFromWaterLevel') ADCPVerticalPositionFromWaterLevel>
-% object. This object has a
-% <matlab:doc('ADCPVerticalPositionFromWaterLevel.water_level') water_level>
-% property that defines the waterlevel. This is currently set to 
-% <matlab:doc('ConstantWaterLevel') ConstantWaterLevel> object. Furthermore
-% the 
-% <matlab:doc('ADCPVerticalPositionFromWaterLevel.depth_transducer') depth_transducer> 
-% property defines how deep the transducer is inserted in the water. For a
-% depth of 40 cm we would set this property as:
-
-%%
-v.vertical_position_provider.depth_transducer = 0.4;
-
-%%
-% We can take a further look at the 
-% <matlab:doc('ADCPVerticalPositionFromWaterLevel.water_level') water_level>
-% property
-
-%%
-v.vertical_position_provider.water_level
-
-%% 
-% The <matlab:doc('ConstantWaterLevel') ConstantWaterLevel> object has the
-% property <matlab:doc('ConstantWaterLevel.level') level> set to 0. This
-% means the water level is at an elevation of  0 m. You may want to change
-% this to have all position computations with respect to a given datum.
-% Suppose the water level was at 60 m above sea level we can set:
-
-%%
-v.vertical_position_provider.water_level.level = 60;
-
-%%
-% We will see the changes reflected in the bed elevation computation:
-
-%%
-figure
-v.plot_bed_position;
+% This plot displays the elevation of the bed. 
 
 %% Depth averaged velocity
 % The depth averaged velocity is plotted as:
 
 %%
 figure
-v.plot_track_velocity
+mmbend.plot_track_velocity
 
 
 %% Velocity data
@@ -106,12 +47,23 @@ v.plot_track_velocity
 
 %%
 figure
-v.plot_velocity
+mmbend.plot_velocity
 set(gca,'xlim',[1500 2500]) % zooming in on portion of the data
 
 %%
 % Note that by default the velocity is shown in earth coordinate system,
 % i.e. Vx is east velocity, Vy is north velocity and Vz is upward velocity.
+% The changes to the vertical positioning settings are also reflected in
+% the velocity plot.
+
+%% Acoustic backscatter
+% We can inspect also the backscatter profiles
+
+%% 
+figure
+mmbend.plot_backscatter
+set(gca,'xlim',[1500 2500]) % zooming in on portion of the data
+
 
 
 
