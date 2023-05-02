@@ -67,7 +67,7 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 
 
 
-  </style></head><body><div class="content"><h1>Vertical positioning</h1><!--introduction--><p>An important step when processing ADCP data is to properly set the vertical positioning of the data. For moored ADCP deployments the vertical position is usually set to a fixed level. For vessel mounted deployments the vertical position of the ADCP follows the water surface. This water surface might be (quasi) constant in a river, but might vary significantly in a tidally affected area.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Moored ADCP: fixed vertical position</a></li><li><a href="#2">Vessel mounted ADCP: constant water surface</a></li><li><a href="#14">Vessel mounted ADCP: varying water surface</a></li></ul></div><h2 id="1">Moored ADCP: fixed vertical position</h2><h2 id="2">Vessel mounted ADCP: constant water surface</h2><p>If we first take a look at the velocity measured by the ADCP:</p><pre class="codeinput">mmbend.plot_velocity
+  </style></head><body><div class="content"><h1>Vertical positioning</h1><!--introduction--><p>An important step when processing ADCP data is to properly set the vertical positioning of the data. For moored ADCP deployments the vertical position is usually set to a fixed level. For vessel mounted deployments the vertical position of the ADCP follows the water surface. This water surface might be (quasi) constant in a river, but might vary significantly in a tidally affected area.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Moored ADCP: fixed vertical position</a></li><li><a href="#2">Vessel mounted ADCP: constant water surface</a></li><li><a href="#14">Vessel mounted ADCP: varying water surface</a></li><li><a href="#15">Customize vertical positioning</a></li></ul></div><h2 id="1">Moored ADCP: fixed vertical position</h2><h2 id="2">Vessel mounted ADCP: constant water surface</h2><p>If we first take a look at the velocity measured by the ADCP:</p><pre class="codeinput">mmbend.plot_velocity
 set(gca,<span class="string">'xlim'</span>,[1500 2500]) <span class="comment">% zooming in on portion of the data</span>
 </pre><img vspace="5" hspace="5" src="vertical_positioning_01.png" alt=""> <p>We can see that by default the water surface is at 0 m elevation, and this position is constant during the entire measurement. These data were collected in a river with negligible elevation changes. The way the vertical position is determined, is defined in the <a href="matlab:doc('ADCP.vertical_position_provider')">vertical_position_provider</a> property of the ADCP object.</p><pre class="codeinput">mmbend.vertical_position_provider
 </pre><pre class="codeoutput">
@@ -95,7 +95,7 @@ ans =
 </pre><p>We will see the changes reflected in all position computations of the ADCP:</p><pre class="codeinput">figure
 mmbend.plot_velocity;
 set(gca,<span class="string">'xlim'</span>,[1500 2500]) <span class="comment">% zooming in on portion of the data</span>
-</pre><img vspace="5" hspace="5" src="vertical_positioning_02.png" alt=""> <h2 id="14">Vessel mounted ADCP: varying water surface</h2><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2023a</a><br></p></div><!--
+</pre><img vspace="5" hspace="5" src="vertical_positioning_02.png" alt=""> <h2 id="14">Vessel mounted ADCP: varying water surface</h2><h2 id="15">Customize vertical positioning</h2><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2023a</a><br></p></div><!--
 ##### SOURCE BEGIN #####
 %% Vertical positioning
 % An important step when processing ADCP data is to properly set the
@@ -165,6 +165,8 @@ mmbend.plot_velocity;
 set(gca,'xlim',[1500 2500]) % zooming in on portion of the data
 
 %% Vessel mounted ADCP: varying water surface
+
+%% Customize vertical positioning
 
 ##### SOURCE END #####
 --></body></html>
