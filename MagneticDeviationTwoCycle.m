@@ -53,7 +53,8 @@ classdef MagneticDeviationTwoCycle < MagneticDeviationModel
             obj.unset_deviation_correction(vmadcp)
 
             % compute angles between bottom track and gps tracks
-            shipvel = vmadcp.ship_velocity(CoordinateSystem.Earth);
+            bt_provider = ShipVelocityFromBT;
+            shipvel = bt_provider.ship_velocity(vmadcp, CoordinateSystem.Earth);
             bt_xvel = shipvel(1,:,1);
             bt_yvel = shipvel(1,:,2);
             bt_xvel2 = .5*(bt_xvel(1:end-1)+bt_xvel(2:end));
