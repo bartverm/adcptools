@@ -61,6 +61,27 @@
             <tocitem target="vertical_positioning.html#11">
                 Vessel mounted (Varying water level)
             </tocitem>
+            <tocitem target="vertical_positioning.html#12">
+                Customize vertical positioning
+            </tocitem>
+        </tocitem>
+        <tocitem target="horizontal_positioning.html">
+        Horizontal positioning
+            <tocitem target="horizontal_positioning.html#1">
+            Moored deployment
+            </tocitem>
+            <tocitem target="horizontal_positioning.html#2">
+            Vessel mounted GPS positioning
+            </tocitem>
+            <tocitem target="horizontal_positioning.html#16">
+            Change source of geographic coordinates
+            </tocitem>
+            <tocitem target="horizontal_positioning.html#21">
+            Changing projection
+            </tocitem>
+            <tocitem target="horizontal_positioning.html#22">
+            Customize horizontal positioning
+            </tocitem>
         </tocitem>
         <tocitem target="repeat_transect_processing.html">
             Repeat transect processing

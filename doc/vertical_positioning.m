@@ -66,3 +66,5 @@ mmbend.plot_velocity;
 set(gca,'xlim',[1500 2500]) % zooming in on portion of the data
 
 %% Vessel mounted ADCP: varying water surface
+
+%% Customize vertical positioning

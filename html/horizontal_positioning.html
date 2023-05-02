@@ -1,0 +1,270 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Horizontal positioning</title><meta name="generator" content="MATLAB 9.14"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2023-05-02"><meta name="DC.source" content="horizontal_positioning.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; }
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+span.typesection { color:#A0522D }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1>Horizontal positioning</h1><!--introduction--><p>The horizontal position of the ADCP can be either fixed for moored deployments or change as in vessel mounted deployments.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Moored deployment</a></li><li><a href="#2">Vessel mounted GPS positioning</a></li><li><a href="#16">Changing the source of geographic coordinates</a></li><li><a href="#21">Changing projection</a></li><li><a href="#22">Customizing horizontal positioning</a></li></ul></div><h2 id="1">Moored deployment</h2><h2 id="2">Vessel mounted GPS positioning</h2><p>The horizontal position of the ADCP can be controlled by setting the <a href="matlab:doc('ADCP.vertical_position_provider')">vertical_position_provider</a> property in the <a href="matlab:doc('ADCP')">ADCP</a> object.</p><pre class="codeinput">mmbend.horizontal_position_provider
+</pre><pre class="codeoutput">
+ans = 
+
+  1&times;2 heterogeneous ADCPHorizontalPosition (ProjectedCoordinatesFromViseaExtern, LatLonToUTM) array with no properties.
+
+</pre><p>This property always contains objects of class <a href="matlab:doc('ADCPHorizontalPosition')">ADCPHorizontalPosition</a>. These objects specify the geographic location of the ADCP. In this case two horizontal position providers are given:</p><div><ol><li><a href="matlab:doc('rdi.ProjectedCoordinatesFromViseaExtern')">rdi.ProjectedCoordinatesFromViseaExtern</a></li><li><a href="matlab:doc('LatLonToUTM')">LatLonToUTM</a></li></ol></div><p>The first one is rdi specific and directly reads projected coordinates (i.e. in x,y coordinates in m) from the Visea extern files. The second one transforms latitude,longitude coordinates to UTM geographic coordinates. The order of the objects in the property sets the priority for where the positioning data will come from. In this case, the projected coordinates from Visea files will be prioritized over  projected coordinates computed from lat,lon coordinates. To check which ones are being used we can used the <a href="matlab:doc('ADCPHorizontalPosition.has_data')">has_data</a> method:</p><pre class="codeinput">mmbend.horizontal_position_provider.has_data(mmbend)
+</pre><pre class="codeoutput">
+ans =
+
+  1&times;2 logical array
+
+   0   1
+
+</pre><p>The first object returns false, the second true. This means that there are no coordinates available from the Visea extern files, so the projected coordinates are computed from lat,lon coordinates. Let's take a closer look at the <a href="matlab:doc('LatLonToUTM')">LatLonToUTM</a> object:</p><pre class="codeinput">mmbend.horizontal_position_provider(2)
+</pre><pre class="codeoutput">
+ans = 
+
+  LatLonToUTM with properties:
+
+    description: 'UTM'
+           zone: []
+    ll_provider: [5&times;1 LatLonProvider]
+
+</pre><p>Particularly interesting is the  <a href="matlab:doc('LatLonToUTM.ll_provider')">ll_provider property:</a></p><pre class="codeinput">mmbend.horizontal_position_provider(2).ll_provider
+</pre><pre class="codeoutput">
+ans = 
+
+  5&times;1 heterogeneous LatLonProvider (LatLonVisea, LatLonNfilesGGA, LatLonTfiles, ...) array with no properties.
+
+</pre><p>This property is an array of <a href="matlab:doc('LatLonProvider')">LatLonProvider</a> objects that provide the geographical coordinates from different sources. We can again use the <a href="matlab:doc('LatLonProvider.has_data')">has_data</a> method to check which <a href="matlab:doc('LatLonProvider')">LatLonProvider</a> object is providing the coordinates:</p><pre class="codeinput">mmbend.horizontal_position_provider(2).ll_provider.has_data(mmbend)
+</pre><pre class="codeoutput">
+ans =
+
+  5&times;1 logical array
+
+   0
+   1
+   0
+   0
+   1
+
+</pre><p>Two objects can provide geographical data, the second and the fifth. Since the order of the object is again indicating priority, the second object will used to provide the geographic coordinates. If we want to use the fifth, we can change the order of the objects in the <a href="matlab:doc('LatLonToUTM.ll_provider')">ll_provider</a> property. Let's look at the second <a href="matlab:doc('LatLonProvider')">LatLonProvider</a> object:</p><pre class="codeinput">mmbend.horizontal_position_provider(2).ll_provider(2)
+</pre><pre class="codeoutput">
+ans = 
+
+  LatLonNfilesGGA with no properties.
+
+</pre><p>This is a <a href="matlab:doc('rdi.LatLonNfilesGGA')">rdi.LatLonNfilesGGA</a> object that retrieves the coordinates from the NMEA GGA strings in the navigation files (n.000 or .GPS files). Let's plot the track of the ADCP:</p><pre class="codeinput">figure
+mmbend.plot_track(<span class="string">'.-'</span>)
+set(gca,<span class="string">'xlim'</span>, 1.0e+05 *[4.2847    4.2859]) <span class="comment">% zoom-in to part of the track</span>
+</pre><img vspace="5" hspace="5" src="horizontal_positioning_01.png" alt=""> <h2 id="16">Changing the source of geographic coordinates</h2><p>The geographic coordinates provided by the <a href="matlab:doc('rdi.LatLonNfilesGGA')">rdi.LatLonNfilesGGA</a> object are converted to UTM coordinates by the <a href="matlab:doc('LatLonToUTM')">LatLonToUTM</a> object. Suppose we want to change the source of the geopgraphic coordinates we can do so by changing the <a href="matlab:doc('LatLonToUTM.ll_provider')">ll_provider</a> property of the <a href="matlab:doc('LatLonToUTM')">LatLonToUTM</a> object:</p><pre class="codeinput">mmbend.horizontal_position_provider(2).ll_provider = rdi.LatLonGGA;
+mmbend.horizontal_position_provider(2).ll_provider
+</pre><pre class="codeoutput">
+ans = 
+
+  LatLonGGA with no properties.
+
+</pre><p>We now set the <a href="matlab:doc('LatLonToUTM.ll_provider')">ll_provider</a>  property to a <a href="matlab:doc('rdi.LatLonGGA')">rdi.LatLonGGA</a> object. This reads the coordinates from the NMEA GGA strings stored in the PD0 binary files. Let's plot again the track to see the difference</p><pre class="codeinput">hold <span class="string">on</span>
+mmbend.plot_track(<span class="string">'x-'</span>)
+set(gca,<span class="string">'xlim'</span>, 1.0e+05 *[4.2847    4.2859]) <span class="comment">% zoom-in to part of the track</span>
+legend(<span class="string">'N-files'</span>,<span class="string">'PD0 file'</span>)
+</pre><img vspace="5" hspace="5" src="horizontal_positioning_02.png" alt=""> <p>We can clearly see that the coordinates are different for the two sources. The PD0 stored coordinates have a problem (jumps in coordinates) related to a buffering problem in an old version of the WinRiver software. This problem is not present in the N-files based coordinates so we will set it back to N-files as the source:</p><pre class="codeinput">mmbend.horizontal_position_provider(2).ll_provider = rdi.LatLonNfilesGGA;
+mmbend.horizontal_position_provider(2).ll_provider
+</pre><pre class="codeoutput">
+ans = 
+
+  LatLonNfilesGGA with no properties.
+
+</pre><h2 id="21">Changing projection</h2><h2 id="22">Customizing horizontal positioning</h2><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2023a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% Horizontal positioning
+% The horizontal position of the ADCP can be either fixed for moored
+% deployments or change as in vessel mounted deployments. 
+
+%% Moored deployment
+
+%% Vessel mounted GPS positioning
+% The horizontal position of the ADCP can be controlled by setting the 
+% <matlab:doc('ADCP.vertical_position_provider') vertical_position_provider>
+% property in the <matlab:doc('ADCP') ADCP> object.
+
+%%
+mmbend.horizontal_position_provider
+
+%%
+% This property always contains objects of class
+% <matlab:doc('ADCPHorizontalPosition') ADCPHorizontalPosition>. These
+% objects specify the geographic location of the ADCP.
+% In this case two horizontal position providers are given:
+%
+% # <matlab:doc('rdi.ProjectedCoordinatesFromViseaExtern') rdi.ProjectedCoordinatesFromViseaExtern>
+% # <matlab:doc('LatLonToUTM') LatLonToUTM>
+%
+% The first one is rdi specific and directly reads projected coordinates
+% (i.e. in x,y coordinates in m) from the Visea extern files.
+% The second one transforms latitude,longitude coordinates to UTM
+% geographic coordinates.
+% The order of the objects in the property sets the priority for where the
+% positioning data will come from. In this case, the projected coordinates
+% from Visea files will be prioritized over  projected coordinates computed 
+% from lat,lon coordinates. To check which ones are being used we can used
+% the 
+% <matlab:doc('ADCPHorizontalPosition.has_data') has_data> method:
+
+%%
+mmbend.horizontal_position_provider.has_data(mmbend)
+
+%%
+% The first object returns false, the second true. This means that there
+% are no coordinates available from the Visea extern files, so the
+% projected coordinates are computed from lat,lon coordinates.
+% Let's take a closer look at the
+% <matlab:doc('LatLonToUTM') LatLonToUTM> object:
+
+%%
+mmbend.horizontal_position_provider(2)
+
+%%
+% Particularly interesting is the
+%  <matlab:doc('LatLonToUTM.ll_provider') ll_provider property:>
+
+%%
+mmbend.horizontal_position_provider(2).ll_provider
+
+%%
+% This property is an array of
+% <matlab:doc('LatLonProvider') LatLonProvider> objects that provide the
+% geographical coordinates from different sources. We can again use the 
+% <matlab:doc('LatLonProvider.has_data') has_data> method to check which 
+% <matlab:doc('LatLonProvider') LatLonProvider> object is providing the
+% coordinates:
+
+%%
+mmbend.horizontal_position_provider(2).ll_provider.has_data(mmbend)
+
+%%
+% Two objects can provide geographical data, the second and the fifth.
+% Since the order of the object is again indicating priority, the second
+% object will used to provide the geographic coordinates. If we want to use
+% the fifth, we can change the order of the objects in the 
+% <matlab:doc('LatLonToUTM.ll_provider') ll_provider> property.
+% Let's look at the second <matlab:doc('LatLonProvider') LatLonProvider>
+% object:
+
+%%
+mmbend.horizontal_position_provider(2).ll_provider(2)
+
+%%
+% This is a <matlab:doc('rdi.LatLonNfilesGGA') rdi.LatLonNfilesGGA> object that
+% retrieves the coordinates from the NMEA GGA strings in the navigation
+% files (n.000 or .GPS files). Let's plot the track of the ADCP:
+
+%%
+figure
+mmbend.plot_track('.-')
+set(gca,'xlim', 1.0e+05 *[4.2847    4.2859]) % zoom-in to part of the track
+
+%% Changing the source of geographic coordinates
+% The geographic coordinates provided by the
+% <matlab:doc('rdi.LatLonNfilesGGA') rdi.LatLonNfilesGGA> object are converted to
+% UTM coordinates by the
+% <matlab:doc('LatLonToUTM') LatLonToUTM> object.
+% Suppose we want to change the source of the geopgraphic coordinates we
+% can do so by changing the 
+% <matlab:doc('LatLonToUTM.ll_provider') ll_provider> property
+% of the <matlab:doc('LatLonToUTM') LatLonToUTM> object:
+
+%%
+mmbend.horizontal_position_provider(2).ll_provider = rdi.LatLonGGA;
+mmbend.horizontal_position_provider(2).ll_provider
+
+%%
+% We now set the 
+% <matlab:doc('LatLonToUTM.ll_provider') ll_provider>  property
+% to a <matlab:doc('rdi.LatLonGGA') rdi.LatLonGGA> object. This reads the
+% coordinates from the NMEA GGA strings stored in the PD0 binary files.
+% Let's plot again the track to see the difference
+hold on
+mmbend.plot_track('x-')
+set(gca,'xlim', 1.0e+05 *[4.2847    4.2859]) % zoom-in to part of the track
+legend('N-files','PD0 file')
+
+%%
+% We can clearly see that the coordinates are different for the two
+% sources. The PD0 stored coordinates have a problem (jumps in coordinates)
+% related to a buffering problem in an old version of the WinRiver
+% software. This problem is not present in the N-files based coordinates so
+% we will set it back to N-files as the source:
+
+%%
+mmbend.horizontal_position_provider(2).ll_provider = rdi.LatLonNfilesGGA;
+mmbend.horizontal_position_provider(2).ll_provider
+
+%% Changing projection
+
+
+%% Customizing horizontal positioning
+
+##### SOURCE END #####
+--></body></html>
