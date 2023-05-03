@@ -15,10 +15,10 @@ classdef LatLonNMEAGGA < LatLonProvider
         function [lat, lon]=get_lat_lon(~,adcp)
            dt=adcp.raw.NMEAGGA.deltaT; % get time offset of GPS data
            lat = adcp.raw.NMEAGGA.Lat;
-           fsouth = strcmpi(adcp.raw.NMEAGGA.SN,'S');
+           fsouth = adcp.raw.NMEAGGA.SN=='S';
            lat(fsouth) = -lat(fsouth);
            lon = adcp.raw.NMEAGGA.Long;
-           fwest = strcmpi(adcp.raw.NMEAGGA.EW,'W');
+           fwest = adcp.raw.NMEAGGA.EW=='W';
            lon(fwest) = - lon(fwest); 
            fbad = ~isfinite(lat) |...
                ~isfinite(lon) |...
