@@ -11,7 +11,7 @@ classdef ModelParameters < handle
 
         p (:,:) double; % model parameters (b = Mp)
 
-        pars (:,:) double;
+        pars double;
 
         cov_pars (:,:,:) double;
 
@@ -21,13 +21,13 @@ classdef ModelParameters < handle
 
         ns (:,:) double
 
-        cell_idx (:,1) double
+        cell_idx (:,1) cell
 
         vel_cmap = brewermap(20, 'RdBu');
-        
+
         s_cmap = brewermap(15, 'YlOrBr');
 
-        cv_results (1,:) double 
+        cv_results (1,:) double
     end
     properties(Dependent)
         phi_cmap
@@ -192,42 +192,38 @@ classdef ModelParameters < handle
                     obj.opts.preconditioner_opts.diagcomp = max(sum(abs(A),2)./diag(A))-2;
                     L = ichol(A, obj.opts.preconditioner_opts);
                     [p_train{rp}(:, ep), ~, ~, it] = pcg(A, M0'*b0 + regP(rp,5)*obj.regularization.C{5}'*obj.regularization.rhs, 1e-9, size(A,2), L, L', pguess); % Matrix of solutions (columns) belonging to regularization parameters regP (rows)
-                
+
                 end
-            end 
+            end
             for rp = 1:numel(obj.opts.reg_pars)
                 p_avg{rp} = mean(p_train{rp}, 2);
                 CV{rp} = mean((M1*p_avg{rp} - b1).^2);
                 disp(['Cross-validated generalization error: ', num2str(CV{rp})])
             end
-            
-            
-            
-            
+
+
+
+
             %Continue here.
-%             
-%             obj.cv_results
-%             for rp = 1:numel(obj.opts.reg_pars)
-%                 obj.cv_results(rp) = mean((b1 - p_avg).^2)
-                    % Residuals and goodness of fit
+            %
+            %             obj.cv_results
+            %             for rp = 1:numel(obj.opts.reg_pars)
+            %                 obj.cv_results(rp) = mean((b1 - p_avg).^2)
+            % Residuals and goodness of fit
 
-%                     pe(1, rp, ep) = calc_res(b, M*p(:, rp, ep)); % Performance on full set
-%                     pe(2, rp, ep) = calc_res(b0, M0*p(:, rp, ep)); % Performance on training set
-%                     pe(3, rp, ep) = calc_res(b1, M1*p(:, rp, ep)); % Performance on validation set
-%                     pe(4, rp, ep) = calc_res(0, C1*p(:, rp, ep)); % Performance on continuity
-%                     pe(5, rp, ep) = calc_res(0, C2*p(:, rp, ep)); % Performance on gen. continuity
-%                     pe(6, rp, ep) = calc_res(0, C3*p(:, rp, ep)); % Performance on smoothness
-%                     pe(7, rp, ep) = calc_res(0, C4*p(:, rp, ep)); % Performance on consistency
-%                     pe(8, rp, ep) = calc_res(bc, C5*p(:, rp, ep)); % Performance on boundary conditions
-% 
-%                     pe(9,rp,ep) = condest(A);
-%                     pe(10,rp,ep) = it;
-                end
-            end
-
-%             Pe = mean(pe, 3);
-
+            %                     pe(1, rp, ep) = calc_res(b, M*p(:, rp, ep)); % Performance on full set
+            %                     pe(2, rp, ep) = calc_res(b0, M0*p(:, rp, ep)); % Performance on training set
+            %                     pe(3, rp, ep) = calc_res(b1, M1*p(:, rp, ep)); % Performance on validation set
+            %                     pe(4, rp, ep) = calc_res(0, C1*p(:, rp, ep)); % Performance on continuity
+            %                     pe(5, rp, ep) = calc_res(0, C2*p(:, rp, ep)); % Performance on gen. continuity
+            %                     pe(6, rp, ep) = calc_res(0, C3*p(:, rp, ep)); % Performance on smoothness
+            %                     pe(7, rp, ep) = calc_res(0, C4*p(:, rp, ep)); % Performance on consistency
+            %                     pe(8, rp, ep) = calc_res(bc, C5*p(:, rp, ep)); % Performance on boundary conditions
+            %
+            %                     pe(9,rp,ep) = condest(A);
+            %                     pe(10,rp,ep) = it;
         end
+
 
 
         function CV = cross_validation_analysis(obj)
@@ -289,19 +285,19 @@ classdef ModelParameters < handle
 
         end
 
-        function SE = local_sensitivity(obj)
-        end
-
-        function SE = sensitivity_analysis(obj)
-
-        end
+        %         function SE = local_sensitivity(obj)
+        %         end
+        %
+        %         function SE = sensitivity_analysis(obj)
+        %
+        %         end
 
 
         function pars = p2pars(obj)
             [np, ne] = size(obj.p);
             ncells = obj.regularization.mesh.ncells;
             npars = np/ncells;
-            pars = zeros(ncells, npars, ne); % could be done using one reshape() call
+            pars = zeros(ncells, npars, ne); % could be done using one reshape() call, %TODO chatGPT
             for n = 1:ne
                 pars(:,:,n) = reshape(obj.p(:,n) ,[npars, ncells])';
             end
@@ -313,10 +309,11 @@ classdef ModelParameters < handle
             obj.p = p;
         end
 
-        function phi_cmap = get.phi_cmap(obj)
-           phi_cmap = [obj.vel_cmap;  flipud(obj.vel_cmap)];
-        end
+        %         function phi_cmap = get.phi_cmap(obj)
+        %         phi_cmap = [obj.vel_cmap;  flipud(obj.vel_cmap)];
+        %         end
 
+        %     end
     end
 end
 
