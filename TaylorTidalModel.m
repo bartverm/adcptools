@@ -45,7 +45,7 @@ classdef TaylorTidalModel < TaylorModel & TidalModel
             M = zeros(size(T,1), size(T,2)*size(S,2), size(T,3));
 
             for dim = 1:obj.ncomponents
-                M(:,:,dim) = helpers.kron_modified_mat(T(:,:,dim), S(:,:,dim));
+                M(:,:,dim) = helpers.kron_modified_mat(S(:,:,dim), T(:,:,dim));
             end
         end
 

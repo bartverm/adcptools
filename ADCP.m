@@ -112,6 +112,16 @@ classdef ADCP < handle
         % see also: ADCP, InstrumentMatrixProvider
         instrument_matrix_provider (:,1) InstrumentMatrixProvider =...
             rdi.InstrumentMatrixFromBAngle;
+
+        % ADCP/water_level_object
+        %
+        %   Specifies the source for the water level. Should be a scalar
+        %   WaterLevel object. It defaults to ConstantWaterLevel with a
+        %   level set to 0; This property is used for the computation of
+        %   the water_level property.
+        %
+        % see also: ADCP, ADCP.water_level
+        water_level_object(1,1) WaterLevel = ConstantWaterLevel(0)
     end
     properties(Access=protected)
         override_transducer
@@ -268,8 +278,17 @@ classdef ADCP < handle
         %   untilted ADCP. If an untilted ADCP is downlooking according to
         %   the manufacturer's conventions this will hold negative values.
         %
-        %   see aslo: ADCP, beam_orientation_matrix
+        %   see also: ADCP, beam_orientation_matrix
         vertical_range_to_cell
+
+        % water level
+        %
+        %   size: 1 x nensembles
+        %   returns the water level. The way the water level is computed
+        %   can be modified by changing the water_level_object property.
+        %
+        %   see also: ADCP, water_level_object
+        water_level
     end
     methods
         %%% Constuctor
@@ -295,6 +314,9 @@ classdef ADCP < handle
             else
                 val=obj.override_water;
             end
+        end
+        function wl=get.water_level(obj)
+            wl=obj.water_level_object.get_water_level(obj.time);
         end
         function set.water(obj, val)
             if isempty(val)
@@ -471,13 +493,12 @@ classdef ADCP < handle
             %   system
             %
             %   see also: ADCP
-            sv_pos=obj.depth_cell_offset;
+            sv_pos=obj.depth_cell_position;
             sv_pos=mean(sv_pos(:,:,:,3),3,'omitnan');
             sv=obj.backscatter;
             t=obj.time;
             t=seconds(t-t(1));
             nb=size(sv,3);
-            hf=gcf;
             axh=nan(nb,1);
             for cb=1:nb
                 axh(cb)=subplot(nb,1,cb);

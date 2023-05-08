@@ -16,7 +16,7 @@ classdef RegularizedSolver < Solver
 
         reg (1,1) Regularization
 
-        opts (1,1) SolverOptions = SolverOptions
+        Ropts (1,1) SolverOptions = SolverOptions
     end
     methods
         function obj=RegularizedSolver(varargin)
@@ -147,20 +147,26 @@ classdef RegularizedSolver < Solver
             disp('Assembled parameter - data mapping')
             [M, b, ns] = obj.reorder_model_matrix(Mb0, dat, cell_idx);
             
-            MP = ModelParameters(M = M, b = b, reg = obj.reg, opts = obj.opts);
+            MP = ModelParameters(M = M, b = b, regularization = obj.regularization, opts = obj.Ropts);
 
             MP.p = obj.solve(M,b);
             MP.ns = ns;
             disp('Finished')
         end
 
+
+    end
+
+
+
+    methods (Access=protected)
         function p = solve(obj, M, b)
             Np = size(M,2);
             % Generate first guess for p <-> estimate parameters
-            p = nan([Np,length(obj.opts.reg_pars)]);
+            p = nan([Np,length(obj.Ropts.reg_pars)]);
             Mg = M'*M;
-            for idx = 1:length(obj.opts.reg_pars)
-                rp = obj.opts.reg_pars{idx};
+            for idx = 1:length(obj.Ropts.reg_pars)
+                rp = obj.Ropts.reg_pars{idx};
                 Cg = sparse(0);
                 for reg_idx = 1:numel(obj.reg.Cg)
                     Cg = Cg + rp(reg_idx)*obj.reg.Cg{reg_idx};
@@ -173,11 +179,11 @@ classdef RegularizedSolver < Solver
         end
 
         function [p, iter] = solve_single(obj, A, rhs)
-            if obj.opts.set_diagcomp
-                obj.opts.preconditioner_opts.diagcomp = max(sum(abs(A),2)./diag(A))-2;
+            if obj.Ropts.set_diagcomp
+                obj.Ropts.preconditioner_opts.diagcomp = max(sum(abs(A),2)./diag(A))-2;
             end
-            L = ichol(A, obj.opts.preconditioner_opts);
-            [p, ~, ~, iter, resvec] = pcg(A, rhs, obj.opts.pcg_tol, obj.opts.pcg_iter, L, L');
+            L = ichol(A, obj.Ropts.preconditioner_opts);
+            [p, ~, ~, iter, resvec] = pcg(A, rhs, obj.Ropts.pcg_tol, obj.Ropts.pcg_iter, L, L');
             
         end
 
@@ -196,12 +202,6 @@ classdef RegularizedSolver < Solver
             M = helpers.spblkdiag(Mj{:});
             
         end
-
-    end
-
-
-
-    methods (Access=protected)
         function [vpos, vdat, xform, time, wl] = get_solver_input(obj)
             vpos = obj.adcp.depth_cell_position; % velocity positions
 

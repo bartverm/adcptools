@@ -33,7 +33,7 @@ classdef SolverOptions < handle
 
         % Cross-validation options
 
-        cv_mode = 'none'; %none, random, omit_cells, omit_time
+        cv_mode = 'random'; %none, random, omit_cells, omit_time
         % Generalized cross-validation mode. 'none': no cross-validation.
         % 'random', 'omit_cells', 'omit_time': Perform data splitting in
         % training and validation sets, according to the exclusion rules

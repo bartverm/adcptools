@@ -188,8 +188,6 @@ classdef Solver < helpers.ArraySupport
             % From here, different solvers are used depending on the
             % SolverOptions opts
 
-
-
             switch obj.opts.algorithm
                 case "lscov"
                     % combine velocity input to earth matrix with velocity
@@ -265,17 +263,19 @@ classdef Solver < helpers.ArraySupport
                     MP.pars = vertcat(t_pars{:});
                     MP.cov_pars = vertcat(t_cov_pars{:});
                     MP.ns = vertcat(t_n_bvels{:});
+                    MP.p = MP.pars2p();
                 case "pcg"
                     xform = xform*obj.data_model.rotation_matrix;
                     Mb0 = [M(:,:,1).*xform(:,1),...
                         M(:,:,2).*xform(:,2),...
                         M(:,:,3).*xform(:,3)]; %Model matrix times unit vectors q
                     disp('Assembled parameter - data mapping')
-                    [M, b, ns] = obj.reorder_model_matrix(Mb0, dat, cell_idx);
-                    MP = ModelParameters(M = M, b = b, regularization = obj.regularization, opts = obj.opts);
+                    [M, b, cell_idx_shuffled, ns] = obj.reorder_model_matrix(Mb0, dat, cell_idx);
+                    MP = ModelParameters(M = M, b = b, regularization = obj.regularization, opts = obj.opts, cell_idx = cell_idx_shuffled);
                     MP.p = obj.solve(M,b);
                     MP.ns = ns;
                     disp('Finished')
+                    MP.pars = MP.p2pars();
                 otherwise
                     error("Enter correct algorithm in SolverOptions: lscov (only data, cell-based) or pcg (regularized, global)")
             end
@@ -357,18 +357,21 @@ classdef Solver < helpers.ArraySupport
 
 
 
-        function [M, b, ns] = reorder_model_matrix(obj, Mb0, dat, cell_idx)
+        function [M, b, cell_idx_shuff, ns] = reorder_model_matrix(obj, Mb0, dat, cell_idx)
             Mj = cell([obj.mesh.ncells,1]);
             ns = zeros([obj.mesh.ncells,1]);
             bj = cell([obj.mesh.ncells,1]);
+            idx = cell([obj.mesh.ncells,1]);
+            cell_idx_shuff = cell([obj.mesh.ncells,1]);
             for j = 1:obj.mesh.ncells
-                Mj{j} = Mb0(j==cell_idx,:);
-                ns(j) = sum(j == cell_idx);
-                bj{j} = dat(j==cell_idx);
+                idx{j} = (cell_idx == j);
+                Mj{j} = Mb0(idx{j}, :);
+                ns(j) = sum(idx{j});
+                bj{j} = dat(idx{j});
+                cell_idx_shuff{j} = cell_idx(idx{j});
             end
             b = vertcat(bj{:});
             M = helpers.spblkdiag(Mj{:});
-
         end
     end
 
