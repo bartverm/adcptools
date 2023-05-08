@@ -34,6 +34,7 @@ classdef MagneticDeviationTwoCycle < MagneticDeviationModel
         function val = magnetic_deviation(obj, adcp)
             obj.unset_deviation_correction(adcp)
             head=adcp.heading;
+
             obj.set_deviation_correction(adcp)
 
             % compute correction
@@ -52,7 +53,8 @@ classdef MagneticDeviationTwoCycle < MagneticDeviationModel
             obj.unset_deviation_correction(vmadcp)
 
             % compute angles between bottom track and gps tracks
-            shipvel = vmadcp.ship_velocity(CoordinateSystem.Earth);
+            bt_provider = ShipVelocityFromBT;
+            shipvel = bt_provider.ship_velocity(vmadcp, CoordinateSystem.Earth);
             bt_xvel = shipvel(1,:,1);
             bt_yvel = shipvel(1,:,2);
             bt_xvel2 = .5*(bt_xvel(1:end-1)+bt_xvel(2:end));
@@ -67,7 +69,7 @@ classdef MagneticDeviationTwoCycle < MagneticDeviationModel
             gps_dx = diff(gps_x);
             gps_dy = diff(gps_y);
             gps_ang = atan2d(gps_dy,gps_dx);
-            d_ang=bt_ang-gps_ang;
+            d_ang=-gps_ang+bt_ang;
             d_ang = atan2d(sind(d_ang), cosd(d_ang));
             head = vmadcp.heading;
             head2 = atan2d(...
@@ -76,9 +78,28 @@ classdef MagneticDeviationTwoCycle < MagneticDeviationModel
 
             obj.set_deviation_correction(vmadcp)
 
+            % find time jumps
+            fgood = dt < median(dt)*3;
+
+            % find zero steps
+            fgood = fgood &...
+                gps_dx ~=0 &...
+                gps_dy ~=0 &...
+                bt_dx ~=0 &...
+                bt_dy ~=0;
+
+            % find
+            lratio = hypot(bt_dx,bt_dy)./hypot(gps_dx,gps_dy);
+            std_lratio = std(lratio(isfinite(lratio)),'omitnan');
+            fgood = fgood &...
+                lratio > lratio-std_lratio &...
+                lratio < lratio+std_lratio;
+            
             % fit model
+            head2 = head2(fgood);
             M = [sind(head2); cosd(head2); sind(2*head2); cosd(2*head2)]';
 
+            d_ang = d_ang(fgood);
             pars = robustfit(M,d_ang,'welsch');
 
             % store model parameters
@@ -113,6 +134,7 @@ classdef MagneticDeviationTwoCycle < MagneticDeviationModel
             bt_xvel2 = .5*(bt_xvel(1:end-1)+bt_xvel(2:end));
             bt_yvel2 = .5*(bt_yvel(1:end-1)+bt_yvel(2:end));
             dt = seconds(diff(vmadcp.time));
+            f_jump = find(dt > median(dt)*3);
             bt_dx = bt_xvel2.*dt;
             bt_dy = bt_yvel2.*dt;
             gps_pos=vmadcp.horizontal_position;
@@ -120,7 +142,21 @@ classdef MagneticDeviationTwoCycle < MagneticDeviationModel
             gps_y = gps_pos(2,:);
             bt_x = cumsum([gps_x(1), bt_dx]);
             bt_y = cumsum([gps_y(1), bt_dy]);
+
+            % correct for big jumps at big time jumps
+            dx = [0 gps_x(f_jump+1)-bt_x(f_jump+1)];
+            dy = [0 gps_y(f_jump+1)-bt_y(f_jump+1)];
+            corr_idx = zeros(size(bt_x));
+            corr_idx(f_jump+1) = 1;
+            corr_idx = cumsum(corr_idx) + 1;
+            corr_gps_x = dx(corr_idx);
+            corr_gps_y = dy(corr_idx);
+            bt_x = bt_x + corr_gps_x;
+            bt_y = bt_y + corr_gps_y;
+
+            % plot
             plot(bt_x,bt_y,gps_x,gps_y)
+
             axis equal
             legend('bt','gps')
             xlabel('x (m)')
@@ -149,4 +185,5 @@ classdef MagneticDeviationTwoCycle < MagneticDeviationModel
             obj.adcp_head_provider = [];
         end
     end
+
 end

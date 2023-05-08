@@ -350,7 +350,7 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
             domain = d;
         end
 
-        function plot(obj,var)
+        function plot(obj,var,varargin)
 % Plot the mesh optionally colored with a variable
 %
 %   plot(obj) plots the mesh with the bed and water surface
@@ -367,10 +367,17 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
                 end
                 return
             end
+            inp = inputParser;
+            inp.addOptional('var',[]);
+            inp.addParameter('AspectRatio',1,@(x) isscalar(x) && isfinite(x));
+            inp.addParameter('FixAspectRatio',true,@(x) isscalar(x) && islogical(x));
+            inp.parse(var, varargin{:})
+            aspect_ratio = inp.Results.AspectRatio;
+            fix_ratio =inp.Results.FixAspectRatio;
             hold_stat=get(gca,'NextPlot');
-            plot(obj.nb_all,obj.zb_all,'k','Linewidth',2)
+            plot(obj.nb_all,obj.zb_all*aspect_ratio,'k','Linewidth',2)
             hold on
-            plot(obj.nw,obj.nw*0+obj.water_level,'b','Linewidth',2)
+            plot(obj.nw,(obj.nw*0+obj.water_level)*aspect_ratio,'b','Linewidth',2)
             plot_var = nan(obj.ncells,3);
             if nargin > 1                
                 assert(ismember(numel(var)/obj.ncells, [1,2,3]), 'Variable to plot should have same number of elements as cells in the mesh');
@@ -386,8 +393,17 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
                     plot_var = var;
                 end
             end
-            patch(obj.n_patch, obj.z_patch, plot_var(:,1), 'LineStyle', 'none');
-            q=quiver(obj.n_middle(obj.col_to_cell)', obj.z_center, plot_var(:,2), plot_var(:,3), .2, 'k');
+            patch(obj.n_patch, obj.z_patch*aspect_ratio, plot_var(:,1), 'LineStyle', 'none');
+            q=quiver(obj.n_middle(obj.col_to_cell)', obj.z_center*aspect_ratio, plot_var(:,2), plot_var(:,3), 'k');
+            if fix_ratio
+                axis equal
+            end
+
+            ylab = cellfun(@str2num, get(gca,'YTickLabel'));
+            ylab = ylab/aspect_ratio;
+            set(gca,'YTickLabel', ylab)
+            set(gca,'YTickLabelMode','manual','YTickMode','manual')
+
             set(gca,'NextPlot',hold_stat);
         end
 
