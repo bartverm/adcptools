@@ -494,7 +494,7 @@ classdef ADCP < handle
             %
             %   see also: ADCP
             sv_pos=obj.depth_cell_position;
-            sv_pos=mean(sv_pos(:,:,:,3),3,'omitnan');
+            sv_pos=sv_pos(:,:,:,3);
             sv=obj.backscatter;
             t=obj.time;
             t=seconds(t-t(1));
@@ -502,7 +502,7 @@ classdef ADCP < handle
             axh=nan(nb,1);
             for cb=1:nb
                 axh(cb)=subplot(nb,1,cb);
-                pcolor(t,sv_pos,sv(:,:,cb));
+                pcolor(t,sv_pos(:,:,cb),sv(:,:,cb));
                 clim=mean(sv(:,:,cb),'all','omitnan')+[-2 2]*std(sv(:,:,cb),0,'all','omitnan');
                 hc=colorbar;
                 ylabel(hc,'Backscatter (dB)')
