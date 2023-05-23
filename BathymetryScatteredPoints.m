@@ -84,6 +84,7 @@ classdef BathymetryScatteredPoints < Bathymetry
                     var_name='known';
                 else
                     warning('Bathymetry:unhadled_input',['Unhandled input of type: ', class(cur_arg)])
+                    return
                 end
                 obj.assign_var(var_name, cur_arg)
             end
