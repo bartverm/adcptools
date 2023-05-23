@@ -1,4 +1,4 @@
-classdef ADCP < handle
+classdef ADCP < handle 
 % Abstract base class to represent ADCP datasets
 %
 %   A = ADCP(...) based on the class of the passed arguments

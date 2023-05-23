@@ -1,4 +1,5 @@
-classdef VMADCP < ADCP
+classdef VMADCP < ADCP &... 
+    matlab.mixin.Heterogeneous
 % Vessel mounted ADCP wrapper class for adcp structures read with readADCP
 %
 %   obj=VMADCP() Constructs default object
@@ -233,13 +234,7 @@ classdef VMADCP < ADCP
                 handle_cbar=hc;
             end
         end
-        function plot_velocity(obj,vel)
-            if nargin < 2
-                vel=obj.water_velocity(CoordinateSystem.Earth);
-            end
-            hf=plot_velocity@ADCP(obj,vel);
-            add_bed_and_surface(obj,hf)
-        end
+
         function plot_backscatter(obj)
             hf=plot_backscatter@ADCP(obj);
             add_bed_and_surface(obj,hf,false)
@@ -299,6 +294,15 @@ classdef VMADCP < ADCP
             end
         end
 
+    end
+    methods(Sealed)
+        function plot_velocity(obj,vel)
+            if nargin < 2
+                vel=obj.water_velocity(CoordinateSystem.Earth);
+            end
+            hf=plot_velocity@ADCP(obj,vel);
+            add_bed_and_surface(obj,hf)
+        end
     end
     methods(Access = protected, Abstract)
         val = get_bt_vertical_range(obj)
