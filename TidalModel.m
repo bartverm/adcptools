@@ -38,7 +38,6 @@ classdef TidalModel < VelocityModel
 
 
     methods
-
         function M = get_model(obj, d_time, ~, ~, ~, ~)
             % This model fits the following parameters to the velocity
             % within each cell:
