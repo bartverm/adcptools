@@ -67,6 +67,7 @@ classdef VMADCP < ADCP &...
         slant_range_to_bed
 
     end
+    
     methods
         function obj = VMADCP(varargin)
             obj = obj@ADCP(varargin{:})
@@ -82,6 +83,7 @@ classdef VMADCP < ADCP &...
                 end
             end
         end
+
         function val = get.slant_range_to_bed(obj)
             tm = obj.xform(CoordinateSystem.Instrument, CoordinateSystem.Earth);
             tm(:,:,:,4) = [];
@@ -91,9 +93,13 @@ classdef VMADCP < ADCP &...
             tm(:,:,:,1:2)=[];
             val = -obj.bt_vertical_range ./ tm;
         end
+
         function val = get.bt_vertical_range(obj)
             val = obj.get_bt_vertical_range;
         end
+    end
+
+    methods(Sealed)
         function vel=water_velocity(obj,dst)
         % VMADCP/water_velocity returns corrected water velocity
         %
@@ -109,6 +115,7 @@ classdef VMADCP < ADCP &...
             end
             vel=obj.velocity(dst)+obj.ship_velocity(dst);
         end
+
         function btvel = btvel(obj, dst)
         % VMADCP/btvel returns the bottom tracking based ship velocity
         %
@@ -125,6 +132,7 @@ classdef VMADCP < ADCP &...
             end
             btvel = obj.get_btvel(dst);
         end
+
         function pos=bed_offset(obj,dst)
             % Get the offset from the ADCP to the observed bed in m
             %
@@ -145,6 +153,7 @@ classdef VMADCP < ADCP &...
             tm = helpers.matmult(beam_m,tm);
             pos=tm.*obj.slant_range_to_bed;
         end
+
         function pos=bed_position(obj)
         % Position of the bed in geographic coordinates
         %
@@ -157,9 +166,11 @@ classdef VMADCP < ADCP &...
             pos(:,:,:,2)=pos(:,:,:,2)+repmat(obj.horizontal_position(2,:),[1,1,4]);
             pos(:,:,:,3)=pos(:,:,:,3)+permute(obj.vertical_position,[3,2,4,1]);
         end
+
         function vel=ship_velocity(obj,dst)
             vel=obj.shipvel_provider.ship_velocity(obj,dst);
         end
+
         function pos=depth_cell_position(obj)
             % Get the geographic position of the depth cells
             %
@@ -172,6 +183,7 @@ classdef VMADCP < ADCP &...
             pos(:,:,:,2)=pos(:,:,:,2)+repmat(obj.horizontal_position(2,:),[1,1,4]);
             pos(:,:,:,3)=pos(:,:,:,3)+permute(obj.vertical_position,[3,2,4,1]);
         end
+ 
         function handle_track=plot_track(obj,varargin)
             % plot the track sailed by the vessel
             %
@@ -216,6 +228,7 @@ classdef VMADCP < ADCP &...
                 handle_track=ht;
             end
         end
+
         function [handle_scat, handle_cbar]=plot_bed_position(obj,varargin)
             pos=obj.bed_position();
             pos=reshape(pos,[],3);
@@ -239,6 +252,7 @@ classdef VMADCP < ADCP &...
             hf=plot_backscatter@ADCP(obj);
             add_bed_and_surface(obj,hf,false)
         end
+
         function plot_track_velocity(obj)
             vel = obj.water_velocity(CoordinateSystem.Earth);
             da_vel = mean(vel,1,"omitnan");
@@ -267,6 +281,7 @@ classdef VMADCP < ADCP &...
             figure
             obj.plot_bed_position
         end
+
         function add_bed_and_surface(obj,hf,av_beams)
             if nargin<2
                 hf=gcf;
@@ -294,8 +309,6 @@ classdef VMADCP < ADCP &...
             end
         end
 
-    end
-    methods(Sealed)
         function plot_velocity(obj,vel)
             if nargin < 2
                 vel=obj.water_velocity(CoordinateSystem.Earth);

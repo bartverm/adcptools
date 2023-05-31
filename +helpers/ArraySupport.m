@@ -9,6 +9,7 @@ classdef ArraySupport < handle & matlab.mixin.Copyable
 %
 %   ArraySupport methods (protected):
 %   assign_property - Assign elements of an array to property of obj array
+%   cat_property - Concatenate and return properties from objects
 %   run_method - Run method of array of objects
 %   
 %
@@ -42,7 +43,7 @@ classdef ArraySupport < handle & matlab.mixin.Copyable
 
         end
     end
-    methods(Access = protected, Sealed)
+    methods(Access = public, Sealed)
         function assign_property(obj, var_name, var)
 % Assign elements of an array to property of object array
 %
@@ -68,6 +69,32 @@ classdef ArraySupport < handle & matlab.mixin.Copyable
             [obj.(var_name)] = deal(var{:});
         end
 
+        function val = cat_property(obj, var_name, dim, varargin)
+% Concatenate and return property of objects in array
+%
+%   val = obj.cat_property(var_name, dim) concatenates the property with
+%   name 'var_name' along the dimension dim. If sizes along dimension dim
+%   are not consisten, output variables are grown along dimension dim to
+%   match the variable with the largest size along dim.
+%
+%   val = obj.cat_property(...,'PropName', PropValue) allows to specify
+%   PropertyName, PropertyValue pairs as follows:
+%       'FillVal'
+%       Specify the value to grow the arrays with. For handle arrays, the 
+%       object is grown with unique new objects. If 'FillVal' is specified,
+%       it will be filled with copies of 'FillVal'
+            if isscalar(obj)
+                val = obj.(var_name);
+                return
+            end
+            if nargin < 3
+                dim = 2;
+            end
+            val = {obj.(var_name)};
+            [val{:}] = helpers.grow_array(val{:},'SkipDims',dim, varargin{:});
+            val = cat(dim, val{:});
+        end
+        
         function varargout = run_method(obj, method_name, varargin)
 %   Run a method for all objects in object array obj. 
 %

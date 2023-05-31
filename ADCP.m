@@ -1,4 +1,5 @@
-classdef ADCP < handle 
+classdef ADCP < handle &...
+        helpers.ArraySupport
 % Abstract base class to represent ADCP datasets
 %
 %   A = ADCP(...) based on the class of the passed arguments
@@ -562,7 +563,7 @@ classdef ADCP < handle
             pos=obj.depth_cell_offset + permute([obj.horizontal_position; obj.vertical_position],[3,2,4,1]);
         end
     end
-    methods(Abstract, Access=protected)
+    methods(Abstract, Access = protected)
         val = get_nbeams(obj)
         val = get_nensembles(obj)
         val = get_ncells(obj)
