@@ -40,12 +40,25 @@ classdef ModelParameters < handle
             end
         end
 
-        function plot_solution(obj, names_selection, par_idx)
+        function plot_solution(obj, names_selection, par_idx, varargin)
 
             if nargin < 2
                 names_selection = [obj.regularization.model.names{:}];
             end
-
+            inp = inputParser;
+            %inp.addOptional('var',[]);
+            inp.addParameter('v',0,@(x) isscalar(x) && isfinite(x));
+            inp.addParameter('w',0,@(x) isscalar(x) && isfinite(x));
+            expectedTransform = {'linear','symlog'};
+            inp.addParameter('ArrowScaling',[.1, .1]);
+            inp.addParameter('ArrowTransform','linear', @(x) any(validatestring(x,expectedTransform)));
+            inp.addParameter('ArrowParam', [.9, .9])
+            inp.parse(varargin{:})
+            v = inp.Results.v;
+            w = inp.Results.w;
+            ArrowTransform = inp.Results.ArrowTransform;
+            ArrowScaling = inp.Results.ArrowScaling;
+            ArrowParam = inp.Results.ArrowParam;
             P = obj.p(:, par_idx);
             nreg = size(P, 2);
             nn = length(names_selection);
@@ -69,45 +82,71 @@ classdef ModelParameters < handle
 
             for col = 1:nreg
                 for row = 1:nn
-                    nexttile;
-                    var = P(par_idx(row):np:Np, col);
-                    obj.regularization.mesh.plot(var)
+                    nexttile();
+                    amax = max(abs(P(par_idx(row):np:Np, 2)), [], 'omitnan') + 1e-5; % For paper, we assume nreg = 3
+                    if ~v && ~w
+                        var = [P(par_idx(row):np:Np, col), zeros(nc,2)];
+                    elseif v && ~w
+                        var = [P(par_idx(row):np:Np, col), P(par_idx(row)+np/3:np:Np, col), zeros(nc,1)];
+                        armax = [max(abs(P(par_idx(row)+np/3:np:Np, 2)), [], 'omitnan') + 1e-5, 0];
+                    elseif w && ~v
+                        var = [P(par_idx(row):np:Np, col), zeros(nc,1), P(par_idx(row)+2*np/3:np:Np, col)];
+                        armax = [0, max(abs(P(par_idx(row)+2*np/3:np:Np, 2)), [], 'omitnan') + 1e-5];
+                    elseif v && w
+                        var = [P(par_idx(row):np:Np, col), P(par_idx(row)+np/3:np:Np, col), P(par_idx(row)+2*np/3:np:Np, col)];
+                        armax = [max(abs(P(par_idx(row)+np/3:np:Np, 2)), [], 'omitnan') + 1e-5, max(abs(P(par_idx(row)+2*np/3:np:Np, 2)), [], 'omitnan') + 1e-5];
+                    end
+                    var = obj.arrow_scale(var, ArrowScaling, ArrowTransform, ArrowParam);
+
+                    obj.regularization.mesh.plot(var, 'FixAspectRatio', false)
                     %     loc_tit = str,old,new)
                     title(['$', titles{row}, '$'], 'interpreter', 'latex')
 
                     %         set(c,'TickLabelInterpreter','latex')
-                    if ~contains(titles{row}, 'phi')
-                        amax = max(abs(var), [], 'omitnan') + 1e-5;
-                        caxis([-amax, amax])
-                        c = colorbar;
-                        colormap(gca, obj.vel_cmap)
-                        if ~contains(titles{row}, '\partial')
-                            ylabel(c, '$m/s$','Rotation',270, 'interpreter', 'latex');
-                        elseif contains(titles{row}, '\sigma')
-                            ylabel(c, '$m/s$','Rotation',270, 'interpreter', 'latex');
+                    % colorbar
+                    if col == nreg
+                        if ~contains(titles{row}, 'phi')
+                            %amax = max(abs(var(:,1)), [], 'omitnan') + 1e-5;
+                            c = colorbar;
+                            if ~contains(titles{row}, '\partial')
+                                ylabel(c, '$m/s$','Rotation',270, 'interpreter', 'latex');
+                            elseif contains(titles{row}, '\sigma')
+                                ylabel(c, '$m/s$','Rotation',270, 'interpreter', 'latex');
+                            else
+                                ylabel(c, '$m/s^2$','Rotation',270, 'interpreter', 'latex');
+                            end
+
                         else
-                            ylabel(c, '$m/s^2$','Rotation',270, 'interpreter', 'latex');
+                            c = colorbar;
+                            ylabel(c, 'deg','Rotation',270, 'interpreter', 'latex');
+
                         end
+                        pos = get(c,'Position');
+                        if row == 1
+                            pos1 = pos;
+                        end
+                        %         disp(pos)
+                        c.Label.Position(1) = pos1(1)+.5/col; % to change its position
+                        %         c.Label.Position(2) = c.Label.Position(2) + .2; % to change its position
+                        c.Label.HorizontalAlignment = 'center'; % to change its position
+                        c.TickLabelInterpreter = 'latex';
+                        %         c.Label.Rotation = 270; % to rotate the text
+                    end
+
+                    % colormap
+                    if ~contains(titles{row}, 'phi')
+                        %amax = max(abs(var(:,1)), [], 'omitnan') + 1e-5;
+                        caxis([-amax, amax])
+
+                        colormap(gca, obj.vel_cmap)
 
                     else
                         caxis([-180, 180])
                         temp = get(gca, 'Children');
                         temp(2).CData =  temp(2).CData*180/pi;
-                        c = colorbar;
                         colormap(gca, obj.phi_cmap)
-                        ylabel(c, 'deg','Rotation',270, 'interpreter', 'latex');
+                    end
 
-                    end
-                    pos = get(c,'Position');
-                    if row == 1
-                        pos1 = pos;
-                    end
-                    %         disp(pos)
-                    c.Label.Position(1) = pos1(1)+.5/col; % to change its position
-                    %         c.Label.Position(2) = c.Label.Position(2) + .2; % to change its position
-                    c.Label.HorizontalAlignment = 'center'; % to change its position
-                    c.TickLabelInterpreter = 'latex';
-                    %         c.Label.Rotation = 270; % to rotate the text
                     axis tight
                     %     hAxes.TickLabelInterpreter = 'latex';
                     %     title(sprintf('%s, %s, %s', names{i}, names{i+np(1)}, names{i + np(1) + np(2)}))
@@ -122,6 +161,16 @@ classdef ModelParameters < handle
             % %[Left Bottom Right Top] spacing
             % NewPos = [Tight(1) Tight(2) 1-Tight(1)-Tight(3) 1-Tight(2)-Tight(4)]; %New plot position [X Y W H]
             % set(gca, 'Position', NewPos);
+        end
+
+        function scaled_var = arrow_scale(obj, var, as, at, ap)%, ArrowScaling, ArrowTransform, ArrowParam);
+            % Input: N x 3 array, acts on the last two columns
+            scaled_var = var;
+            if strcmp(at, 'linear')
+                scaled_var(:,2:3) = [var(:,2).*as(1), var(:,3).*as(2)];
+            elseif strcmp(at, 'symlog')
+                scaled_var(:,2:3) = [helpers.symlog(var(:,2), ap(1)).*as(1), helpers.symlog(var(:,3), ap(2)).*as(2)];
+            end
         end
 
         function par_idx = get_par_idx(obj, names_selection)
@@ -142,6 +191,7 @@ classdef ModelParameters < handle
                 mod_names{idx} = strrep(mod_names{idx}, 'd', '\partial ');
             end
         end
+
 
         function training_idx = split_dataset(obj)
 
