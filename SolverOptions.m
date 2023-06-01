@@ -95,7 +95,7 @@ classdef SolverOptions < handle
                 ymin = helpers.symlog(obj.min_reg_pars(i), obj.res_near_zero(i));
                 obj.reg_pars_sens{i} = helpers.symexp(linspace(ymin, ymax, obj.reg_iter(i)), obj.res_near_zero(i))';
             end
-
+            
         end
 
         function reg_pars_sens_vec = vectorize_reg_pars(obj)
@@ -117,7 +117,7 @@ classdef SolverOptions < handle
             end
 
             for i = 1:size(RP,2)
-                RP(:,i) = obj.reg_relative_weights(i);
+                RP(:,i) = obj.reg_relative_weights(i).*RP(:,i);
                 if obj.force_zero(i)    
                     RP(:,i) = 0;
                 end

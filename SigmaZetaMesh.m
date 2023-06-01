@@ -394,7 +394,7 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
                 end
             end
             patch(obj.n_patch, obj.z_patch*aspect_ratio, plot_var(:,1), 'LineStyle', 'none');
-            q=quiver(obj.n_middle(obj.col_to_cell)', obj.z_center*aspect_ratio, plot_var(:,2), plot_var(:,3), 'k');
+            q=quiver(obj.n_middle(obj.col_to_cell)', obj.z_center*aspect_ratio, plot_var(:,2), plot_var(:,3), 'k', 'AutoScale','off');
             if fix_ratio
                 axis equal
             end

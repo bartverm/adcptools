@@ -341,17 +341,17 @@ classdef Solver < helpers.ArraySupport
                 end
                 A = Mg + Cg; % Data plus constraints
                 rhs = M'*b + rp(end)*obj.regularization.C{end}'*obj.regularization.rhs;
-                [p(:,idx), flag] = obj.solve_single(A, rhs);
+                [p(:,idx), flag] = obj.solve_single(A, rhs, zeros(size(p,1),1));
                 disp(['Obtained solution using lambda = [', num2str(rp), ']^T after ', num2str(flag), ' iterations.'])
             end
         end
 
-        function [p, iter] = solve_single(obj, A, rhs)
+        function [p, iter] = solve_single(obj, A, rhs, pguess)
             if obj.opts.set_diagcomp
                 obj.opts.preconditioner_opts.diagcomp = max(sum(abs(A),2)./diag(A))-2;
             end
             L = ichol(A, obj.opts.preconditioner_opts);
-            [p, ~, ~, iter, ~] = pcg(A, rhs, obj.opts.pcg_tol, obj.opts.pcg_iter, L, L');
+            [p, ~, ~, iter, ~] = pcg(A, rhs, obj.opts.pcg_tol, obj.opts.pcg_iter, L, L', pguess);
 
         end
 
@@ -362,13 +362,15 @@ classdef Solver < helpers.ArraySupport
             ns = zeros([obj.mesh.ncells,1]);
             bj = cell([obj.mesh.ncells,1]);
             idx = cell([obj.mesh.ncells,1]);
+            cell_idx_orig = cell([obj.mesh.ncells,1]);
             cell_idx_shuff = cell([obj.mesh.ncells,1]);
             for j = 1:obj.mesh.ncells
                 idx{j} = (cell_idx == j);
                 Mj{j} = Mb0(idx{j}, :);
                 ns(j) = sum(idx{j});
                 bj{j} = dat(idx{j});
-                cell_idx_shuff{j} = cell_idx(idx{j});
+                cell_idx_orig{j} = find(idx{j}); % Which measurement was done in which cell?
+                cell_idx_shuff{j} = cell_idx(idx{j}); % Check: Idendity function.
             end
             b = vertcat(bj{:});
             M = helpers.spblkdiag(Mj{:});
