@@ -94,7 +94,7 @@ classdef SolverOptions < handle
                 ymax = helpers.symlog(obj.max_reg_pars(i), obj.res_near_zero(i));
                 ymin = helpers.symlog(obj.min_reg_pars(i), obj.res_near_zero(i));
                 obj.reg_pars_sens{i} = helpers.symexp(linspace(ymin, ymax, obj.reg_iter(i)), obj.res_near_zero(i))';
-            end
+            end %TODO make reg_pars_sens dependent on reg_iter etc.
             
         end
 

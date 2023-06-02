@@ -256,12 +256,10 @@ classdef ModelParameters < handle
             end
             for rp = 1:numel(reg_pars_cell)
                 p_avg{rp} = mean(p_train{rp}, 2);
-                CV{rp} = mean((M1*p_avg{rp} - b1).^2);
+                CV{rp,1} = mean((M1*p_avg{rp} - b1).^2);
                 disp(['Cross-validated generalization error: ', num2str(CV{rp})])
             end
         end
-
-
 
         function CV = cross_validation(obj)
             % First loop: cross-validation ensembles
@@ -271,13 +269,46 @@ classdef ModelParameters < handle
         %function solve_single()
 
         function CV = cross_validation_analysis(obj)
-            reg_pars_sens_vec = obj.opts.vectorize_reg_pars();
-            for rp = 1:size(reg_pars_sens_vec,1)
-                reg_pars_cell{rp} = reg_pars_sens_vec(rp,:);
-            end
+            reg_pars_cell = reg_pars2cell(obj);
             CV = obj.cross_validate_single(reg_pars_cell, zeros(size(obj.p,1), numel(reg_pars_cell)));
         end
 
+        function SA = local_sensitivity_analysis(obj)
+        end
+
+        function reg_pars_cell = reg_pars2cell(obj)
+            reg_pars_sens_vec = obj.opts.vectorize_reg_pars();
+            reg_pars_cell = cell(size(reg_pars_sens_vec,1), 1);
+            for rp = 1:size(reg_pars_sens_vec,1)
+                reg_pars_cell{rp} = reg_pars_sens_vec(rp,:);
+            end
+        end
+
+        function plot_cross_validation_analysis(obj, CV)
+            [CV, lc, lg] = prep_sens_plot(obj, CV);            
+            figure
+            contourf(lc, lg, CV)
+            xlabel('lc'); ylabel('lg')
+            colorbar
+        end
+
+        function [plot_var, lc, lg] = prep_sens_plot(obj, SA)
+            plot_var = nan([obj.opts.reg_iter(3), obj.opts.reg_iter(1), size(SA,2)]);
+            for idx = 1:size(SA,2) % number of metrics
+                plot_var(:,:,idx) = reshape(cell2mat(SA(:,idx)),...
+                    [obj.opts.reg_iter(3), obj.opts.reg_iter(1)]); 
+                % CV contains metrics belonging to different reg-pars
+            end
+            if strcmp(obj.opts.reg_vary, 'coupled')
+                [lc, lg] = meshgrid(helpers.symlog(obj.opts.reg_pars_sens{1}, obj.opts.res_near_zero(1)),...
+                    helpers.symlog(obj.opts.reg_pars_sens{3}, obj.opts.res_near_zero(3)));
+            else
+                warning("Use SolverOptions.reg_vary = 'coupled' to perform sensitivity analyses.")
+            end
+            plot_var
+            lc
+            lg
+        end
 
         function pars = p2pars(obj)
             [np, ne] = size(obj.p);
