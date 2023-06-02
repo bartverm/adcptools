@@ -242,6 +242,7 @@ classdef ADCP < ADCP
                 nortek.TiltsFromAHRS;
                 nortek.TiltsInternal];
             obj.timezone='UTC';
+            obj.description="Nortek";
         end
 
         %%% SET AND GET METHODS

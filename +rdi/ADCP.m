@@ -308,6 +308,11 @@ classdef ADCP < ADCP
                     obj.raw=varargin{1};
                 end
             end
+            t = strsplit(string(obj.type(1)),'_');
+            t = strcat(t(1:end-1));
+            t = lower(t);
+            obj.description = "RDI" + " " + t + " " +...
+                obj.frequency(1)/1000 + " KHz";
         end
         
         %%% Set and Get methods %%%

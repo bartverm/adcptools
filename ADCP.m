@@ -56,6 +56,14 @@ classdef ADCP < handle &...
 %   velocity - get velocity
 
     properties
+        % ADCP/description
+        %
+        %   brief description of the ADCP data. Value must be a string
+        %   scalar
+        %
+        %   see also: ADCP
+        description(1,1) string = "";
+
         % ADCP/filters
         %
         % Filters to exclude data from profile data. The filters are given
@@ -433,22 +441,47 @@ classdef ADCP < handle &...
                 bad=bad | filter(co).bad(obj);
             end
         end
-        function plot_orientations(obj)
+        function varargout = plot_orientations(obj)
             % Plots orientations of instrument
             %
-            %   plot_orientations(obj) plots the pitch, roll and heading.
+            %   obj.plot_orientations plots the pitch, roll and heading.
+            %
+            %   [ahp, ahr, ahh] = obj.plot_orientation returns the axes
+            %   handles for the pitch, roll adn heading axes respectively.
             %
             % see also: ADCP, plot_velocity, plot_filters, plot_all
-            axh=subplot(3,1,1);
-            plot(obj.pitch)
-            ylabel('Pitch (degr)')
-            axh(2)=subplot(3,1,2);
-            plot(obj.roll)
-            ylabel('Roll (degr)')
-            axh(3)=subplot(3,1,3);
-            plot(obj.heading)
-            ylabel('Head (degr)')
-            linkaxes(axh,'x')
+            no = numel(obj);
+            [axpitch, axroll, axhead] = deal(nan(no,1));
+            t=tiledlayout(3, no,'TileSpacing','tight','Padding','compact');
+            for ca = 1:no
+                axpitch(ca)=nexttile;
+                plot(obj(ca).time, obj(ca).pitch)
+                title(obj(ca).description);
+                set(gca,'XTickLabel',[],'XTickMode','manual')
+            end
+            for ca = 1:no
+                axroll(ca)=nexttile;
+                plot(obj(ca).time, obj(ca).roll)
+                set(gca,'XTickLabel',[],'XTickMode','manual')
+            end
+            for ca = 1:no
+                axhead(ca)=nexttile;
+                plot(obj(ca).time, obj(ca).heading)
+                linkaxes([axpitch(ca), axroll(ca), axhead(ca)],'x')
+            end
+            xlabel(t,'Time');
+            ylabel(axpitch(1),'Pitch (degrees)')
+            ylabel(axroll(1),'Roll (degrees)')
+            ylabel(axhead(1),'Heading (degrees)')
+            if nargout > 0
+                varargout{1} = axpitch;
+            end
+            if nargout > 1
+                varargout{2} = axroll;
+            end
+            if nargout > 2
+                varargout{3} = axhead;
+            end
         end
         function hfout=plot_velocity(obj,vel)
             % plot the velocity profiles

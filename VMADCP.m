@@ -100,6 +100,10 @@ classdef VMADCP < ADCP &...
     end
 
     methods(Sealed)
+        function plot_orientations(obj)
+            obj.plot_orientations@ADCP;
+        end
+
         function vel=water_velocity(obj,dst)
         % VMADCP/water_velocity returns corrected water velocity
         %
@@ -204,6 +208,21 @@ classdef VMADCP < ADCP &...
             if ~exist('ca','var')
                 ca=gca;
             end
+            if ~isscalar(obj)
+                hold_stat = get(gca,'NextPlot');
+                isef = cellfun(@(x) isa(x,'EnsebleFilter'),varargin);
+                if any(isef)
+                    warning('Ignoring EnsembleFilter input when plotting an array')
+                    varargin(isef)=[];
+                end
+                for co = 1:numel(obj)
+                    obj(co).plot_track(ca,varargin{:})
+                end
+                set(gca,'NextPlot', hold_stat)
+                legend
+                return
+            end
+
             arg_used=false(size(varargin));
             ensfilt=EnsembleFilter(obj);
             for cin=1:numel(varargin)
@@ -216,9 +235,17 @@ classdef VMADCP < ADCP &...
             ht=nan(numel(ensfilt),1);
             hold_stat=get(ca,'NextPlot');
             hold on
+            leg = obj.description;
+            trk = '';
             for ce=1:numel(ensfilt)
                 filt=~ensfilt(ce).all_cells_bad(obj);
-                ht(ce)=plot(ca,obj.horizontal_position(1,filt),obj.horizontal_position(2,filt),varargin{:});
+                if numel(ensfilt) > 1
+                    trk = [' track ', num2str(ce)];
+                end
+                ht(ce)=plot(ca,obj.horizontal_position(1,filt),obj.horizontal_position(2,filt),varargin{:},'DisplayName',leg + trk);
+            end
+            if numel(ensfilt) > 1
+                legend
             end
             set(gca,'NextPlot',hold_stat)
             axis equal
