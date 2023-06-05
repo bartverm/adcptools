@@ -350,16 +350,16 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
             domain = d;
         end
 
-        function plot(obj,var,varargin)
-% Plot the mesh optionally colored with a variable
-%
-%   plot(obj) plots the mesh with the bed and water surface
-%   plot(obj,var) with numel(var) = ncells plots the mesh and colors the cells with the variable var
-%   plot(obj,var) with numel(var) = 2*ncells or 3*ncells plots the mesh and
-%   colors the cells with the variable var and superimposes a quiver plot
-%   consisting of the 2nd and 3rd columns of var in n and z directions. 
-
-%   see also: SigmaZetaMesh, plot3
+        function ax=plot(obj, varargin)
+            % Plot the mesh optionally colored with a variable
+            %
+            %   plot(obj) plots the mesh with the bed and water surface
+            %   plot(obj,var) with numel(var) = ncells plots the mesh and colors the cells with the variable var
+            %   plot(obj,var) with numel(var) = 2*ncells or 3*ncells plots the mesh and
+            %   colors the cells with the variable var and superimposes a quiver plot
+            %   consisting of the 2nd and 3rd columns of var in n and z directions. 
+            
+            %   see also: SigmaZetaMesh, plot3
             if ~isscalar(obj)
                 for ce=1:numel(obj)
                     subplot(numel(obj),1,ce)
@@ -368,33 +368,46 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
                 return
             end
             inp = inputParser;
-            inp.addOptional('var',[]);
+            inp.addParameter('var', nan([obj.ncells,1]));
             inp.addParameter('AspectRatio',1,@(x) isscalar(x) && isfinite(x));
             inp.addParameter('FixAspectRatio',true,@(x) isscalar(x) && islogical(x));
-            inp.parse(var, varargin{:})
+            inp.addParameter('LineStyle', 'none')
+            inp.addParameter('vertical', 'z')
+            inp.parse(varargin{:});
+            var = inp.Results.var;
             aspect_ratio = inp.Results.AspectRatio;
-            fix_ratio =inp.Results.FixAspectRatio;
+            fix_ratio = inp.Results.FixAspectRatio;
+            ls = inp.Results.LineStyle;
+            vert = inp.Results.vertical;
             hold_stat=get(gca,'NextPlot');
-            plot(obj.nb_all,obj.zb_all*aspect_ratio,'k','Linewidth',2)
-            hold on
-            plot(obj.nw,(obj.nw*0+obj.water_level)*aspect_ratio,'b','Linewidth',2)
-            plot_var = nan(obj.ncells,3);
-            if nargin > 1                
-                assert(ismember(numel(var)/obj.ncells, [1,2,3]), 'Variable to plot should have same number of elements as cells in the mesh');
-                plot_var = zeros([size(var,1),3]);
-                if numel(var) == obj.ncells
-                    plot_var(:,1) = var(:);
-                end
-                if numel(var) == 2*obj.ncells
-                    plot_var(:,1:2) = var(:,1:2);
-                    plot_var(:,3) = 0;
-                end
-                if numel(var) == 3*obj.ncells
-                    plot_var = var;
-                end
+            assert(ismember(numel(var)/obj.ncells, [1,2,3]), 'Variable to plot should have same number of elements as cells in the mesh');
+            plot_var = nan(obj.ncells,3);            
+            if numel(var) == obj.ncells
+                plot_var(:,1) = var(:);
             end
-            patch(obj.n_patch, obj.z_patch*aspect_ratio, plot_var(:,1), 'LineStyle', 'none');
-            q=quiver(obj.n_middle(obj.col_to_cell)', obj.z_center*aspect_ratio, plot_var(:,2), plot_var(:,3), 'k', 'AutoScale','off');
+            if numel(var) == 2*obj.ncells
+                plot_var(:,1:2) = var(:,1:2);
+                plot_var(:,3) = 0;
+            end
+            if numel(var) == 3*obj.ncells
+                plot_var = var;
+            end
+            if strcmp(vert, 'sig')
+                plot(obj.nb_all, zeros(size(obj.nb_all)),'k','Linewidth',2)
+                hold on
+                plot(obj.nw, ones(size(obj.nw)) ,'b', 'Linewidth',2)
+                sig_patch = obj.z_to_sigma(obj.z_patch, obj.zb_middle(obj.col_to_cell));
+                sig_patch(sig_patch<0) = 0; % dirty fix for areas of large bathy gradients
+
+                patch(obj.n_patch, sig_patch, plot_var(:,1), 'LineStyle', ls);
+                q = quiver(obj.n_middle(obj.col_to_cell)', obj.sig_center, plot_var(:,2), plot_var(:,3), 'k', 'AutoScale','off');
+            else
+                plot(obj.nb_all,obj.zb_all*aspect_ratio,'k','Linewidth',2)
+                hold on
+                plot(obj.nw,(obj.nw*0+obj.water_level)*aspect_ratio,'b','Linewidth',2)
+                patch(obj.n_patch, obj.z_patch*aspect_ratio, plot_var(:,1), 'LineStyle', ls);
+                q = quiver(obj.n_middle(obj.col_to_cell)', obj.z_center*aspect_ratio, plot_var(:,2), plot_var(:,3), 'k', 'AutoScale','off');
+            end
             if fix_ratio
                 axis equal
             end
@@ -405,16 +418,17 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
             set(gca,'YTickLabelMode','manual','YTickMode','manual')
 
             set(gca,'NextPlot',hold_stat);
+            ax = gca;
         end
 
         function [hpatch, hwater, hbed]=plot3(obj,var)
-% Plot the mesh optionally colored with a variable in 3D
-%
-%   plot3(obj) plots the mesh with the bed and water surface
-%
-%   plot3(obj,var) plot the mesh and color the cells with the varibale var
-%
-%   see also: SigmaZetaMesh, plot
+            % Plot the mesh optionally colored with a variable in 3D
+            %
+            %   plot3(obj) plots the mesh with the bed and water surface
+            %
+            %   plot3(obj,var) plot the mesh and color the cells with the varibale var
+            %
+            %   see also: SigmaZetaMesh, plot
             if ~isscalar(obj)
                 hold_stat=get(gca,'NextPlot');
                 hold on

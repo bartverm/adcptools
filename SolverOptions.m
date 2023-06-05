@@ -75,11 +75,19 @@ classdef SolverOptions < handle
         % in the sensitivity experiment
         min_reg_pars (1,5) double = [0, 0, 0, 0, 0]; % Fixed
 
-        reg_pars_sens (1,5) cell = {nan, nan, nan, nan, nan};
+        generate = 'local';
 
-        % TO INCLUDE: SENSITIVITY TO ADDITIVE NOISE options.
+
+        ens_size = 4;
+        sa_iter = 5;
+
+        noise_iter = 4;
+        noise_max = 1;
+%         noise_levels = linspace(0,noise_max,noise_iter)
     end
-
+    properties(Dependent)
+        reg_pars_sens
+    end
     methods
         function obj = SolverOptions(varargin)
             %SolverOptions
@@ -88,14 +96,20 @@ classdef SolverOptions < handle
             for ia = 1:2:nargin
                 obj.(varargin{ia}) = varargin{ia+1};
             end
+        end
 
-            % prepare generalization error analysis
+        function reg_pars_sens = get.reg_pars_sens(obj)
+            reg_pars_sens = cell([1,5]);
             for i = 1:5
                 ymax = helpers.symlog(obj.max_reg_pars(i), obj.res_near_zero(i));
                 ymin = helpers.symlog(obj.min_reg_pars(i), obj.res_near_zero(i));
-                obj.reg_pars_sens{i} = helpers.symexp(linspace(ymin, ymax, obj.reg_iter(i)), obj.res_near_zero(i))';
-            end %TODO make reg_pars_sens dependent on reg_iter etc.
-            
+                reg_pars_sens{i} = helpers.symexp(linspace(ymin, ymax, obj.reg_iter(i)), obj.res_near_zero(i))';
+            end
+        end
+
+        function sigma_array = get_noise(obj)
+            sigma_array = helpers.symexp(linspace(0, helpers.symlog(obj.noise_max,...
+                obj.res_near_zero(1)), obj.noise_iter), obj.res_near_zero(1));
         end
 
         function reg_pars_sens_vec = vectorize_reg_pars(obj)

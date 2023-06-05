@@ -40,6 +40,21 @@ classdef ModelParameters < handle
             end
         end
 
+        function ax = plot_mesh(obj, varargin)
+            
+            ax = obj.regularization.mesh.plot(varargin{:});
+            
+            xlabel('y [m]')
+            if any(strcmp(varargin,'sig')) %dirty
+                ylabel('$\sigma$', 'Interpreter', 'latex')
+            else
+                ylabel('$z [m]$', 'Interpreter', 'latex')
+            end
+            axis tight
+            set(ax, 'XDir','reverse')
+            ax.TickLabelInterpreter = 'latex';
+        end
+
         function plot_solution(obj, names_selection, par_idx, varargin)
 
             if nargin < 2
@@ -47,8 +62,8 @@ classdef ModelParameters < handle
             end
             inp = inputParser;
             %inp.addOptional('var',[]);
-            inp.addParameter('v',0,@(x) isscalar(x) && isfinite(x));
-            inp.addParameter('w',0,@(x) isscalar(x) && isfinite(x));
+            inp.addParameter('v', 0, @(x) isscalar(x) && isfinite(x));
+            inp.addParameter('w', 0, @(x) isscalar(x) && isfinite(x));
             expectedTransform = {'linear','symlog'};
             inp.addParameter('ArrowScaling',[.1, .1]);
             inp.addParameter('ArrowTransform','linear', @(x) any(validatestring(x,expectedTransform)));
@@ -101,7 +116,7 @@ classdef ModelParameters < handle
                     %plot(var(:,2:3))
                     %ylim([-armax(1), armax(1)])
                     hold on
-                    obj.regularization.mesh.plot(var, 'FixAspectRatio', false)
+                    obj.regularization.mesh.plot('var', var, 'FixAspectRatio', false)
                     %     loc_tit = str,old,new)
                     lam = {'\lambda_0', '\lambda_1', '\lambda_2'};
                     title(['$', lam{col},': ' titles{row}, '$'], 'interpreter', 'latex', 'FontSize', 12);
@@ -154,7 +169,7 @@ classdef ModelParameters < handle
                     axis tight
                     %     hAxes.TickLabelInterpreter = 'latex';
                     %     title(sprintf('%s, %s, %s', names{i}, names{i+np(1)}, names{i + np(1) + np(2)}))
-%                     set(gca, 'XDir','reverse') % Very important
+                                        set(gca, 'XDir','reverse') % Very important
                     %         xlabel('y [m]', 'interpreter', 'latex')
                     %         ylabel('z [m]', 'interpreter', 'latex')
                     set(gca,'XTick',[])
@@ -217,11 +232,8 @@ classdef ModelParameters < handle
         end
 
         function CV = cross_validate_single(obj, reg_pars_cell, pguess)
-            % First loop: cross-validation ensembles
             
-            Cg = obj.regularization.Cg;
-            p_train = cell(size(reg_pars_cell)); %zeros([size(obj.p, 1), nepochs]);
-            p_avg = cell(size(reg_pars_cell));
+            p_train = cell(size(reg_pars_cell)); 
 
             if strcmp(obj.opts.cv_mode, 'random')
                 nepochs = obj.opts.cv_iter;
@@ -229,6 +241,8 @@ classdef ModelParameters < handle
                 nepochs = 1;
             end
             niter = numel(reg_pars_cell)*nepochs;
+            E = cell([numel(reg_pars_cell), 2]);
+            CV = cell([numel(reg_pars_cell), 2]);
             i = 0;
             fprintf('Cross-validation percentage: %2.2f percent \n', 100*i/niter)
             for ep = 1:nepochs % randomized iterations: Only meaningful if cv_mode == 'random'
@@ -246,19 +260,41 @@ classdef ModelParameters < handle
 
                 for rp = 1:numel(reg_pars_cell)
                     regp = reg_pars_cell{rp};
-                    A = Mp + regp(1)*Cg{1} + regp(2)*Cg{2} + regp(3)*Cg{3} + regp(4)*Cg{4} + regp(5)*Cg{5};
-                    obj.opts.preconditioner_opts.diagcomp = max(sum(abs(A),2)./diag(A))-2;
-                    L = ichol(A, obj.opts.preconditioner_opts);
-                    [p_train{rp}(:, ep), ~, ~, it] = pcg(A, M0'*b0 + regp(5)*obj.regularization.C{5}'*obj.regularization.rhs, 1e-9, size(A,2), L, L', pguess(:,rp)); % Matrix of solutions (columns) belonging to regularization parameters regP (rows)
+                    p_train{rp}(:, ep) = obj.assemble_solve_single(M0, b0, Mp, regp, pguess(:,rp));
                     i = i+1;
                     fprintf('Cross-validation percentage: %2.2f percent \n', 100*i/niter)
+                    E{rp,1}(1, ep) = mean((M1*p_train{rp}(:, ep) - b1).^2); % Generalization error
+                    E{rp,2}(1, ep) = mean((M0*p_train{rp}(:, ep) - b0).^2); % Training error
                 end
             end
             for rp = 1:numel(reg_pars_cell)
-                p_avg{rp} = mean(p_train{rp}, 2);
-                CV{rp,1} = mean((M1*p_avg{rp} - b1).^2);
-                disp(['Cross-validated generalization error: ', num2str(CV{rp})])
+                %                 %p_avg{rp} = mean(p_train{rp}, 2); % k-fold cross-validated estimate
+                CV{rp, 1} = mean(E{rp,1}); % Ensemble average
+                CV{rp, 2} = mean(E{rp,2}); % Ensemble average
             end
+        end
+
+        function [A, rhs, L] = assemble_single(obj, M, b, Mp, regp)
+            A = Mp + regp(1)*obj.regularization.Cg{1} + regp(2)*obj.regularization.Cg{2} +...
+                regp(3)*obj.regularization.Cg{3} + regp(4)*obj.regularization.Cg{4} + regp(5)*obj.regularization.Cg{5};
+            obj.opts.preconditioner_opts.diagcomp = max(sum(abs(A),2)./diag(A))-2;
+            L = ichol(A, obj.opts.preconditioner_opts);
+            rhs = M'*b + regp(5)*obj.regularization.C{5}'*obj.regularization.rhs;
+        end
+
+        function p = assemble_solve_single(obj, M, b, Mp, regp, pguess)
+            % Solve system of eqs
+            [A, rhs, L] = assemble_single(obj, M, b, Mp, regp);
+            p = solve_single(obj, A, rhs, L, pguess); % Matrix of solutions (columns) belonging to regularization parameters regP (rows)
+        end
+
+        function p = solve_single(obj, A, rhs, L, pguess)
+            % Solve system of eqs
+            [p, ~, ~, ~] = pcg(A, rhs, obj.opts.pcg_tol, obj.opts.pcg_iter, L, L', pguess); % Matrix of solutions (columns) belonging to regularization parameters regP (rows)
+        end
+
+        function rhs = b2rhs(obj, M, b, regp)
+            rhs =  M'*b + regp(5)*obj.regularization.C{5}'*obj.regularization.rhs;
         end
 
         function CV = cross_validation(obj)
@@ -273,8 +309,108 @@ classdef ModelParameters < handle
             CV = obj.cross_validate_single(reg_pars_cell, zeros(size(obj.p,1), numel(reg_pars_cell)));
         end
 
-        function SA = local_sensitivity_analysis(obj)
+        function SA = local_sensitivity(obj)
+            % Perform sensitivity analysis using iid noise ~N(0, sigma^2),
+            % only on the state vectors that are estimated in the
+            % get_parameters call of Solver.
         end
+
+
+        function [Pe, P] = local_sensitivity_analysis(obj)
+%             M = dat.M; C1 = dat.C1; C2 = dat.C2; C3 = dat.C3; C4 = dat.C4; C5 = dat.C5; bc = dat.bc; b = dat.b;
+%             Np = size(M,2); % number of parameters
+%             nc = max(dat.cell_idx); % number of cells
+%             np = Np/nc; %number of parameters per cell
+%             opts = dat.opts;
+%             nepochs = opts.cv_iter; %nepochs now serves the role
+%             Mp = M'*M; C1p = C1'*C1; C2p = C2'*C2; C3p = C3'*C3; C4p = C4'*C4; C5p = C5'*C5;
+%             regP = combine_regpars(opts);
+%             pcg_opts = struct('michol','on','type','ict','droptol',1e-3);
+            reg_pars_cell = reg_pars2cell(obj);
+            if strcmp(obj.opts.generate, 'nullspace') % deprecated
+                %     D0 = C3;
+                %     for row = 1:size(D0,1) % rescale smoothing matrix back - is this necessary?
+                %         D0(row,:) = D0(row,:)/C3(row,row);
+                %     end
+                %     tic;
+%                 NS = generate_null_intersection({C1, C2, C3, C4, C5});
+                %     to = toc;
+%                 fprintf('Finished calculating intersection of null spaces after %2.2f s \n', to)
+
+%                 p = NS*randn(size(NS,2), nepochs);
+            elseif strcmp(obj.opts.generate, 'local')
+                Mp = obj.M'*obj.M;
+                p0 = nan([size(obj.p,1),numel(reg_pars_cell)]);
+                for rp = 1:numel(reg_pars_cell) % generate solution for all regularization parameters, using all data
+                    regp = reg_pars_cell{rp};
+                    p0(:, rp) = obj.assemble_solve_single(obj.M, obj.b, Mp, regp, zeros([size(obj.p,1),1]));
+                    %p0: Solution state vectors belonging to all
+                    %regularization parameters in the sensitivity analysis.
+                    fprintf('Ensemble generation percentage: %2.2f percent \n', 100*rp/numel(reg_pars_cell))
+                end
+                %p0 = mean(p,2); % Selection of weighted parameter vectors across many reg.pars.
+            end
+
+
+            W0 = rand([numel(reg_pars_cell), obj.opts.ens_size]);
+            W = W0/diag(sum(W0,1)); %Scale all columns
+            P = p0*W; % True vectors: columns of P
+
+            stdn = obj.opts.get_noise();
+
+            B = obj.M*P; % Unperturbed data: ns x nP
+            niter = numel(reg_pars_cell)*numel(stdn)*obj.opts.ens_size*obj.opts.sa_iter; % total number of pcg runs
+            fprintf('Total number of iterations will be: %i \n', niter)
+            i=0;
+            Mp = obj.M'*obj.M;
+            Pe = cell([numel(reg_pars_cell), numel(stdn)]);
+            %E = cell([numel(reg_pars_cell), numel(stdn)]);
+            for rp = 1:numel(reg_pars_cell)
+                regp = reg_pars_cell{rp};
+                [A, ~, L] = obj.assemble_single(obj.M, obj.b, Mp, regp);
+                for nn = 1:numel(stdn)
+                    for it = 1:obj.opts.sa_iter % Bootstrapping random iterations
+                        Bp = B + stdn(nn)*randn(size(B)); 
+                        for ep = 1:obj.opts.ens_size
+                            % TODO apply variation in sa_iter: Noise term must change.
+                            i = i+1;
+                            % Perturbed measurements -> perhaps move to inner loop.
+                            rhs = obj.b2rhs(obj.M, Bp(:,ep), regp); % Estimate different base vector per iteration.
+                            fprintf('Sensitivity analysis: %2.2f percent \n', 100*i/niter)
+                            Pe{rp, nn}(:, ep, it) = obj.solve_single(A, rhs, L, P(:,ep));
+                        end
+                    end
+                end
+            end
+        end
+
+        function E = extract_sensitivity_data(obj, Pe, P)
+            for rp = 1:size(Pe, 1)
+                for nn = 1:size(Pe, 2)
+                    for it = 1:obj.opts.sa_iter % Bootstrapping random iterations
+                        for ep = 1:obj.opts.ens_size
+                            E{rp, nn, 1}(ep, it) = mean((P(:, ep) - Pe{rp, nn}(:, ep, it)).^2); %MSE
+                            E{rp, nn, 2}(ep, it) = mean((P(:, ep) - Pe{rp, nn}(:, ep, it)).^2);
+                        end
+                    end
+                end
+            end
+        end
+            %err(rp, ep) = 
+            %rel_err(rp, ep) = err(rp, ep)./sqrt(mean(P(:,ep).^2));
+
+            % Investigate sensitivity wrt all parameters small quantities
+            %                         for ip = 1:np
+            %                             perr(ip,rp, ep) = sqrt(sum((p(ip:np:end,ep)-phat(ip:np:end, rp, ep) ).^2));
+            %                             rel_perr(ip,rp, ep) = perr(ip,rp, ep)./sqrt(sum(p(ip:np:end,ep).^2));
+            %                         end
+
+            %                     avg_err(rp, nn) = mean(err(rp, :));
+            %                     avg_perr(:, rp, nn) = mean(squeeze(perr(:, rp, :)),2);
+            %                     avg_rel_err(rp, nn) = mean(rel_err(rp, :));
+            %                     avg_rel_perr(:, rp, nn) = mean(squeeze(rel_perr(:, rp, :)),2);
+
+
 
         function reg_pars_cell = reg_pars2cell(obj)
             reg_pars_sens_vec = obj.opts.vectorize_reg_pars();
@@ -284,19 +420,62 @@ classdef ModelParameters < handle
             end
         end
 
-        function plot_cross_validation_analysis(obj, CV)
-            [CV, lc, lg] = prep_sens_plot(obj, CV);            
-            figure
-            contourf(lc, lg, CV)
-            xlabel('lc'); ylabel('lg')
-            colorbar
+        function fig = plot_contourf_fig(obj, var, xvar, yvar, scaled, tit)
+            fig = makefigure(24,12);
+            t = tiledlayout('flow', TileSpacing="tight", Padding="tight");
+            %             t = tiledlayout(2,3, TileSpacing="tight", Padding="tight");
+            %s=nexttile;
+
+            t.XLabel.String = '$\lambda_c$';
+            t.YLabel.String = '$\lambda_g$';
+            t.XLabel.Interpreter = 'latex';
+            t.YLabel.Interpreter = 'latex';
+            for idx = 1:numel(var)
+
+                ax{idx} = nexttile;
+                plot_contourf_ax(obj, ax{idx}, var{idx}, xvar, yvar, scaled{idx}, tit{idx});
+            end
+        end
+
+        function ax = plot_contourf_ax(obj, ax, var, xvar, yvar, scaled, tit)
+
+            if scaled
+                var = helpers.matdivrobust(var, var(1,1));
+                caxis([1-max(max(abs(var-1))), 1+max(max(abs(var-1)))]);
+            end
+            hold on
+            contourf(xvar, yvar, var, 50, 'LineStyle','none')
+            contour(xvar, yvar, var, [1,1], 'LineColor','k')
+            hold off
+            %xlabel('lc'); ylabel('lg')
+            colormap(gca, flipud(brewermap(50, 'RdBu')));
+
+            title(tit, 'interpreter', 'latex')
+            idxt = unique([1, round(size(xvar,2)/4), round(size(xvar,2)/2), round(3*size(xvar,2)/4), round(size(xvar,2))]);
+            idyt = unique([1, round(size(yvar,1)/4), round(size(yvar,1)/2), round(3*size(yvar,1)/4), round(size(yvar,1))]);
+            ax.XTick = xvar(1,idxt);
+            ax.YTick = yvar(idyt,1);
+            ax.XTickLabel = round(helpers.symexp(xvar(1,idxt), obj.opts.res_near_zero(1)), 1, 'significant');
+            ax.YTickLabel = round(helpers.symexp(yvar(idyt,1), obj.opts.res_near_zero(3)), 1, 'significant');
+            ax.TickLabelInterpreter = 'latex';
+            c = colorbar();
+            c.TickLabelInterpreter = 'latex';
+        end
+
+
+        function plot_cross_validation_analysis(obj, CV, scaled)
+            [CV, lc, lg] = prep_sens_plot(obj, CV);
+
+            fig = plot_contourf_fig(obj, CV, lc, lg, {1,1}, {'Generalization error', 'Training error'});
+
+
         end
 
         function [plot_var, lc, lg] = prep_sens_plot(obj, SA)
-            plot_var = nan([obj.opts.reg_iter(3), obj.opts.reg_iter(1), size(SA,2)]);
-            for idx = 1:size(SA,2) % number of metrics
-                plot_var(:,:,idx) = reshape(cell2mat(SA(:,idx)),...
-                    [obj.opts.reg_iter(3), obj.opts.reg_iter(1)]); 
+            plot_var = cell([size(SA,2), 1]);
+            for idx = 1:size(SA,2) % number of metrics to be plotted
+                plot_var{idx,1} = reshape(cell2mat(SA(:,idx)),...
+                    [obj.opts.reg_iter(3), obj.opts.reg_iter(1)]);
                 % CV contains metrics belonging to different reg-pars
             end
             if strcmp(obj.opts.reg_vary, 'coupled')
@@ -305,9 +484,9 @@ classdef ModelParameters < handle
             else
                 warning("Use SolverOptions.reg_vary = 'coupled' to perform sensitivity analyses.")
             end
-            plot_var
-            lc
-            lg
+            %             plot_var
+            %             lc
+            %             lg
         end
 
         function pars = p2pars(obj)
@@ -325,22 +504,34 @@ classdef ModelParameters < handle
             p = reshape(obj.pars', 1, [])';
             obj.p = p;
         end
+
+        function nullSpace = generate_null_intersection(obj, mat_cell)
+            % Very slow function that takes cell array of (sparse) matrices and computes
+            % intersection of their nullspaces, with basis vectors placed in columns of nullSpace
+            cur_null = null(full(mat_cell{1}));
+            for m = 2:length(mat_cell)
+                next_null = null(full(mat_cell{m}));
+                pre_null = null([cur_null, -next_null]);
+                cur_null = cur_null*pre_null(1:size(cur_null,2),:);
+            end
+            nullSpace = cur_null;
+        end
     end
 end
 
 
-        %         function SE = local_sensitivity(obj)
-        %         end
-        %
-        %         function SE = sensitivity_analysis(obj)
-        %
-        %         end
+%         function SE = local_sensitivity(obj)
+%         end
+%
+%         function SE = sensitivity_analysis(obj)
+%
+%         end
 
-        %         function phi_cmap = get.phi_cmap(obj)
-        %         phi_cmap = [obj.vel_cmap;  flipud(obj.vel_cmap)];
-        %         end
+%         function phi_cmap = get.phi_cmap(obj)
+%         phi_cmap = [obj.vel_cmap;  flipud(obj.vel_cmap)];
+%         end
 
-        %     end
+%     end
 
 
 
@@ -416,21 +607,21 @@ end
 %                cov_pars{1,1} = 0; n_vels{1,1} = ns;
 
 
-            %Continue here.
-            %
-            %             obj.cv_results
-            %             for rp = 1:numel(obj.opts.reg_pars)
-            %                 obj.cv_results(rp) = mean((b1 - p_avg).^2)
-            % Residuals and goodness of fit
+%Continue here.
+%
+%             obj.cv_results
+%             for rp = 1:numel(obj.opts.reg_pars)
+%                 obj.cv_results(rp) = mean((b1 - p_avg).^2)
+% Residuals and goodness of fit
 
-            %                     pe(1, rp, ep) = calc_res(b, M*p(:, rp, ep)); % Performance on full set
-            %                     pe(2, rp, ep) = calc_res(b0, M0*p(:, rp, ep)); % Performance on training set
-            %                     pe(3, rp, ep) = calc_res(b1, M1*p(:, rp, ep)); % Performance on validation set
-            %                     pe(4, rp, ep) = calc_res(0, C1*p(:, rp, ep)); % Performance on continuity
-            %                     pe(5, rp, ep) = calc_res(0, C2*p(:, rp, ep)); % Performance on gen. continuity
-            %                     pe(6, rp, ep) = calc_res(0, C3*p(:, rp, ep)); % Performance on smoothness
-            %                     pe(7, rp, ep) = calc_res(0, C4*p(:, rp, ep)); % Performance on consistency
-            %                     pe(8, rp, ep) = calc_res(bc, C5*p(:, rp, ep)); % Performance on boundary conditions
-            %
-            %                     pe(9,rp,ep) = condest(A);
-            %                     pe(10,rp,ep) = it;
+%                     pe(1, rp, ep) = calc_res(b, M*p(:, rp, ep)); % Performance on full set
+%                     pe(2, rp, ep) = calc_res(b0, M0*p(:, rp, ep)); % Performance on training set
+%                     pe(3, rp, ep) = calc_res(b1, M1*p(:, rp, ep)); % Performance on validation set
+%                     pe(4, rp, ep) = calc_res(0, C1*p(:, rp, ep)); % Performance on continuity
+%                     pe(5, rp, ep) = calc_res(0, C2*p(:, rp, ep)); % Performance on gen. continuity
+%                     pe(6, rp, ep) = calc_res(0, C3*p(:, rp, ep)); % Performance on smoothness
+%                     pe(7, rp, ep) = calc_res(0, C4*p(:, rp, ep)); % Performance on consistency
+%                     pe(8, rp, ep) = calc_res(bc, C5*p(:, rp, ep)); % Performance on boundary conditions
+%
+%                     pe(9,rp,ep) = condest(A);
+%                     pe(10,rp,ep) = it;
