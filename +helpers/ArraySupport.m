@@ -69,12 +69,12 @@ classdef ArraySupport < handle & matlab.mixin.Copyable
             [obj.(var_name)] = deal(var{:});
         end
 
-        function val = cat_property(obj, var_name, dim, varargin)
+        function val = cat_property(obj, var_name, varargin)
 % Concatenate and return property of objects in array
 %
-%   val = obj.cat_property(var_name, dim) concatenates the property with
-%   name 'var_name' along the dimension dim. If sizes along dimension dim
-%   are not consisten, output variables are grown along dimension dim to
+%   val = obj.cat_property(var_name) concatenates the property with
+%   name 'var_name' along the 2nd dimension. If sizes along dimension dim
+%   are not consistent, output variables are grown along dimension dim to
 %   match the variable with the largest size along dim.
 %
 %   val = obj.cat_property(...,'PropName', PropValue) allows to specify
@@ -83,15 +83,49 @@ classdef ArraySupport < handle & matlab.mixin.Copyable
 %       Specify the value to grow the arrays with. For handle arrays, the 
 %       object is grown with unique new objects. If 'FillVal' is specified,
 %       it will be filled with copies of 'FillVal'
+%
+%       'Dimension'
+%       Modify the dimension to concatenate along.
+%
+%   val = obj.cat_property(...) if var_name is a method, any other input
+%       passed to function is passed on the method.
+%
+            % Handle FillVal argument to be passed to grow_array function
+            ga_args={};
+            fval_pos = find(strcmp(varargin,'FillVal'));
+            if ~isempty(fval_pos) && numel(varargin) > fval_pos(1)
+                ga_args = varargin(fval_pos(1)+[0 1]);
+                varargin(fval_pos(1)+[0 1]) = [];
+            end
+            
+            % Handle Dimension
+            dim = 2;
+            fval_dim = find(strcmp(varargin,'Dimension'));
+            if ~isempty(fval_dim) && numel(varargin) > fval_dim(1)
+                dim = varargin(fval_dim(1)+1);
+            end
+
+
+            % scalar case
             if isscalar(obj)
-                val = obj.(var_name);
+                if isprop(obj,var_name)
+                    val = obj.(var_name);
+                else
+                    val = obj.(var_name)(varargin{:});
+                end
                 return
             end
-            if nargin < 3
-                dim = 2;
+
+            % differentiate call for property or method
+            if isprop(obj, var_name)
+                val = {obj.(var_name)};
+            else
+                val = cell(size(obj));
+                [val{:}] = obj.(var_name)(varargin{:});
             end
-            val = {obj.(var_name)};
-            [val{:}] = helpers.grow_array(val{:},'SkipDims',dim, varargin{:});
+
+            % grow and concatenate ouput
+            [val{:}] = helpers.grow_array(val{:},'SkipDims',dim, ga_args{:});
             val = cat(dim, val{:});
         end
 

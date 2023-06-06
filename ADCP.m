@@ -548,33 +548,53 @@ classdef ADCP < handle &...
             %   system
             %
             %   see also: ADCP
-            sv_pos=obj.depth_cell_position;
-            sv_pos=sv_pos(:,:,:,3);
-            sv=obj.backscatter;
-            t=obj.time;
-            t=seconds(t-t(1));
-            nb=size(sv,3);
-            axh=nan(nb,1);
-            for cb=1:nb
-                axh(cb)=subplot(nb,1,cb);
-                pcolor(t,sv_pos(:,:,cb),sv(:,:,cb));
-                clim=mean(sv(:,:,cb),'all','omitnan')+[-2 2]*std(sv(:,:,cb),0,'all','omitnan');
-                hc=colorbar;
-                ylabel(hc,'Backscatter (dB)')
-                shading flat
-                if all(isfinite(clim))
-                    set(gca,'clim',clim)
+
+            no = numel(obj);
+            nb = [obj.nbeams];
+            nbmax = max(nb);
+            t=tiledlayout(nbmax, no,'TileSpacing','tight','Padding','compact');
+            sv_pos={obj.depth_cell_position};
+            sv_pos=cellfun(@(x) mean(x(:,:,:,3),3,'omitnan'), sv_pos,...
+                'UniformOutput', false);
+            axh = deal(nan(nbmax,no));
+            tim={obj.time};
+            sv={obj.backscatter};
+            for cb = 1:nbmax
+                for co = 1:no
+                    axh(cb,co)=nexttile;
+                    if nb(co)<cb
+                        continue
+                    end
+                    pcolor(tim{co},sv_pos{co},sv{co}(:,:,cb));
+                    shading flat
+                    hc=colorbar;
+                    ylabel(hc,['Sv Beam ',num2str(cb),' (dB)'])
+                    shading flat                      
+                    if cb == nbmax
+                        title(axh(1,co),obj(co).description)
+                        set(axh(end,co),'XTickLabel',[],'XTickMode','manual')
+                        linkaxes(axh(:,co),'xy')
+                    end
                 end
-                title(['Beam ',num2str(cb)])
             end
-            xlabel('time (s)')
-            linkaxes(axh,'xy')
+            xlabel(t, 'Time (s)')
+            ylabel(t, 'Vertical position(m)')
             if nargout>0
                 hfout=gcf;
             end
         end
-        function plot_filters(obj)
-            obj.filters.plot(obj);
+        function plot_filters(obj, varargin)
+            if ~isscalar(obj)
+                tpar = tiledlayout("flow");
+                for co = 1:numel(obj)
+                    t = tiledlayout(tpar,1,1);
+                    t.Layout.Tile = co;
+                    obj(co).plot_filters(t, varargin{:})
+                    title(t, obj(co).description)
+                end
+                return
+            end
+            obj.filters.plot(obj, varargin{:});
         end
         function plot_all(obj)
             figure

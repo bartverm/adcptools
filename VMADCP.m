@@ -293,9 +293,8 @@ classdef VMADCP < ADCP &...
         end
 
         function [handle_scat, handle_cbar]=plot_bed_position(obj,varargin)
-            pos = cell(size(obj));
-            [pos{:}]=obj.bed_position();
-            pos = reshape([pos{:}],[], 3);
+            pos = obj.cat_property('bed_position');
+            pos = reshape(pos,[], 3);
             hs=scatter3(pos(:,1),pos(:,2),pos(:,3),10,pos(:,3),'filled',varargin{:});
             set(gca,'DataAspectRatio',[1 1 .2])
             view(0,90)
@@ -318,23 +317,23 @@ classdef VMADCP < ADCP &...
         end
 
         function plot_track_velocity(obj)
-            vel = obj.water_velocity(CoordinateSystem.Earth);
-            da_vel = mean(vel,1,"omitnan");
-            ph = obj.horizontal_position;
+            vel = obj.cat_property('water_velocity', CoordinateSystem.Earth);
+            vel = mean(vel,1,"omitnan");
+            ph = [obj.horizontal_position];
             hold_stat = get(gcf,'NextPlot');
             plot(ph(1,:), ph(2,:),'Color',[.2 .2 .2])
             axis equal
             hold on
-            xlabel([obj.horizontal_position_provider.description,' x (m)']);
-            ylabel([obj.horizontal_position_provider.description,' y (m)']);
+            xlabel([obj(1).horizontal_position_provider.description,' x (m)']);
+            ylabel([obj(1).horizontal_position_provider.description,' y (m)']);
             xl = get(gca,'xlim');
             yl = get(gca,'ylim');
-            xpos = xl(1)+diff(xl)/10;
-            ypos = yl(1)+diff(yl)/10;
-            text(xpos,ypos,'1  m/s','HorizontalAlignment','left',...
+            xpos = xl(1) + diff(xl) / 10;
+            ypos = yl(1) + diff(yl) / 10;
+            text(xpos, ypos,'1  m/s','HorizontalAlignment','left',...
                 VerticalAlignment='top',BackgroundColor='w')
             hq=quiver([ph(1,:) xpos],...
-                [ph(2,:) ypos], [da_vel(1,:,1) 1], [da_vel(1,:,2) 0]);
+                [ph(2,:) ypos], [vel(1,:,1) 1], [vel(1,:,2) 0]);
             set(gcf,'NextPlot',hold_stat)
         end
 
@@ -404,6 +403,10 @@ classdef VMADCP < ADCP &...
             end
             hf=plot_velocity@ADCP(obj,vel);
             add_bed_and_surface(obj,hf)
+        end
+
+        function plot_filters(obj, varargin)
+            plot_filters@ADCP(obj, varargin{:})
         end
     end
     methods(Access = protected, Abstract)
