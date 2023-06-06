@@ -290,7 +290,7 @@ classdef ADCP < handle &...
         %   see also: ADCP, beam_orientation_matrix
         vertical_range_to_cell
 
-        % water level
+        % water_level
         %
         %   size: 1 x nensembles
         %   returns the water level. The way the water level is computed
@@ -298,6 +298,14 @@ classdef ADCP < handle &...
         %
         %   see also: ADCP, water_level_object
         water_level
+
+        % depth_cell_position
+        %
+        %   size: ncells x nensembles x nbeams x 3
+        %   position vector in Earth coordinates
+        %
+        % see also: ADCP, position, depth_cell_offset
+        depth_cell_position
     end
     methods
         %%% Constuctor
@@ -490,32 +498,45 @@ classdef ADCP < handle &...
             %   system
             %
             %   see also: ADCP
-            vel_pos=obj.depth_cell_position;
-            vel_pos=mean(vel_pos(:,:,:,3),3,'omitnan');
+            no = numel(obj);
+            t=tiledlayout(3, no,'TileSpacing','tight','Padding','compact');
+            vel_pos={obj.depth_cell_position};
+            vel_pos=cellfun(@(x) mean(x(:,:,:,3),3,'omitnan'), vel_pos,...
+                'UniformOutput', false);
             if nargin < 2
-                vel=obj.velocity(CoordinateSystem.Earth);
+                vel={obj.velocity(CoordinateSystem.Earth)};          
             end
-            t=obj.time;
-            t=seconds(t-t(1));
+            [axx, axy, axz] = deal(nan(1,no));
+            tim = cell(1,no);
             hf=gcf;
-            axh(1)=subplot(3,1,1);
-            pcolor(t,vel_pos,vel(:,:,1));
-            hc=colorbar;
-            ylabel(hc,'V_x (m/s)')
-            shading flat
-            axh(2)=subplot(3,1,2);
-            pcolor(t,vel_pos,vel(:,:,2));
-            ylabel('vertical position (m)')
-            hc=colorbar;
-            ylabel(hc,'V_y (m/s)')
-            shading flat
-            axh(3)=subplot(3,1,3);
-            pcolor(t,vel_pos,vel(:,:,3));
-            hc=colorbar;
-            ylabel(hc,'V_z (m/s)')
-            shading flat
-            xlabel('time (s)')
-            linkaxes(axh,'xy')
+            for co = 1:no
+                axx(co)=nexttile;
+                tim{co}=obj(co).time;
+                pcolor(tim{co},vel_pos{co},vel{co}(:,:,1));
+                shading flat
+                hc=colorbar;
+                ylabel(hc,'V_E (m/s)')
+                title(axx(co),obj(co).description)
+                set(gca,'XTickLabel',[],'XTickMode','manual')
+            end
+            for co = 1:no
+                axy(co)=nexttile;
+                pcolor(tim{co},vel_pos{co},vel{co}(:,:,2));
+                shading flat
+                hc=colorbar;
+                ylabel(hc,'V_N (m/s)')
+                set(gca,'XTickLabel',[],'XTickMode','manual')
+            end
+            for co = 1:no
+                axz(co)=nexttile;
+                pcolor(tim{co},vel_pos{co},vel{co}(:,:,3));
+                shading flat
+                hc=colorbar;
+                ylabel(hc,'V_U (m/s)')
+                linkaxes([axx(co), axy(co), axz(co)],'xy')
+            end
+            ylabel(t,'Vertical position (m)')
+            xlabel(t,'Time')
             if nargout>0
                 hfout=hf;
             end
@@ -565,7 +586,7 @@ classdef ADCP < handle &...
             figure
             obj.plot_backscatter;
         end
-        function pos=depth_cell_offset(obj,dst)
+        function varargout=depth_cell_offset(obj,varargin)
             % Computes the xyz offset to the profiled depth cells
             %
             %   pos=depth_cell_offset(obj) returns the offset vector (ncells x
@@ -576,23 +597,22 @@ classdef ADCP < handle &...
             %   CoordinateSystem object.
             %
             %   see also: ADCP, depth_cell_position
-            if nargin < 2
-                dst=CoordinateSystem.Earth;
+            if ~isscalar(obj)
+                varargout = obj.run_get_method(nargout, 'depth_cell_offset', varargin{:});
+                return
             end
-            tm=obj.xform(CoordinateSystem.Instrument, dst, 'Geometry', true);
+            if nargin < 2
+                varargin{1}=CoordinateSystem.Earth;
+            end
+            tm=obj.xform(CoordinateSystem.Instrument,...
+                varargin{1}, 'Geometry', true);
             tm(:,:,:,4)=[];
             tm(:,:,4,:)=[];
             beam_mat = obj.instrument_matrix_provider.beam_orientation_matrix(obj);
             tm = helpers.matmult(beam_mat,tm, 3, 4);
-            pos=tm.*obj.depth_cell_slant_range;
+            varargout{1}=tm.*obj.depth_cell_slant_range;
         end
-        function pos=depth_cell_position(obj)
-            % Computes the xyz positions of the depth cells
-            %
-            %   pos=depth_cell_position(obj) returns the position vector
-            %   (ncells x nensembles x nbeams x 3) in Earth coordinates
-            %
-            % see also: ADCP, position, depth_cell_offset
+        function pos=get.depth_cell_position(obj)
             pos=obj.depth_cell_offset + permute([obj.horizontal_position; obj.vertical_position],[3,2,4,1]);
         end
     end
@@ -612,7 +632,7 @@ classdef ADCP < handle &...
         val = get_backscatter(obj)
         val = get_transducer(obj)
     end
-    methods(Abstract)
+    methods
         % Get transformation matrices for coordinate transformations
         %
         %   tm=xform(obj,dst) get the transformation matrices for the
@@ -632,8 +652,14 @@ classdef ADCP < handle &...
         %   transformations.
         %
         %   see also: ADCP
-        val = xform(obj,dst,src,varargin)
-
+        function varargout = xform(obj,varargin)
+            if ~isscalar(obj)
+                varargout = obj.run_get_method(nargout, 'xform', ...
+                    varargin{:});
+                return
+            end
+            varargout{1} = obj.get_xform(varargin{:});
+         end
         % velocity profile data
         %
         %   vel=velocity(obj) returns the profiled velocity in m/s.
@@ -645,7 +671,14 @@ classdef ADCP < handle &...
         %   of the ones specified in the current object.
         %
         %   see also: ADCP, CoordinateSystem
-        vel = velocity(obj,dst,filter)
+        function varargout = velocity(obj,varargin)
+            if ~isscalar(obj)
+                varargout = obj.run_get_method(nargout, 'velocity', ...
+                    varargin{:});
+                return
+            end
+            varargout{:} = obj.get_velocity(varargin{:});
+        end
     end
     methods(Static)
         function inv=invert_xform(tm)
@@ -660,5 +693,9 @@ classdef ADCP < handle &...
                 inv(1,ce,:,:)=shiftdim(inv(squeeze(tm(1,ce,:,:))),-2);
             end
         end
+    end
+    methods(Access=protected, Abstract)
+        get_velocity(obj,dst,filter)
+        get_xform(obj,dst,src,varargin)
     end
 end

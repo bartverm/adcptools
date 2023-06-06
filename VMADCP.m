@@ -103,8 +103,19 @@ classdef VMADCP < ADCP &...
         function plot_orientations(obj)
             obj.plot_orientations@ADCP;
         end
-
-        function vel=water_velocity(obj,dst)
+        function varargout = velocity(obj, varargin)
+            varargout = cell(1,min(nargout,numel(obj)));
+            [varargout{:}] = obj.velocity@ADCP(varargin{:}); 
+        end
+        function varargout = xform(obj, varargin)
+            varargout = cell(1,min(nargout,numel(obj)));
+            [varargout{:}] = obj.xform@ADCP(varargin{:}); 
+        end
+        function varargout = depth_cell_offset(obj, varargin)
+            varargout = cell(1,min(nargout,numel(obj)));
+            [varargout{:}] = obj.depth_cell_offset@ADCP(varargin{:}); 
+        end        
+        function varargout=water_velocity(obj,varargin)
         % VMADCP/water_velocity returns corrected water velocity
         %
         %   vel=water_velocity(obj) returns the velocity corrected for ship
@@ -114,13 +125,19 @@ classdef VMADCP < ADCP &...
         %   coordinate system
         %
         % see also: VMADCP
-            if nargin < 2
-                dst=obj.coordinate_system;
+            if ~isscalar(obj)
+                varargout = obj.run_get_method(nargout,...
+                    'water_velocity',varargin{:});
+                return
             end
-            vel=obj.velocity(dst)+obj.ship_velocity(dst);
+            if nargin < 2
+                varargin{1} = obj.coordinate_system;
+            end
+            varargout{1} = obj.velocity(varargin{1}) +...
+                obj.ship_velocity(varargin{1});
         end
 
-        function btvel = btvel(obj, dst)
+        function varargout = btvel(obj, varargin)
         % VMADCP/btvel returns the bottom tracking based ship velocity
         %
         %   btvel=btvel(obj) return the ship velocity as determined with 
@@ -131,13 +148,18 @@ classdef VMADCP < ADCP &...
         %   coordinate system
         %
         % see also: VMADCP
-            if nargin < 2
-                dst = obj.coordinate_system;
+            if ~isscalar(obj)
+                varargout = obj.run_get_method(nargout,...
+                    'btvel',varargin{:});
+                return
             end
-            btvel = obj.get_btvel(dst);
+            if nargin < 2
+                varargin{1} = obj.coordinate_system;
+            end
+            varargout{1} = obj.get_btvel(varargin{:});
         end
 
-        function pos=bed_offset(obj,dst)
+        function varargout=bed_offset(obj,varargin)
             % Get the offset from the ADCP to the observed bed in m
             %
             %   pos = bed_offset(obj) returns the x,y and z components of the vector
@@ -147,45 +169,54 @@ classdef VMADCP < ADCP &...
             %   system to get the offsets in as a CoordinateSystem object.
             %
             %   see also: VMADCP, CoordinateSystem, slant_range_to_bed, bed_position
-            if nargin < 2 
-                dst=CoordinateSystem.Earth;
+            if ~isscalar(obj)
+                varargout = obj.run_get_method(nargout,...
+                    'bed_offset', varargin{:});
+                return
             end
-            tm =obj.xform(CoordinateSystem.Instrument, dst,'Geometry',true);
-            beam_m = obj.instrument_matrix_provider.beam_orientation_matrix(obj);
+            if nargin < 2 
+                varargin{1}=CoordinateSystem.Earth;
+            end
+            tm = obj.xform(CoordinateSystem.Instrument,...
+                varargin{1}, 'Geometry', true);
+            imp = obj.instrument_matrix_provider;
+            beam_m = imp.beam_orientation_matrix(obj);
             tm(:,:,:,4)=[];
             tm(:,:,4,:)=[];
             tm = helpers.matmult(beam_m,tm);
             pos=tm.*obj.slant_range_to_bed;
+            varargout{1} = pos;
         end
 
-        function pos=bed_position(obj)
+        function varargout=bed_position(obj)
         % Position of the bed in geographic coordinates
         %
         %   pos = bed_position(obj) returns the x,y and z coordinates of the bed as
         %   detected by the bottom tracking of the ADCP.
         %
         % see also: VMADCP, bed_offset
-            pos=obj.bed_offset(CoordinateSystem.Earth);
-            pos(:,:,:,1)=pos(:,:,:,1)+repmat(obj.horizontal_position(1,:),[1,1,4]);
-            pos(:,:,:,2)=pos(:,:,:,2)+repmat(obj.horizontal_position(2,:),[1,1,4]);
-            pos(:,:,:,3)=pos(:,:,:,3)+permute(obj.vertical_position,[3,2,4,1]);
+            if ~isscalar(obj)
+                varargout = obj.run_get_method(nargout,'bed_position');
+                return
+            end
+            pos = obj.bed_offset(CoordinateSystem.Earth);
+            pos(:,:,:,1) = pos(:,:,:,1) + ...
+                repmat(obj.horizontal_position(1, :), [1, 1, 4]);
+            pos(:,:,:,2) = pos(:,:,:,2) + ...
+                repmat(obj.horizontal_position(2, :), [1, 1, 4]);
+            pos(:,:,:,3) = pos(:,:,:,3) + ...
+                permute(obj.vertical_position, [3, 2, 4, 1]);
+            varargout{1} = pos;
         end
 
-        function vel=ship_velocity(obj,dst)
-            vel=obj.shipvel_provider.ship_velocity(obj,dst);
-        end
-
-        function pos=depth_cell_position(obj)
-            % Get the geographic position of the depth cells
-            %
-            %   pos = depth_cell_position(obj) returns the x, y and z coordinates of
-            %   the depth cells of the ADCP.
-            %
-            %   see also: VMADCP, depth_cell_offset
-            pos=obj.depth_cell_offset(CoordinateSystem.Earth);
-            pos(:,:,:,1)=pos(:,:,:,1)+repmat(obj.horizontal_position(1,:),[1,1,4]);
-            pos(:,:,:,2)=pos(:,:,:,2)+repmat(obj.horizontal_position(2,:),[1,1,4]);
-            pos(:,:,:,3)=pos(:,:,:,3)+permute(obj.vertical_position,[3,2,4,1]);
+        function varargout=ship_velocity(obj,varargin)
+            if ~isscalar(obj)
+                varargout = obj.run_get_method(nargout,'ship_velocity',...
+                    varargin{:});
+                return
+            end
+            varargout{1} = ...
+                obj.shipvel_provider.ship_velocity(obj,varargin{:});
         end
  
         function handle_track=plot_track(obj,varargin)
@@ -199,7 +230,7 @@ classdef VMADCP < ADCP &...
             %
             %   see also: VMADCP, plot, plot_all
             for cin=1:numel(varargin)
-                if isa(varargin{cin},'matlab.graphics.axis.Axes')% || isa(obj.axes,'matlab.ui.control.UIAxes')
+                if isa(varargin{cin},'matlab.graphics.axis.Axes')
                     ca=varargin{cin};
                     varargin(cin)=[];
                     break
@@ -231,39 +262,45 @@ classdef VMADCP < ADCP &...
                     arg_used(cin)=true;
                 end
             end
-            varargin(arg_used)=[];
-            ht=nan(numel(ensfilt),1);
-            hold_stat=get(ca,'NextPlot');
+            varargin(arg_used) = [];
+            ht = nan(numel(ensfilt), 1);
+            hold_stat = get(ca, 'NextPlot');
             hold on
             leg = obj.description;
             trk = '';
-            for ce=1:numel(ensfilt)
-                filt=~ensfilt(ce).all_cells_bad(obj);
+            for ce = 1 : numel(ensfilt)
+                filt =~ ensfilt(ce).all_cells_bad(obj);
                 if numel(ensfilt) > 1
                     trk = [' track ', num2str(ce)];
                 end
-                ht(ce)=plot(ca,obj.horizontal_position(1,filt),obj.horizontal_position(2,filt),varargin{:},'DisplayName',leg + trk);
+                ht(ce) = plot(ca,...
+                    obj.horizontal_position(1,filt),...
+                    obj.horizontal_position(2,filt),...
+                    varargin{:},'DisplayName',leg + trk);
             end
             if numel(ensfilt) > 1
                 legend
             end
             set(gca,'NextPlot',hold_stat)
             axis equal
-            xlabel(ca,[obj.horizontal_position_provider.description,' x (m)']);
-            ylabel(ca,[obj.horizontal_position_provider.description,' y (m)']);
+            xlabel(ca,...
+                [obj.horizontal_position_provider.description, ' x (m)']);
+            ylabel(ca,...
+                [obj.horizontal_position_provider.description, ' y (m)']);
             if nargout > 0
-                handle_track=ht;
+                handle_track = ht;
             end
         end
 
         function [handle_scat, handle_cbar]=plot_bed_position(obj,varargin)
-            pos=obj.bed_position();
-            pos=reshape(pos,[],3);
+            pos = cell(size(obj));
+            [pos{:}]=obj.bed_position();
+            pos = reshape([pos{:}],[], 3);
             hs=scatter3(pos(:,1),pos(:,2),pos(:,3),10,pos(:,3),'filled',varargin{:});
             set(gca,'DataAspectRatio',[1 1 .2])
             view(0,90)
-            xlabel([obj.horizontal_position_provider.description,' x (m)']);
-            ylabel([obj.horizontal_position_provider.description,' y (m)']);
+            xlabel([obj(1).horizontal_position_provider.description,' x (m)']);
+            ylabel([obj(1).horizontal_position_provider.description,' y (m)']);
             zlabel('z (m)');
             hc=colorbar;
             ylabel(hc,'Bed elevation (m)')
@@ -310,35 +347,60 @@ classdef VMADCP < ADCP &...
         end
 
         function add_bed_and_surface(obj,hf,av_beams)
+            no = numel(obj);
             if nargin<2
                 hf=gcf;
             end
             if nargin < 3
                 av_beams=true;
             end
-            bed_pos=obj.bed_position;
-            bed_pos=squeeze(bed_pos(:,:,:,3));
+            bed_pos = cell(size(obj));
+            [bed_pos{:}] = obj.bed_position;
+            bed_pos=cellfun(@(x) squeeze(x(:,:,:,3)), bed_pos, ...
+                'UniformOutput', false);
             if av_beams
-                bed_pos=repmat(mean(bed_pos,2,'omitnan'), 1,size(bed_pos,2));
+                bed_pos = cellfun(@(x) repmat(mean(x,2,'omitnan'),...
+                    1,size(x,2)), bed_pos, 'UniformOutput',false);
             end
             c=get(hf,'Children');
-            cb=size(bed_pos,2)+1;
+            if no>1
+                assert(isa(c, 'matlab.graphics.layout.TiledChartLayout'),...
+                    ['Can only add bed and surface for object arrays',...
+                    ' when figure containes tiled layour.']);
+                assert(c.GridSize(2) == no, ['For object arrays, ',...
+                    'grid size of tiled layout should have as many ',...
+                    'columns as number of objects.'])
+            end
+            if isa(c, 'matlab.graphics.layout.TiledChartLayout')
+                c = c.Children;
+            end
+            cb = size(bed_pos{1},2);
+            co = no + 1;
             for cg=c'
                 if isa(cg,'matlab.graphics.axis.Axes')
-                    cb=cb-1;
+                    co = co - 1;
+                    if co < 1
+                        co = no;
+                        cb = cb - 1;
+                        if cb < 1
+                            break
+                        end
+                    end
                     set(cg,'NextPlot','add')
-                    t=obj.time;
-                    t=seconds(t-t(1));
-                    plot(cg,t,bed_pos(:,cb),'k','Linewidth',2)
-                    plot(cg,t,obj.water_level,'b','Linewidth',2)
-                    set(cg,'ylim',[min(bed_pos(:)) max(obj.water_level)])
+                    plot(cg, obj(co).time, bed_pos{co}(:,cb),...
+                        'k','Linewidth',2)
+                    plot(cg, obj(co).time, obj(co).water_level,...
+                        'b','Linewidth',2)
+                    set(cg, 'ylim',...
+                        [min(bed_pos{co}(:)) max(obj(co).water_level)])
                 end
             end
         end
 
         function plot_velocity(obj,vel)
             if nargin < 2
-                vel=obj.water_velocity(CoordinateSystem.Earth);
+                vel = cell(1,numel(obj));
+                [vel{:}]=obj.water_velocity(CoordinateSystem.Earth);
             end
             hf=plot_velocity@ADCP(obj,vel);
             add_bed_and_surface(obj,hf)
@@ -347,5 +409,6 @@ classdef VMADCP < ADCP &...
     methods(Access = protected, Abstract)
         val = get_bt_vertical_range(obj)
         val = get_btvel(obj, dst)
+        val = get_velocity(obj,dst)
     end
 end

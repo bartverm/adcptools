@@ -94,9 +94,17 @@ classdef ArraySupport < handle & matlab.mixin.Copyable
             [val{:}] = helpers.grow_array(val{:},'SkipDims',dim, varargin{:});
             val = cat(dim, val{:});
         end
-        
+
+        function out = run_get_method(obj,narg, method_name, varargin)
+            nout = min(numel(obj),narg);
+            out = cell(1, nout);
+            for co = 1:numel(obj)
+                out{co} = feval(method_name, obj(co), varargin{:});
+            end
+        end
+
         function varargout = run_method(obj, method_name, varargin)
-%   Run a method for all objects in object array obj. 
+%   Run a method for all objects in object array obj
 %
 %   [...] = obj.run_method(method_name, ...) runs the method
 %   specified by method_name for each object in the object array obj. The
