@@ -7,6 +7,14 @@ classdef ArraySupport < handle & matlab.mixin.Copyable
 %   have the same size. To use this constructor subclass from
 %   ArraySupport and call the superclass constructor in your class.
 %
+%   obj = ArraySupport('ParamName',paramValue) allows to specify the
+%   following additional parameters:
+%
+%   'ExpandOnConstruct'
+%   {true} | false
+%   This sets whether the object should be expanded for non-scalar input to
+%   the construct. If this is set to false, a scalar object is constructed.
+% 
 %   ArraySupport methods (protected):
 %   assign_property - Assign elements of an array to property of obj array
 %   cat_property - Concatenate and return properties from objects
@@ -20,12 +28,26 @@ classdef ArraySupport < handle & matlab.mixin.Copyable
 %               obj = obj@helpers.ArraySupport(varargin{:});
 %           end
 %  
-
+    properties(Access = protected)
+        unprocessed_construction_inputs (1,:) cell = {};
+    end
     methods
         function obj = ArraySupport(varargin)
             if isempty(varargin)
                 return
             end
+            
+            expand = true;
+            f_expand = find(strcmp('ExpandOnConstruct',varargin));
+            if ~isempty(f_expand) && numel(varargin) >= f_expand(1) + 1
+                expand = varargin{f_expand(1) + 1};
+                varargin(f_expand(1) + [0 1]) = [];
+            end
+            obj(1).unprocessed_construction_inputs = varargin;
+            if ~expand
+                return
+            end
+
             % figure out which are the non scalar expanded input
             expand_var = cellfun(@(x) (iscell(x) || isa(x,'handle') )...
                 && ~isscalar(x), varargin);
@@ -38,7 +60,7 @@ classdef ArraySupport < handle & matlab.mixin.Copyable
                     'Solver:NonMatchingInputSize',...
                     'Size of all non-scalar input should match')
                 siz_obj = num2cell(siz_nscal{1});
-                obj(siz_obj{:})=copy(obj);
+                obj(siz_obj{:}) = copy(obj);
             end
 
         end
@@ -60,7 +82,7 @@ classdef ArraySupport < handle & matlab.mixin.Copyable
             assert(isscalar(var) || isequal(size(var), size(obj)),...
                 'ArrayOnConstruct:WrongInputSize',...
                  ['Input variable should either be scalar or match the',...
-                 'size of object array.'])
+                 ' size of object array.'])
 
             if ~iscell(var)
                 var=num2cell(var);

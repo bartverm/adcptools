@@ -18,25 +18,33 @@ classdef EnsembleFilter < Filter
         bad_ensembles (1,:) logical = logical.empty(1,0)
     end
     methods
-        function obj=EnsembleFilter(varargin)
-            for count_arg=1:nargin
+        function obj = EnsembleFilter(varargin)
+            obj = obj@Filter(varargin{:});
+            varargin = obj(1).unprocessed_construction_inputs;
+            for count_arg = 1 : numel(varargin)
                 current_arg=varargin{count_arg};
                 if isa(current_arg,'ADCP')
-                    obj.bad_ensembles=false(1,current_arg.nensembles);
+                    if ~isscalar(obj)
+                        for co = 1:numel(obj)
+                            obj(co).bad_ensembles=false(1,current_arg(co).nensembles);
+                        end
+                    else
+                        obj.bad_ensembles=false(1,sum([current_arg.nensembles]));
+                    end
                 elseif islogical(current_arg)
                     obj.bad_ensembles=current_arg;
                 end
             end
-            obj.description='Ensemble filter';
+            [obj.description]=deal('Ensemble filter');
         end
     end
     methods(Access=protected)
         function bad=bad_int(obj,adcp)
             if isempty(obj.bad_ensembles)
-                obj.bad_ensembles=false([1,adcp.nensembles]);
+                obj.bad_ensembles=false([1,sum([adcp.nensembles])]);
             end
-           assert(numel(obj.bad_ensembles)==adcp.nensembles, 'The number of elements in the bad_ensembles property should match the number of ensembles in the ADCP object') 
-           bad=repmat(obj.bad_ensembles,[max(adcp.ncells),1,max(adcp.nbeams)]);
+           assert(numel(obj.bad_ensembles)==sum([adcp.nensembles]), 'The number of elements in the bad_ensembles property should match the number of ensembles in the ADCP object') 
+           bad=repmat(obj.bad_ensembles,[max([adcp.ncells]),1,max([adcp.nbeams])]);
         end
     end
 end
