@@ -55,6 +55,10 @@ classdef ModelParameters < handle
             ax.TickLabelInterpreter = 'latex';
         end
 
+        function plot_residuals(obj)
+        end
+
+
         function plot_solution(obj, names_selection, par_idx, varargin)
 
             if nargin < 2
@@ -140,40 +144,34 @@ classdef ModelParameters < handle
                             ylabel(c, 'deg','Rotation',270, 'interpreter', 'latex');
 
                         end
-                        pos = get(c,'Position');
-                        if row == 1
-                            pos1 = pos;
-                        end
+                        %pos = get(c,'Position');
+                        %if row == 1
+                       %     pos1 = pos;
+                       % end
                         %         disp(pos)
-                        c.Label.Position(1) = pos1(1)+.5/col; % to change its position
+                        %c.Label.Position(1) = pos1(1)+.5/col; % to change its position
                         %         c.Label.Position(2) = c.Label.Position(2) + .2; % to change its position
-                        c.Label.HorizontalAlignment = 'center'; % to change its position
-                        c.TickLabelInterpreter = 'latex';
+                        %c.Label.HorizontalAlignment = 'center'; % to change its position
+                        %c.TickLabelInterpreter = 'latex';
                         %         c.Label.Rotation = 270; % to rotate the text
                     end
 
                     % colormap
-                    if ~contains(titles{row}, 'phi')
-                        %amax = max(abs(var(:,1)), [], 'omitnan') + 1e-5;
+                    if ~contains(titles{row}, 'phi')    % linear variable
                         caxis([-amax, amax])
-
                         colormap(gca, obj.vel_cmap)
-
                     else
-                        caxis([-180, 180])
+                        caxis([-180, 180])              % cyclic variable
                         temp = get(gca, 'Children');
                         temp(2).CData =  temp(2).CData*180/pi;
                         colormap(gca, obj.phi_cmap)
                     end
 
                     axis tight
-                    %     hAxes.TickLabelInterpreter = 'latex';
-                    %     title(sprintf('%s, %s, %s', names{i}, names{i+np(1)}, names{i + np(1) + np(2)}))
-                                        set(gca, 'XDir','reverse') % Very important
-                    %         xlabel('y [m]', 'interpreter', 'latex')
-                    %         ylabel('z [m]', 'interpreter', 'latex')
-                    set(gca,'XTick',[])
-                    set(gca,'YTick',[])
+                    set(gca, 'XDir','reverse') % Very important
+
+                    set(gca, 'XTick',[])
+                    set(gca, 'YTick',[])
                 end
             end
             % Tight = get(gca, 'TightInset');  %Gives you the bording spacing between plot box and any axis labels
