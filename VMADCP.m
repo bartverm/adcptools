@@ -126,7 +126,7 @@ classdef VMADCP < ADCP &...
         %
         % see also: VMADCP
             if ~isscalar(obj)
-                varargout = obj.run_get_method(nargout,...
+                varargout = obj.run_method_single(nargout,...
                     'water_velocity',varargin{:});
                 return
             end
@@ -149,7 +149,7 @@ classdef VMADCP < ADCP &...
         %
         % see also: VMADCP
             if ~isscalar(obj)
-                varargout = obj.run_get_method(nargout,...
+                varargout = obj.run_method_single(nargout,...
                     'btvel',varargin{:});
                 return
             end
@@ -170,7 +170,7 @@ classdef VMADCP < ADCP &...
             %
             %   see also: VMADCP, CoordinateSystem, slant_range_to_bed, bed_position
             if ~isscalar(obj)
-                varargout = obj.run_get_method(nargout,...
+                varargout = obj.run_method_single(nargout,...
                     'bed_offset', varargin{:});
                 return
             end
@@ -196,7 +196,7 @@ classdef VMADCP < ADCP &...
         %
         % see also: VMADCP, bed_offset
             if ~isscalar(obj)
-                varargout = obj.run_get_method(nargout,'bed_position');
+                varargout = obj.run_method_single(nargout,'bed_position');
                 return
             end
             pos = obj.bed_offset(CoordinateSystem.Earth);
@@ -211,7 +211,7 @@ classdef VMADCP < ADCP &...
 
         function varargout=ship_velocity(obj,varargin)
             if ~isscalar(obj)
-                varargout = obj.run_get_method(nargout,'ship_velocity',...
+                varargout = obj.run_method_single(nargout,'ship_velocity',...
                     varargin{:});
                 return
             end

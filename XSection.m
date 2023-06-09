@@ -276,7 +276,7 @@ classdef XSection < handle & helpers.ArraySupport
                 argin = [argin {scale}];
             end
             if ~isscalar(obj)
-                varargout = obj.plot_array('plot',argin{:});
+                varargout = obj.run_method('plot',argin{:});
                 return
             end
             if nargin < 2
@@ -308,7 +308,8 @@ classdef XSection < handle & helpers.ArraySupport
             %   exclude parts of the track
             %
             %   see also: XSection, EnsembleFilter, VMADCP
-            [x,y]=deal(V.horizontal_position(1,:), V.horizontal_position(2,:));
+            hpos = [V.horizontal_position];
+            [x,y]=deal(hpos(1,:), hpos(2,:));
             if nargin > 2 && ~isempty(filter)
                 assert(isa(filter,'EnsembleFilter'),'filter should be of class EnsembleFilter')
                 fbad=filter.all_cells_bad(V);

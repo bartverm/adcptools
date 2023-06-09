@@ -618,7 +618,7 @@ classdef ADCP < handle &...
             %
             %   see also: ADCP, depth_cell_position
             if ~isscalar(obj)
-                varargout = obj.run_get_method(nargout, 'depth_cell_offset', varargin{:});
+                varargout = obj.run_method_single(nargout, 'depth_cell_offset', varargin{:});
                 return
             end
             if nargin < 2
@@ -674,7 +674,7 @@ classdef ADCP < handle &...
         %   see also: ADCP
         function varargout = xform(obj,varargin)
             if ~isscalar(obj)
-                varargout = obj.run_get_method(nargout, 'xform', ...
+                varargout = obj.run_method_single(nargout, 'xform', ...
                     varargin{:});
                 return
             end
@@ -693,7 +693,7 @@ classdef ADCP < handle &...
         %   see also: ADCP, CoordinateSystem
         function varargout = velocity(obj,varargin)
             if ~isscalar(obj)
-                varargout = obj.run_get_method(nargout, 'velocity', ...
+                varargout = obj.run_method_single(nargout, 'velocity', ...
                     varargin{:});
                 return
             end

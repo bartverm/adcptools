@@ -26,10 +26,12 @@ classdef EnsembleFilter < Filter
                 if isa(current_arg,'ADCP')
                     if ~isscalar(obj)
                         for co = 1:numel(obj)
-                            obj(co).bad_ensembles=false(1,current_arg(co).nensembles);
+                            obj(co).bad_ensembles =...
+                                false(1,current_arg(co).nensembles);
                         end
                     else
-                        obj.bad_ensembles=false(1,sum([current_arg.nensembles]));
+                        obj.bad_ensembles = false(1,...
+                            sum([current_arg.nensembles]));
                     end
                 elseif islogical(current_arg)
                     obj.bad_ensembles=current_arg;
@@ -38,13 +40,16 @@ classdef EnsembleFilter < Filter
             [obj.description]=deal('Ensemble filter');
         end
     end
-    methods(Access=protected)
-        function bad=bad_int(obj,adcp)
+    methods(Access = protected)
+        function bad = bad_int(obj,adcp)
             if isempty(obj.bad_ensembles)
-                obj.bad_ensembles=false([1,sum([adcp.nensembles])]);
+                obj.bad_ensembles = false([1, sum([adcp.nensembles])]);
             end
-           assert(numel(obj.bad_ensembles)==sum([adcp.nensembles]), 'The number of elements in the bad_ensembles property should match the number of ensembles in the ADCP object') 
-           bad=repmat(obj.bad_ensembles,[max([adcp.ncells]),1,max([adcp.nbeams])]);
+           assert(numel(obj.bad_ensembles) == sum([adcp.nensembles]),...
+               ['The number of elements in the bad_ensembles property ',...
+               'should match the number of ensembles in the ADCP object']) 
+           bad = repmat(obj.bad_ensembles, ...
+               [max([adcp.ncells]), 1, max([adcp.nbeams])]);
         end
     end
 end

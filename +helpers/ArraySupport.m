@@ -7,18 +7,15 @@ classdef ArraySupport < handle & matlab.mixin.Copyable
 %   have the same size. To use this constructor subclass from
 %   ArraySupport and call the superclass constructor in your class.
 %
-%   obj = ArraySupport('ParamName',paramValue) allows to specify the
-%   following additional parameters:
+%   obj = ArraySupport('NoExpand',...) any input given after this argument
+%   is not used to determine size of constructed array
 %
-%   'ExpandOnConstruct'
-%   {true} | false
-%   This sets whether the object should be expanded for non-scalar input to
-%   the construct. If this is set to false, a scalar object is constructed.
 % 
-%   ArraySupport methods (protected):
+%   ArraySupport methods:
 %   assign_property - Assign elements of an array to property of obj array
 %   cat_property - Concatenate and return properties from objects
-%   run_method - Run method of array of objects
+%   run_method - Run method, spreading inputs over obect calls
+%   run_method_single - Run method, with same input on object calls
 %   
 %
 %   Example construction:
@@ -36,15 +33,14 @@ classdef ArraySupport < handle & matlab.mixin.Copyable
             if isempty(varargin)
                 return
             end
-            
-            expand = true;
-            f_expand = find(strcmp('ExpandOnConstruct',varargin));
-            if ~isempty(f_expand) && numel(varargin) >= f_expand(1) + 1
-                expand = varargin{f_expand(1) + 1};
-                varargin(f_expand(1) + [0 1]) = [];
-            end
+            f_expand = find(strcmp('NoExpand',varargin));
+            nin = numel(varargin);
             obj(1).unprocessed_construction_inputs = varargin;
-            if ~expand
+            if ~isempty(f_expand) 
+                obj(1).unprocessed_construction_inputs(f_expand(1)) = [];
+                varargin(f_expand(1):nin) = [];
+            end
+            if isempty(varargin)
                 return
             end
 
@@ -66,7 +62,7 @@ classdef ArraySupport < handle & matlab.mixin.Copyable
         end
     end
     methods(Access = public, Sealed)
-        function assign_property(obj, var_name, var)
+        function assign_property(obj, var_name, var, varargin)
 % Assign elements of an array to property of object array
 %
 %   obj.assign_var(var_name, var) assign the variable var to the property 
@@ -76,19 +72,29 @@ classdef ArraySupport < handle & matlab.mixin.Copyable
 %   object in the array. 
 %   If var is a cell, the cell content is assigned and not the cell itself.
 %   
+%   obj.assign_var(...,'NoExpand') the variable is assigned as is to each
+%   of the array elements
+%
+%   'NoExpand'
 %   see also:
 %   ArraySupport, run_method
 
-            assert(isscalar(var) || isequal(size(var), size(obj)),...
-                'ArrayOnConstruct:WrongInputSize',...
-                 ['Input variable should either be scalar or match the',...
-                 ' size of object array.'])
 
-            if ~iscell(var)
-                var=num2cell(var);
-            end
             
-            [obj.(var_name)] = deal(var{:});
+            if nargin > 3 && strcmp(varargin{1}, 'NoExpand')
+                [obj.(var_name)] = deal(var);
+            else
+                assert(isscalar(var) || isequal(numel(var), numel(obj)),...
+                    'ArrayOnConstruct:WrongInputSize',...
+                     ['Input variable should either be scalar or match the',...
+                     ' size of object array.'])
+    
+                if ~iscell(var)
+                    var=num2cell(var);
+                end
+                [obj.(var_name)] = deal(var{:});
+            end
+
         end
 
         function val = cat_property(obj, var_name, varargin)
@@ -151,11 +157,17 @@ classdef ArraySupport < handle & matlab.mixin.Copyable
             val = cat(dim, val{:});
         end
 
-        function out = run_get_method(obj,narg, method_name, varargin)
+        function out = run_method_single(obj, narg, method_name, varargin)
+%   run method for each object in array and return in cell with outputs
+%
+%   Only works for single output methods! 
+% 
+%  returns a cell holding each of the outputs of 'method_name' returned for
+%  each element in the object array.
             nout = min(numel(obj),narg);
-            out = cell(1, nout);
+            out = cell(nargout, nout);
             for co = 1:numel(obj)
-                out{co} = feval(method_name, obj(co), varargin{:});
+                [out{:,co}] = feval(method_name, obj(co), varargin{:});
             end
         end
 

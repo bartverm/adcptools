@@ -377,7 +377,10 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
 %   see also: SigmaZetaMesh, plot
             varargout = cell(1,nargout);
             if ~isscalar(obj)
+                hold_stat = get(gca,'NextPlot');
+                hold on
                 [varargout{:}] = obj.run_method('plot3', varargin{:});
+                set(gca,'NextPlot', hold_stat)
                 return
             end        
             plot_var=nan(obj.ncells,1);
@@ -423,7 +426,11 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
                 shading(ax,'flat')
             end
             set(ax,'NextPlot',hold_stat);
-            set(ax,'DataAspectRatio',[5 5 1])
+            set(ax,'Clipping', 'off')
+            pbaspect([5 5 1])
+            da = daspect;
+            hrat = max(da(1:2))/da(3);
+            daspect([hrat hrat 1])
             view(30,30)
         end       
     end
