@@ -73,14 +73,6 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
 %
 %   see also:SigmaZetaFromVMADCP, XSection
         xs (1,1) XSection
-    end
-    properties (Dependent, SetAccess = protected)
-% SigmaZetaMeshFromVMADCP/water_level
-%
-%   Read only property retrieving the water level at the given time.
-%
-%   see also: SigmaZetaFromVMADCP, datetime, WaterLevel
-        water_level
 
 % SigmaZetaMeshFromVMADCP/time
 %
@@ -92,21 +84,42 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
 %   see also: SigmaZetaFromVMADCP, WaterLevel, datetime
         time (1,1) datetime
     end
+
+    properties (Dependent, SetAccess = protected)
+% SigmaZetaMeshFromVMADCP/water_level
+%
+%   Read only property retrieving the water level at the given time.
+%
+%   see also: SigmaZetaFromVMADCP, datetime, WaterLevel
+        water_level
+    end
     methods
         function obj=SigmaZetaMeshFromVMADCP(varargin)
             obj = obj@helpers.ArraySupport(varargin{:});
             no_expand = {};
+            construct_bathymetry=true;
+            construct_xs=true;
+            construct_filter=true;
+            construct_time=true;
+            expand_adcp={};
+            has_vmadcp = false;
             for count_arg=1:nargin      
                 cur_arg=varargin{count_arg};
                 if isa(cur_arg,'VMADCP')
+                    has_vmadcp = 'true';
                     var_name='vmadcp';
+                    expand_adcp=no_expand;
                 elseif isa(cur_arg,'Bathymetry')
+                    construct_bathymetry = false;
                     var_name='bathymetry';
                 elseif isa(cur_arg,'XSection')
+                    construct_xs = false;
                     var_name='xs';
                 elseif isa(cur_arg,'EnsembleFilter')
+                    construct_filter = false;
                     var_name='filter';
                 elseif isa(cur_arg,'datetime')
+                    construct_time = false;
                     var_name='time';
                 elseif isa(cur_arg,'char') && strcmp(cur_arg,'NoExpand')
                     no_expand = {'NoExpand'};
@@ -115,6 +128,31 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
                     continue
                 end
                 obj.assign_property(var_name,cur_arg,no_expand{:});
+            end
+            if ~has_vmadcp
+                return
+            end
+
+            for co=1:numel(obj)
+                if construct_filter
+                    EF = EnsembleFilter(obj(co).vmadcp);
+                    obj(co).assign_property('filter',EF);
+                end
+                if construct_bathymetry
+                    B=BathymetryScatteredPoints(expand_adcp{:},...
+                        obj(co).vmadcp, obj(co).filter);
+                    obj(co).assign_property('bathy',B);
+                end
+                if construct_xs
+                    XS = XSection(expand_adcp{:}, obj(co).vmadcp,...
+                        obj(co).filter); 
+                    obj(co).assign_property('xs',XS);
+                end
+                if construct_time
+                    t = [obj(co).vmadcp.time];
+                    obj(co).time=mean(t(~ obj(co).filter.bad_ensembles),...
+                        'omitmissing');
+                end
             end
         end
         function val = get.water_level(obj)

@@ -100,6 +100,12 @@ classdef VMADCP < ADCP &...
     end
 
     methods(Sealed)
+        function out = ne(a,b)
+            out = ne@ADCP(a,b);
+        end
+        function out = eq(a,b)
+            out = eq@ADCP(a,b);
+        end
         function plot_orientations(obj)
             obj.plot_orientations@ADCP;
         end
