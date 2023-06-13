@@ -11,7 +11,7 @@ classdef SideLobeFilter < Filter
             if isscalar(obj)
                bed_range=-permute(max(adcp.bed_offset,[],3),[1 2 4 3]);            % get highest bed level detected at each ensemble
                bed_range=bed_range(:,:,3)-adcp.cellsize/2;                          % remove half cell size such that the entire cell is not affected by side lobes
-               tm=-adcp.xform(CoordinateSystem.Beam, CoordinateSystem.Earth);   % get beam orientation
+               tm=-adcp.xform(CoordinateSystem.Beam, CoordinateSystem.Earth, 'Geometry', true);   % get beam orientation
                tm(:,:,:,[1 2 4])=[];                                                % keep vertical component of beam orientation
                min_lev=bed_range.*tm;                                                 % compute minimul elevation velocity needs to be valid
                vel_pos=adcp.depth_cell_offset(CoordinateSystem.Earth);            % get velocity position
