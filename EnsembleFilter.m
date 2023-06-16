@@ -19,6 +19,7 @@ classdef EnsembleFilter < Filter
     end
     methods
         function obj=EnsembleFilter(varargin)
+            obj = obj@Filter(varargin{:});
             for count_arg=1:nargin
                 current_arg=varargin{count_arg};
                 if isa(current_arg,'ADCP')

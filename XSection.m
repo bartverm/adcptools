@@ -64,6 +64,7 @@ classdef XSection < handle & helpers.ArraySupport
     end
     methods
         function obj=XSection(varargin)
+            obj = obj@helpers.ArraySupport(varargin{:})
             filter=EnsembleFilter.empty(1,0);
             construct_from_vmadcp=false;
             for ca=1:nargin
@@ -276,7 +277,7 @@ classdef XSection < handle & helpers.ArraySupport
                 argin = [argin {scale}];
             end
             if ~isscalar(obj)
-                varargout = obj.plot_array('plot',argin{:});
+                varargout = obj.run_method('plot',argin{:});
                 return
             end
             if nargin < 2
@@ -308,6 +309,10 @@ classdef XSection < handle & helpers.ArraySupport
             %   exclude parts of the track
             %
             %   see also: XSection, EnsembleFilter, VMADCP
+            if ~isscalar(obj)
+                obj.run_method('set_from_vmadcp', V, filter)
+                return
+            end
             [x,y]=deal(V.horizontal_position(1,:), V.horizontal_position(2,:));
             if nargin > 2 && ~isempty(filter)
                 assert(isa(filter,'EnsembleFilter'),'filter should be of class EnsembleFilter')

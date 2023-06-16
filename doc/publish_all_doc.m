@@ -10,9 +10,9 @@ function publish_all_doc()
     publish('vertical_positioning.m', outputDir=hdir);
     publish('horizontal_positioning.m', outputDir=hdir);
     publish('repeat_transect_processing.m', outputDir=hdir);
+    publish('transect_data_selection.m', outputDir=hdir);
     publish('transect_bathymetry.m', outputDir=hdir);
     publish('transect_cross_section.m', outputDir=hdir);
-    publish('transect_data_selection.m', outputDir=hdir);
     publish('transect_mesh_construction.m', outputDir=hdir);
     publish('transect_post_processing.m', outputDir=hdir);
     publish('transect_solving_data.m', outputDir=hdir);

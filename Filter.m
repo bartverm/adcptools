@@ -1,4 +1,6 @@
-classdef Filter < matlab.mixin.Heterogeneous & handle
+classdef Filter <  handle & ...
+        matlab.mixin.Heterogeneous & ...
+        helpers.ArraySupport
 % Generic class to implement filters for ADCP objects
 %
 %   This class implements a dummy filter, i.e. it does not filter anything.
@@ -17,6 +19,11 @@ classdef Filter < matlab.mixin.Heterogeneous & handle
     properties(SetAccess=protected)
         % A brief description of the filter
         description(1,:) char='Dummy filter';
+    end
+    methods
+        function obj = Filter(varargin)
+            obj = obj@helpers.ArraySupport(varargin{:});
+        end
     end
     methods(Sealed)
         function bad=all_cells_bad(obj,adcp)
