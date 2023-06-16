@@ -131,6 +131,7 @@ classdef ModelParameters < handle
                         if ~contains(titles{row}, 'phi')
                             %amax = max(abs(var(:,1)), [], 'omitnan') + 1e-5;
                             c = colorbar;
+                            set(c,'TickLabelInterpreter','latex')
                             if ~contains(titles{row}, '\partial')
                                 ylabel(c, '$m/s$','Rotation',270, 'interpreter', 'latex');
                             elseif contains(titles{row}, '\sigma')
