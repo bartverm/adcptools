@@ -6,7 +6,7 @@
    <!--
 This HTML was auto-generated from MATLAB code.
 To make changes, update the MATLAB code and republish this document.
-      --><title>Selection of data for repeat transect processing</title><meta name="generator" content="MATLAB 9.14"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2023-05-02"><meta name="DC.source" content="transect_data_selection.m"><style type="text/css">
+      --><title>Selection of data for repeat transect processing</title><meta name="generator" content="MATLAB 9.14"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2023-06-13"><meta name="DC.source" content="transect_data_selection.m"><style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
 
 html { min-height:100%; margin-bottom:1px; }
@@ -67,13 +67,78 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 
 
 
-  </style></head><body><div class="content"><h1>Selection of data for repeat transect processing</h1><p>When processing repeat transect ADCP data, a selection needs to be made regarding which data belongs to a certain cross-section, we also may want to exclude parts of the data from the processing. Data selection is done through <a href="matlab:doc('EnsembleFilter')">EnsembleFilter</a> objects. An <a href="matlab:doc('EnsembleFilter')">EnsembleFilter</a> object</p><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2023a</a><br></p></div><!--
+  </style></head><body><div class="content"><h1>Selection of data for repeat transect processing</h1><!--introduction--><p>When processing repeat transect ADCP data, a selection needs to be made regarding which data belongs to a certain cross-section, we also may want to exclude parts of the data from the processing. Data selection is done through <a href="matlab:doc('EnsembleFilter')">EnsembleFilter</a> objects. An <a href="matlab:doc('EnsembleFilter')">EnsembleFilter</a> object. We can create an object:</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#3">File based selection</a></li><li><a href="#9">Location based selection</a></li></ul></div><pre class="codeinput">ef = EnsembleFilter(mmbend)
+</pre><pre class="codeoutput">
+ef = 
+
+  EnsembleFilter with properties:
+
+    bad_ensembles: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 &#8230; ]
+      description: 'Ensemble filter'
+
+</pre><p>The <a href="matlab:doc('EnsembleFilter')">EnsembleFilter</a> object has the property <a href="matlab:doc('EnsembleFilter.bad_ensembles')">bad_ensembles</a> that marks which ensembles are not to be included in the processing. There are different ways to generate an <a href="matlab:doc('EnsembleFilter')">EnsembleFilter</a> object.</p><h2 id="3">File based selection</h2><p>Sometimes during data collection separate files are made for different cross-sections or repeat transects. In this case it is possible to select data based on the file. The example dataset was generated from two files:</p><pre class="codeinput">unique(mmbend.fileid)
+</pre><pre class="codeoutput">
+ans =
+
+     1     2
+
+</pre><p>We can now create an <a href="matlab:doc('EnsembleFilter')">EnsembleFilter</a> object that excludes data that was not in the first file:</p><pre class="codeinput">ef = EnsembleFilter(mmbend, mmbend.fileid ~= 1);
+</pre><p>we can plot the result:</p><pre class="codeinput">figure
+plot(ef,mmbend)
+</pre><img vspace="5" hspace="5" src="transect_data_selection_01.png" alt=""> <img vspace="5" hspace="5" src="transect_data_selection_02.png" alt=""> <p>We can see that the last part of the ensembles is now marked as bad and will be excluded from the processing. In this case, the selection based on the input file does not make sense and we want to use another method.</p><h2 id="9">Location based selection</h2><p>in order to select the data based on the location we can use the helper function <a href="matlab:doc('cross_section_selector')">cross_section_selector</a>:</p><pre class="codeinput">figure
+[ef, xs] = cross_section_selector(mmbend);
+</pre><img vspace="5" hspace="5" src="transect_data_selection_03.png" alt=""> <p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2023a</a><br></p></div><!--
 ##### SOURCE BEGIN #####
 %% Selection of data for repeat transect processing
 % When processing repeat transect ADCP data, a selection needs to be made
 % regarding which data belongs to a certain cross-section, we also may want
 % to exclude parts of the data from the processing. Data selection is done
-% through <matlab:doc('EnsembleFilter') EnsembleFilter> objects. An <matlab:doc('EnsembleFilter') EnsembleFilter> object 
-% 
+% through <matlab:doc('EnsembleFilter') EnsembleFilter> objects. An 
+% <matlab:doc('EnsembleFilter') EnsembleFilter> object. We can create an
+% object:
+
+%%
+ef = EnsembleFilter(mmbend)
+
+%% 
+% The <matlab:doc('EnsembleFilter') EnsembleFilter> object has the property 
+% <matlab:doc('EnsembleFilter.bad_ensembles') bad_ensembles> that marks
+% which ensembles are not to be included in the processing. There are
+% different ways to generate an 
+% <matlab:doc('EnsembleFilter') EnsembleFilter> object.
+
+%% File based selection
+% Sometimes during data collection separate files are made for different
+% cross-sections or repeat transects. In this case it is possible to select
+% data based on the file. The example dataset was generated from two files:
+
+%%
+unique(mmbend.fileid)
+
+%%
+% We can now create an <matlab:doc('EnsembleFilter') EnsembleFilter> object
+% that excludes data that was not in the first file:
+ef = EnsembleFilter(mmbend, mmbend.fileid ~= 1);
+
+%%
+% we can plot the result:
+
+%%
+figure
+plot(ef,mmbend)
+
+%% 
+% We can see that the last part of the ensembles is now marked as bad and
+% will be excluded from the processing. In this case, the selection based
+% on the input file does not make sense and we want to use another method.
+
+%% Location based selection
+% in order to select the data based on the location we can use the helper
+% function <matlab:doc('cross_section_selector') cross_section_selector>:
+figure
+[ef, xs] = cross_section_selector(mmbend);
+
+
+
 ##### SOURCE END #####
 --></body></html>
