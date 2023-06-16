@@ -1,4 +1,6 @@
-classdef Filter < matlab.mixin.Heterogeneous & handle
+classdef Filter < handle & ...
+        matlab.mixin.Heterogeneous & ...
+        helpers.ArraySupport
 % Generic class to implement filters for ADCP objects
 %
 %   This class implements a dummy filter, i.e. it does not filter anything.
@@ -17,6 +19,11 @@ classdef Filter < matlab.mixin.Heterogeneous & handle
     properties(SetAccess=protected)
         % A brief description of the filter
         description(1,:) char='Dummy filter';
+    end
+    methods
+        function obj = Filter(varargin)
+            obj = obj@helpers.ArraySupport(varargin{:});
+        end
     end
     methods(Sealed)
         function bad=all_cells_bad(obj,adcp)
@@ -37,28 +44,46 @@ classdef Filter < matlab.mixin.Heterogeneous & handle
         % array of filters it will return the combined filter
             bad=obj.expand_bad(@(obj,adcp) obj.bad_int(adcp), adcp);
         end
-        function plot(obj,adcp)
-            figure
-            nb=max(adcp.nbeams);
-            no=numel(obj);
-            axh=nan(nb*(no+1));
-            ca=0;
-            for co = 1:no
-                filt=obj(co).bad(adcp);
-                for cb=1:nb
-                    ca=ca+1;
-                    axh(ca)=subplot(no+1,nb,(co-1)*nb+cb);
-                    imagesc(filt(:,:,cb))
-                    title(obj(co).description)
+        function plot(obj, adcp, t)
+            nb = max(adcp.nbeams);
+            no = numel(obj);
+            add_all = double(~isscalar(obj));
+            if nargin < 3
+                t = tiledlayout(1,1);
+            end
+            t.GridSize = [no + add_all, 1];
+            axh = nan(no + add_all, nb);
+            tim = adcp.time;
+            pos = adcp.depth_cell_position;
+            for co = 1 : no
+                tch = tiledlayout(t, 1, nb);
+                tch.Layout.Tile = co;
+                filt = double(obj(co).bad(adcp));
+                for cb = 1 : nb
+                    axh(co,cb) = nexttile(tch);
+                    pcolor(tim, pos(:,:,cb,3), filt(:, :, cb))
+                    shading flat
+                    title(['Beam ', num2str(cb)])
                 end
+                title(tch, obj(co).description);
             end
-            filt=obj.bad(adcp);
-            for cb=1:nb
-                ca=ca+1;
-                axh(ca)=subplot(no+1,nb,no*nb+cb);
-                imagesc(filt(:,:,cb))
-                title('All filters')
+            if ~isscalar(obj)
+                filt = double(obj.bad(adcp));
+                co = co + 1;
+                for cb = 1 : nb
+                    tch = tiledlayout(t, 1, nb);
+                    tch.Layout.Tile = co;
+                    axh(co, cb) = nexttile(tch);
+                    pcolor(tim, pos(:, :, cb, 3), filt(:, :, cb))
+                    shading flat
+                    title(['Beam ', num2str(cb)])
+                end
+                title(tch, 'All filters')
             end
+            set(axh(1:end-1,:), 'XTickLabel',[], 'XTickMode', 'manual')
+            set(axh(:,2:end), 'YTickLabel',[], 'YTickMode', 'manual')
+            xlabel(t, 'Time')
+            ylabel(t, 'Vertical position (m)')
             linkaxes(axh,'xy')
         end
     end
