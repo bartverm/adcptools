@@ -242,6 +242,7 @@ classdef ADCP < ADCP
                 nortek.TiltsFromAHRS;
                 nortek.TiltsInternal];
             obj.timezone='UTC';
+            obj.description="Nortek";
         end
 
         %%% SET AND GET METHODS
@@ -404,8 +405,18 @@ classdef ADCP < ADCP
             obj.find_headers();
         end
         
+        function val = burst_has_data(obj, bit, filt)
+            if nargin < 3
+                filt = obj.get_data_filt;
+            end
+            dat = obj.get_scalar([6 2], 'uint16', filt);
+            val = logical(obj.get_bit(dat, bit));
+        end
+    end
+    methods(Access=protected)
+        
         %%% INHERITED ABSTRACT METHODS
-        function tm = xform(obj,dst,src,varargin)
+        function tm = get_xform(obj,dst,src,varargin)
             if nargin < 3
                 src=obj.coordinate_system;
             end
@@ -445,7 +456,9 @@ classdef ADCP < ADCP
                 obj.instrument_2_beam_matrix(:,cfilt,:,:),...
                 tm(1,cfilt,:,:));
         end
-        function vel = velocity(obj,dst,filter,filt)
+
+        %%% OVERLOADABLE SET/GET METHODS
+        function vel = get_velocity(obj,dst,filter,filt)
             if nargin < 4
                 filt = obj.get_data_filt;
             end
@@ -474,16 +487,8 @@ classdef ADCP < ADCP
             end
             vel(bad)=nan;
         end
-        function val = burst_has_data(obj, bit, filt)
-            if nargin < 3
-                filt = obj.get_data_filt;
-            end
-            dat = obj.get_scalar([6 2], 'uint16', filt);
-            val = logical(obj.get_bit(dat, bit));
-        end
-    end
-    methods(Access=protected)
-        %%% OVERLOADABLE SET/GET METHODS
+
+
         function val = get_blanking(obj,filt)
             if nargin < 2
                 filt = obj.get_data_filt;

@@ -5,7 +5,7 @@ classdef ADCPDataSolver < Solver
         %   Scalar VMADCP object holding the adcp data to compute the velocity
         %
         %   see also: Solver, VMADCP
-        adcp (:,1) VMADCP {mustBeScalarOrEmpty} = rdi.VMADCP.empty
+        adcp (:,1) VMADCP  = rdi.VMADCP.empty
 
         % Solver/ensemble_filter
         %
@@ -17,34 +17,41 @@ classdef ADCPDataSolver < Solver
     methods
         function obj=ADCPDataSolver(varargin)
             obj = obj@Solver(varargin{:})
-            has_vmadcp=false;
-            has_bathy=false;
-            has_xs=false;
-            for cnt_arg=1:nargin
-                cur_arg=varargin{cnt_arg};
+            has_vmadcp = false;
+            exp_vmadcp = {};
+            has_bathy = false;
+            has_xs = false;
+            no_expand = {};
+            for cnt_arg = 1 : nargin
+                cur_arg = varargin{cnt_arg};
                 if isa(cur_arg,'VMADCP')
-                    has_vmadcp=true;
+                    has_vmadcp = true;
+                    exp_vmadcp = no_expand;
                     var = 'adcp';
                 elseif isa(cur_arg, 'Bathymetry')
-                    has_bathy=true;
+                    has_bathy = true;
                     continue
                 elseif isa(cur_arg,'Filter')
                     var = 'ensemble_filter';
                 elseif isa(cur_arg,'XSection')
-                    has_xs=true;
+                    has_xs = true;
+                    continue
+                elseif isa(cur_arg,'char') && strcmp(cur_arg,'NoExpand')
+                    no_expand = {'NoExpand'};
                     continue
                 else 
                     continue
                 end
-                obj.assign_property(var, cur_arg)
+                obj.assign_property(var, cur_arg, no_expand{:})
             end
 
             if ~has_bathy && has_vmadcp
-                B=BathymetryScatteredPoints(obj.adcp);
-                obj.assign_property('bathy',B);
+                B = BathymetryScatteredPoints(exp_vmadcp{:}, obj.adcp);
+                obj.assign_property('bathy', B);
             end
             if ~has_xs && has_vmadcp
-                XS=XSection(obj.adcp);
+                XS = XSection(obj.ensemble_filter, exp_vmadcp{:},...
+                    obj.adcp);
                 obj.assign_property('xs',XS);
             end
         end
@@ -52,11 +59,11 @@ classdef ADCPDataSolver < Solver
     end
     methods (Access=protected)
         function [vpos, vdat, xform, time, wl] = get_solver_input(obj)
-            vpos = obj.adcp.depth_cell_position; % velocity positions
+            vpos = obj.adcp.cat_property('depth_cell_position'); % velocity positions
             vdat = [];
             xform = [];
-            time = obj.adcp.time;
-            wl = obj.adcp.water_level;
+            time = [obj.adcp.time];
+            wl = [obj.adcp.water_level];
 
             % get selection of data of current repeat transect and
             % replicate singleton dimensions to get uniform dimensions

@@ -313,7 +313,8 @@ classdef XSection < handle & helpers.ArraySupport
                 obj.run_method('set_from_vmadcp', V, filter)
                 return
             end
-            [x,y]=deal(V.horizontal_position(1,:), V.horizontal_position(2,:));
+            hpos = [V.horizontal_position];
+            [x,y]=deal(hpos(1,:), hpos(2,:));
             if nargin > 2 && ~isempty(filter)
                 assert(isa(filter,'EnsembleFilter'),'filter should be of class EnsembleFilter')
                 fbad=filter.all_cells_bad(V);

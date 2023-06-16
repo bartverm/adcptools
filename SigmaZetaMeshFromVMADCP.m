@@ -30,7 +30,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
 %   scalar VMADCP object holding the adcp data
 %
 %   see also:SigmaZetaFromVMADCP, VMADCP
-        vmadcp (:,1) VMADCP {mustBeScalarOrEmpty} = rdi.VMADCP.empty
+        vmadcp (:,1) VMADCP  = rdi.VMADCP.empty
         
 % SigmaZetaMeshFromVMADCP/filter
 %
@@ -73,7 +73,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
 %
 %   see also:SigmaZetaFromVMADCP, XSection
         xs (1,1) XSection
-        
+
 % SigmaZetaMeshFromVMADCP/time
 %
 %   Scalar datetime object defining the time at which the mesh should be
@@ -84,6 +84,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
 %   see also: SigmaZetaFromVMADCP, WaterLevel, datetime
         time (1,1) datetime
     end
+
     properties (Dependent, SetAccess = protected)
 % SigmaZetaMeshFromVMADCP/water_level
 %
@@ -95,66 +96,88 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
     methods
         function obj=SigmaZetaMeshFromVMADCP(varargin)
             obj = obj@helpers.ArraySupport(varargin{:});
+            no_expand = {};
             construct_bathymetry=true;
             construct_xs=true;
             construct_filter=true;
             construct_time=true;
+            expand_adcp={};
             has_vmadcp = false;
             for count_arg=1:nargin      
                 cur_arg=varargin{count_arg};
                 if isa(cur_arg,'VMADCP')
-                    has_vmadcp=true;
+                    has_vmadcp = 'true';
                     var_name='vmadcp';
+                    expand_adcp=no_expand;
                 elseif isa(cur_arg,'Bathymetry')
-                    construct_bathymetry=false;
+                    construct_bathymetry = false;
                     var_name='bathymetry';
                 elseif isa(cur_arg,'XSection')
-                    construct_xs=false;
+                    construct_xs = false;
                     var_name='xs';
                 elseif isa(cur_arg,'EnsembleFilter')
-                    construct_filter=false;
+                    construct_filter = false;
                     var_name='filter';
                 elseif isa(cur_arg,'datetime')
+                    construct_time = false;
                     var_name='time';
-                    construct_time=false;
-                else
-                    warning(['Unhandled input of type: ',class(cur_arg)])
+                elseif isa(cur_arg,'char') && strcmp(cur_arg,'NoExpand')
+                    no_expand = {'NoExpand'};
                     continue
-                    % warning here
+                else
+                    continue
                 end
-                obj.assign_property(var_name,cur_arg);
+                obj.assign_property(var_name,cur_arg,no_expand{:});
             end
             if ~has_vmadcp
                 return
             end
-            vm = [obj.vmadcp];
 
-            cell_vm = num2cell(vm);
-            scalar_vm = vm;
-            if ~isscalar(cell_vm) && isequal(cell_vm{:})
-                scalar_vm = vm(1);
-            end
-            if construct_bathymetry
-                B=BathymetryScatteredPoints(scalar_vm);
-                obj.assign_property('bathy',B);
-            end
-            if construct_xs
-                obj.assign_property('xs',XSection(scalar_vm));
-            end
-            if construct_filter
-                obj.assign_property('filter',EnsembleFilter(scalar_vm));
-            end
-            if construct_time
-                t={vm.time};
-                ef=[obj.filter];
-                ef={ef.bad_ensembles};
-                ef = cellfun(@not,ef,"UniformOutput",false);
-                t = cellfun(@(a,b) mean(a(b),"all","omitnat"),t,ef,'UniformOutput',false);
-                obj.assign_property('time',t);
+            for co=1:numel(obj)
+                if construct_filter
+                    EF = EnsembleFilter(obj(co).vmadcp);
+                    obj(co).assign_property('filter',EF);
+                end
+                if construct_bathymetry
+                    B=BathymetryScatteredPoints(expand_adcp{:},...
+                        obj(co).vmadcp, obj(co).filter);
+                    obj(co).assign_property('bathy',B);
+                end
+                if construct_xs
+                    XS = XSection(expand_adcp{:}, obj(co).vmadcp,...
+                        obj(co).filter); 
+                    obj(co).assign_property('xs',XS);
+                end
+                if construct_time
+                    t = [obj(co).vmadcp.time];
+                    obj(co).time=mean(t(~ obj(co).filter.bad_ensembles),...
+                        'omitmissing');
+                end
             end
         end
-        function val=get.water_level(obj)
-            val=obj.vmadcp.water_level_object.get_water_level(obj.time);
+        function val = get.water_level(obj)
+            wlobj = {obj.vmadcp.water_level_object};
+            if ~all(cellfun(@(x) wlobj{1} == x, wlobj))
+                warning(['water_level_object property of vmadcp ',...
+                    'objects differs, using the first']);
+            end
+            wlobj = wlobj{1};
+            val = wlobj.get_water_level(obj.time);
+        end
+        function val = get.time(obj)
+            try
+                t = [obj.vmadcp.time];
+            catch err
+                if strcmp(err.identifier,...
+                        'MATLAB:datetime:cat:IncompatibleTZ')
+                    error(['Cannot compute time, because timezones of ',...
+                        'VMADCP objects are incompatible'])
+                else
+                    throw(err)
+                end
+            end
+            t(obj.filter.bad_ensembles) = [];
+            val = mean(t, 'omitmissing');
         end
         function mesh=get_mesh(obj)
 % Construct the SigmaZetaMesh
@@ -178,7 +201,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
             mesh.time=obj.time;
 
             % make n positions
-            bpos=obj.vmadcp.bed_position();
+            bpos = obj.vmadcp.cat_property('bed_position');
             bpos(:,obj.filter.all_cells_bad(obj.vmadcp),:,:)=nan;
             [~,n]=obj.xs.xy2sn(bpos(:,:,:,1),bpos(:,:,:,2)); % compute n positions of bed detections
             [xn,yn]=obj.xs.sn2xy(n*0,n); % compute x,y coordinates of bed detections projected on xs line
@@ -203,15 +226,17 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
             mesh.zb_all=zvec;
             
             % compute vertical limits of mesh
-            minsigma=1-cosd(max(obj.vmadcp.beam_angle,[],'omitnan'));
-            maxz = sum(...
-                interp1(obj.vmadcp.time', ...
-                [ obj.vmadcp.vertical_position; ...
-                  obj.vmadcp.distmidfirstcell; ...
-                  obj.vmadcp.cellsize ]', ...
-                obj.time) .* ...
-                [1 -1 .5]...
-                ); % i.e vertpos - distmidfirtcell + cellsize/2
+            minsigma = 1 - cosd(max(...
+                obj.vmadcp.cat_property('beam_angle'),...
+                [],'all','omitmissing'));
+            intt = [obj.vmadcp.time]';
+            intv = [ obj.vmadcp.cat_property('vertical_position'); ...
+                  obj.vmadcp.cat_property('distmidfirstcell'); ...
+                  obj.vmadcp.cat_property('cellsize') ]';
+            [intt, idx] = unique(intt);
+            intv = intv(idx,:);
+            maxz = sum(interp1(intt, intv, obj.time) .* [1 -1 .5] ); 
+            % i.e vertpos - distmidfirtcell + cellsize/2
 
             % Check for bathymetry crossing the waterlevel
             wl=obj.water_level;

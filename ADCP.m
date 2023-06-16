@@ -1,4 +1,5 @@
-classdef ADCP < handle
+classdef ADCP < handle &...
+        helpers.ArraySupport
 % Abstract base class to represent ADCP datasets
 %
 %   A = ADCP(...) based on the class of the passed arguments
@@ -55,6 +56,14 @@ classdef ADCP < handle
 %   velocity - get velocity
 
     properties
+        % ADCP/description
+        %
+        %   brief description of the ADCP data. Value must be a string
+        %   scalar
+        %
+        %   see also: ADCP
+        description(1,1) string = "";
+
         % ADCP/filters
         %
         % Filters to exclude data from profile data. The filters are given
@@ -281,7 +290,7 @@ classdef ADCP < handle
         %   see also: ADCP, beam_orientation_matrix
         vertical_range_to_cell
 
-        % water level
+        % water_level
         %
         %   size: 1 x nensembles
         %   returns the water level. The way the water level is computed
@@ -289,6 +298,14 @@ classdef ADCP < handle
         %
         %   see also: ADCP, water_level_object
         water_level
+
+        % depth_cell_position
+        %
+        %   size: ncells x nensembles x nbeams x 3
+        %   position vector in Earth coordinates
+        %
+        % see also: ADCP, position, depth_cell_offset
+        depth_cell_position
     end
     methods
         %%% Constuctor
@@ -432,22 +449,47 @@ classdef ADCP < handle
                 bad=bad | filter(co).bad(obj);
             end
         end
-        function plot_orientations(obj)
+        function varargout = plot_orientations(obj)
             % Plots orientations of instrument
             %
-            %   plot_orientations(obj) plots the pitch, roll and heading.
+            %   obj.plot_orientations plots the pitch, roll and heading.
+            %
+            %   [ahp, ahr, ahh] = obj.plot_orientation returns the axes
+            %   handles for the pitch, roll adn heading axes respectively.
             %
             % see also: ADCP, plot_velocity, plot_filters, plot_all
-            axh=subplot(3,1,1);
-            plot(obj.pitch)
-            ylabel('Pitch (degr)')
-            axh(2)=subplot(3,1,2);
-            plot(obj.roll)
-            ylabel('Roll (degr)')
-            axh(3)=subplot(3,1,3);
-            plot(obj.heading)
-            ylabel('Head (degr)')
-            linkaxes(axh,'x')
+            no = numel(obj);
+            [axpitch, axroll, axhead] = deal(nan(no,1));
+            t=tiledlayout(3, no,'TileSpacing','tight','Padding','compact');
+            for ca = 1:no
+                axpitch(ca)=nexttile;
+                plot(obj(ca).time, obj(ca).pitch)
+                title(obj(ca).description);
+                set(gca,'XTickLabel',[],'XTickMode','manual')
+            end
+            for ca = 1:no
+                axroll(ca)=nexttile;
+                plot(obj(ca).time, obj(ca).roll)
+                set(gca,'XTickLabel',[],'XTickMode','manual')
+            end
+            for ca = 1:no
+                axhead(ca)=nexttile;
+                plot(obj(ca).time, obj(ca).heading)
+                linkaxes([axpitch(ca), axroll(ca), axhead(ca)],'x')
+            end
+            xlabel(t,'Time');
+            ylabel(axpitch(1),'Pitch (degrees)')
+            ylabel(axroll(1),'Roll (degrees)')
+            ylabel(axhead(1),'Heading (degrees)')
+            if nargout > 0
+                varargout{1} = axpitch;
+            end
+            if nargout > 1
+                varargout{2} = axroll;
+            end
+            if nargout > 2
+                varargout{3} = axhead;
+            end
         end
         function hfout=plot_velocity(obj,vel)
             % plot the velocity profiles
@@ -456,32 +498,45 @@ classdef ADCP < handle
             %   system
             %
             %   see also: ADCP
-            vel_pos=obj.depth_cell_position;
-            vel_pos=mean(vel_pos(:,:,:,3),3,'omitnan');
+            no = numel(obj);
+            t=tiledlayout(3, no,'TileSpacing','tight','Padding','compact');
+            vel_pos={obj.depth_cell_position};
+            vel_pos=cellfun(@(x) mean(x(:,:,:,3),3,'omitnan'), vel_pos,...
+                'UniformOutput', false);
             if nargin < 2
-                vel=obj.velocity(CoordinateSystem.Earth);
+                vel={obj.velocity(CoordinateSystem.Earth)};          
             end
-            t=obj.time;
-            t=seconds(t-t(1));
+            [axx, axy, axz] = deal(nan(1,no));
+            tim = cell(1,no);
             hf=gcf;
-            axh(1)=subplot(3,1,1);
-            pcolor(t,vel_pos,vel(:,:,1));
-            hc=colorbar;
-            ylabel(hc,'V_x (m/s)')
-            shading flat
-            axh(2)=subplot(3,1,2);
-            pcolor(t,vel_pos,vel(:,:,2));
-            ylabel('vertical position (m)')
-            hc=colorbar;
-            ylabel(hc,'V_y (m/s)')
-            shading flat
-            axh(3)=subplot(3,1,3);
-            pcolor(t,vel_pos,vel(:,:,3));
-            hc=colorbar;
-            ylabel(hc,'V_z (m/s)')
-            shading flat
-            xlabel('time (s)')
-            linkaxes(axh,'xy')
+            for co = 1:no
+                axx(co)=nexttile;
+                tim{co}=obj(co).time;
+                pcolor(tim{co},vel_pos{co},vel{co}(:,:,1));
+                shading flat
+                hc=colorbar;
+                ylabel(hc,'V_E (m/s)')
+                title(axx(co),obj(co).description)
+                set(gca,'XTickLabel',[],'XTickMode','manual')
+            end
+            for co = 1:no
+                axy(co)=nexttile;
+                pcolor(tim{co},vel_pos{co},vel{co}(:,:,2));
+                shading flat
+                hc=colorbar;
+                ylabel(hc,'V_N (m/s)')
+                set(gca,'XTickLabel',[],'XTickMode','manual')
+            end
+            for co = 1:no
+                axz(co)=nexttile;
+                pcolor(tim{co},vel_pos{co},vel{co}(:,:,3));
+                shading flat
+                hc=colorbar;
+                ylabel(hc,'V_U (m/s)')
+                linkaxes([axx(co), axy(co), axz(co)],'xy')
+            end
+            ylabel(t,'Vertical position (m)')
+            xlabel(t,'Time')
             if nargout>0
                 hfout=hf;
             end
@@ -493,33 +548,53 @@ classdef ADCP < handle
             %   system
             %
             %   see also: ADCP
-            sv_pos=obj.depth_cell_position;
-            sv_pos=sv_pos(:,:,:,3);
-            sv=obj.backscatter;
-            t=obj.time;
-            t=seconds(t-t(1));
-            nb=size(sv,3);
-            axh=nan(nb,1);
-            for cb=1:nb
-                axh(cb)=subplot(nb,1,cb);
-                pcolor(t,sv_pos(:,:,cb),sv(:,:,cb));
-                clim=mean(sv(:,:,cb),'all','omitnan')+[-2 2]*std(sv(:,:,cb),0,'all','omitnan');
-                hc=colorbar;
-                ylabel(hc,'Backscatter (dB)')
-                shading flat
-                if all(isfinite(clim))
-                    set(gca,'clim',clim)
+
+            no = numel(obj);
+            nb = [obj.nbeams];
+            nbmax = max(nb);
+            t=tiledlayout(nbmax, no,'TileSpacing','tight','Padding','compact');
+            sv_pos={obj.depth_cell_position};
+            sv_pos=cellfun(@(x) mean(x(:,:,:,3),3,'omitnan'), sv_pos,...
+                'UniformOutput', false);
+            axh = deal(nan(nbmax,no));
+            tim={obj.time};
+            sv={obj.backscatter};
+            for cb = 1:nbmax
+                for co = 1:no
+                    axh(cb,co)=nexttile;
+                    if nb(co)<cb
+                        continue
+                    end
+                    pcolor(tim{co},sv_pos{co},sv{co}(:,:,cb));
+                    shading flat
+                    hc=colorbar;
+                    ylabel(hc,['Sv Beam ',num2str(cb),' (dB)'])
+                    shading flat                      
+                    if cb == nbmax
+                        title(axh(1,co),obj(co).description)
+                        set(axh(end,co),'XTickLabel',[],'XTickMode','manual')
+                        linkaxes(axh(:,co),'xy')
+                    end
                 end
-                title(['Beam ',num2str(cb)])
             end
-            xlabel('time (s)')
-            linkaxes(axh,'xy')
+            xlabel(t, 'Time (s)')
+            ylabel(t, 'Vertical position(m)')
             if nargout>0
                 hfout=gcf;
             end
         end
-        function plot_filters(obj)
-            obj.filters.plot(obj);
+        function plot_filters(obj, varargin)
+            if ~isscalar(obj)
+                tpar = tiledlayout("flow");
+                for co = 1:numel(obj)
+                    t = tiledlayout(tpar,1,1);
+                    t.Layout.Tile = co;
+                    obj(co).plot_filters(t, varargin{:})
+                    title(t, obj(co).description)
+                end
+                return
+            end
+            obj.filters.plot(obj, varargin{:});
         end
         function plot_all(obj)
             figure
@@ -531,7 +606,7 @@ classdef ADCP < handle
             figure
             obj.plot_backscatter;
         end
-        function pos=depth_cell_offset(obj,dst)
+        function varargout=depth_cell_offset(obj,varargin)
             % Computes the xyz offset to the profiled depth cells
             %
             %   pos=depth_cell_offset(obj) returns the offset vector (ncells x
@@ -542,27 +617,26 @@ classdef ADCP < handle
             %   CoordinateSystem object.
             %
             %   see also: ADCP, depth_cell_position
-            if nargin < 2
-                dst=CoordinateSystem.Earth;
+            if ~isscalar(obj)
+                varargout = obj.run_method_single(nargout, 'depth_cell_offset', varargin{:});
+                return
             end
-            tm=obj.xform(CoordinateSystem.Instrument, dst, 'Geometry', true);
+            if nargin < 2
+                varargin{1}=CoordinateSystem.Earth;
+            end
+            tm=obj.xform(CoordinateSystem.Instrument,...
+                varargin{1}, 'Geometry', true);
             tm(:,:,:,4)=[];
             tm(:,:,4,:)=[];
             beam_mat = obj.instrument_matrix_provider.beam_orientation_matrix(obj);
             tm = helpers.matmult(beam_mat,tm, 3, 4);
-            pos=tm.*obj.depth_cell_slant_range;
+            varargout{1}=tm.*obj.depth_cell_slant_range;
         end
-        function pos=depth_cell_position(obj)
-            % Computes the xyz positions of the depth cells
-            %
-            %   pos=depth_cell_position(obj) returns the position vector
-            %   (ncells x nensembles x nbeams x 3) in Earth coordinates
-            %
-            % see also: ADCP, position, depth_cell_offset
+        function pos=get.depth_cell_position(obj)
             pos=obj.depth_cell_offset + permute([obj.horizontal_position; obj.vertical_position],[3,2,4,1]);
         end
     end
-    methods(Abstract, Access=protected)
+    methods(Abstract, Access = protected)
         val = get_nbeams(obj)
         val = get_nensembles(obj)
         val = get_ncells(obj)
@@ -578,7 +652,7 @@ classdef ADCP < handle
         val = get_backscatter(obj)
         val = get_transducer(obj)
     end
-    methods(Abstract)
+    methods
         % Get transformation matrices for coordinate transformations
         %
         %   tm=xform(obj,dst) get the transformation matrices for the
@@ -598,8 +672,14 @@ classdef ADCP < handle
         %   transformations.
         %
         %   see also: ADCP
-        val = xform(obj,dst,src,varargin)
-
+        function varargout = xform(obj,varargin)
+            if ~isscalar(obj)
+                varargout = obj.run_method_single(nargout, 'xform', ...
+                    varargin{:});
+                return
+            end
+            varargout{1} = obj.get_xform(varargin{:});
+         end
         % velocity profile data
         %
         %   vel=velocity(obj) returns the profiled velocity in m/s.
@@ -611,7 +691,14 @@ classdef ADCP < handle
         %   of the ones specified in the current object.
         %
         %   see also: ADCP, CoordinateSystem
-        vel = velocity(obj,dst,filter)
+        function varargout = velocity(obj,varargin)
+            if ~isscalar(obj)
+                varargout = obj.run_method_single(nargout, 'velocity', ...
+                    varargin{:});
+                return
+            end
+            varargout{:} = obj.get_velocity(varargin{:});
+        end
     end
     methods(Static)
         function inv=invert_xform(tm)
@@ -626,5 +713,9 @@ classdef ADCP < handle
                 inv(1,ce,:,:)=shiftdim(inv(squeeze(tm(1,ce,:,:))),-2);
             end
         end
+    end
+    methods(Access=protected, Abstract)
+        get_velocity(obj,dst,filter)
+        get_xform(obj,dst,src,varargin)
     end
 end

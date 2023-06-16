@@ -10,7 +10,7 @@ function [ef, xs]=cross_section_selector(vmadcp)
 %   see also: VMADCP, EnsembleFilter, XSection
     vmadcp.plot_track('-','color',[.5 .5 .5]);
     title('Press Enter to end selection')
-    hpos=vmadcp.horizontal_position;
+    hpos=[vmadcp.horizontal_position];
     [xa,ya]=deal(hpos(1,:),hpos(2,:));
     hold on
     uiwait(msgbox('Click on the figure to draw a polygon around the repeat transect track and press Enter to end'))
@@ -62,7 +62,7 @@ function [ef, xs]=cross_section_selector(vmadcp)
                 leg.String{end}=['Cross section ',num2str(numel(ef))];
                 leg.AutoUpdate='off';
                 quivs=xs(end).plot();
-                if strcmp('Yes', questdlg('Should the direction of the cross-section be reversed?', 'Cross section generated','Yes','No','No'))
+                if strcmp('Yes', questdlg('Should the direction of the cross-section be reversed?', 'Cross section generated','No','Yes','No'))
                     xs(end).revert();
                     delete(quivs)
                     xs(end).plot();
