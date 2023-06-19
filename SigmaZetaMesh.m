@@ -95,10 +95,12 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
 %   see also: Mesh, VelocitySolver
 
 
+    properties
+        time (1,1) datetime
+    end
     properties (SetAccess=?SigmaZetaMeshGenerator)
         xs (1,1) XSection
         water_level (1,1) double
-        time (1,1) datetime
         
         z_bottom_left (:,1) double {mustBeFinite, mustBeReal}
         z_top_left (:,1) double {mustBeFinite, mustBeReal}
