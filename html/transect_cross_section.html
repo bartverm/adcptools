@@ -6,7 +6,7 @@
    <!--
 This HTML was auto-generated from MATLAB code.
 To make changes, update the MATLAB code and republish this document.
-      --><title>Setting the location and direction of the cross-section</title><meta name="generator" content="MATLAB 9.14"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2023-06-16"><meta name="DC.source" content="transect_cross_section.m"><style type="text/css">
+      --><title>Setting the location and direction of the cross-section</title><meta name="generator" content="MATLAB 9.14"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2023-06-19"><meta name="DC.source" content="transect_cross_section.m"><style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
 
 html { min-height:100%; margin-bottom:1px; }
@@ -67,8 +67,111 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 
 
 
-  </style></head><body><div class="content"><h1>Setting the location and direction of the cross-section</h1><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2023a</a><br></p></div><!--
+  </style></head><body><div class="content"><h1>Setting the location and direction of the cross-section</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#4">XSection default construction</a></li><li><a href="#6">XSection construction with VMADCP data</a></li></ul></div><p>In the previous section, <a href="transect_data_selection.html">Data selection</a> we saw how to select data to process cross-sections. The <a href="matlab:doc('cross_section_selector')">cross_section_selector</a> function also generated <a href="matlab:doc('XSection')">XSection</a> objects that contain information on the cross-section. Let's have a closer look at the properties of a XSection object:</p><pre class="codeinput">xs(1)
+</pre><pre class="codeoutput">
+ans = 
+
+  XSection with properties:
+
+                  origin: [2&times;1 double]
+               direction: [2&times;1 double]
+                   scale: 73.0062
+    direction_orthogonal: [2&times;1 double]
+
+</pre><p>The <a href="matlab:doc('XSection')">XSection</a> objects in essence define the local coordinate system of the cross-section. The <i>origin</i> property is the origin of the cross-section coordinates. These are cartesian coordinates that are oriented along and accross the cross-section. the <i>direction</i> property defines the direction along the cross-section ,and the <i>direction_orthogonal</i> property defines the direction orthogonal to the cross-section. The <i>scale</i> property gives a typical scale (in m) of the cross-section.</p><p>We can plot the xsections on top of the ADCP track to better understand how cross-sections are defined:</p><pre class="codeinput">figure
+mmbend.plot_track(<span class="string">'Color'</span>, [.5 .5 .5]) <span class="comment">% plot the measured track</span>
+hold <span class="string">on</span>
+mmbend.plot_track(ef) <span class="comment">% plot the selected portions of the track</span>
+xs.plot <span class="comment">% plot the cross-section definitions</span>
+legend <span class="string">off</span>
+</pre><img vspace="5" hspace="5" src="transect_cross_section_01.png" alt=""> <p>The green arrows indicate the <i>direction_orthogonal</i> property, the red arrows the '_direction_' property and the arrows originate in <i>origin</i>.</p><h2 id="4">XSection default construction</h2><p>XSection objects can be constructed without arguments, which will return a default object:</p><pre class="codeinput">xs_default = XSection();
+xs_default.origin
+xs_default.direction
+</pre><pre class="codeoutput">
+ans =
+
+     0
+     0
+
+
+ans =
+
+     1
+     0
+
+</pre><p>properties can be manually adjusted.</p><h2 id="6">XSection construction with VMADCP data</h2><p>When constructed with <a href="matlab:doc('VMADCP')">VMADCP</a> data, with or without <a href="matlab:doc('EnsembleFilter')">EnsembleFilter</a> objects the track information is used to construct the cross-section definition. The largest eigenvector of the positions is used as the tangential direction of the cross-section. The scale is the standard deviation of the positions projected on the direction of the cross-section.</p><pre class="codeinput">xs_from_vmadcp = XSection(mmbend, ef(1))
+</pre><pre class="codeoutput">
+xs_from_vmadcp = 
+
+  XSection with properties:
+
+                  origin: [2&times;1 double]
+               direction: [2&times;1 double]
+                   scale: 73.0062
+    direction_orthogonal: [2&times;1 double]
+
+</pre><p>This created the xsection definition for the first cross-section defined by the data selected in <i>ef</i></p><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2023a</a><br></p></div><!--
 ##### SOURCE BEGIN #####
 %% Setting the location and direction of the cross-section
+
+%%
+% In the previous section, <transect_data_selection.html Data selection> we
+% saw how to select data to process cross-sections. The 
+% <matlab:doc('cross_section_selector') cross_section_selector> function
+% also generated <matlab:doc('XSection') XSection> objects that contain
+% information on the cross-section. Let's have a closer look at the
+% properties of a XSection object:
+xs(1)
+
+%%
+% The <matlab:doc('XSection') XSection> objects in essence define the local
+% coordinate system of the cross-section. The _origin_ property is the
+% origin of the cross-section coordinates. These are cartesian coordinates
+% that are oriented along and accross the cross-section. the _direction_
+% property defines the direction along the cross-section ,and the
+% _direction_orthogonal_ property defines the direction orthogonal to the
+% cross-section. The _scale_ property gives a typical scale (in m) of the
+% cross-section. 
+% 
+% We can plot the xsections on top of the ADCP track to better understand
+% how cross-sections are defined:
+figure
+mmbend.plot_track('Color', [.5 .5 .5]) % plot the measured track
+hold on
+mmbend.plot_track(ef) % plot the selected portions of the track
+xs.plot % plot the cross-section definitions
+legend off
+
+%%
+% The green arrows indicate the _direction_orthogonal_ property, the red
+% arrows the '_direction_' property and the arrows originate in _origin_.
+
+%% XSection default construction
+% XSection objects can be constructed without arguments, which will return
+% a default object:
+xs_default = XSection();
+xs_default.origin
+xs_default.direction
+
+%%
+% properties can be manually adjusted.
+
+%% XSection construction with VMADCP data
+% When constructed with <matlab:doc('VMADCP') VMADCP> data, with or without
+% <matlab:doc('EnsembleFilter') EnsembleFilter> objects the track
+% information is used to construct the cross-section definition. The
+% largest eigenvector of the positions is used as the tangential direction
+% of the cross-section. The scale is the standard deviation of the
+% positions projected on the direction of the cross-section.
+xs_from_vmadcp = XSection(mmbend, ef(1))
+
+%%
+% This created the xsection definition for the first cross-section defined
+% by the data selected in _ef_
+
+
+
+
+
 ##### SOURCE END #####
 --></body></html>
