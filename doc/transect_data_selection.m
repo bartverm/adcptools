@@ -9,7 +9,7 @@
 % object:
 
 %%
-ef = EnsembleFilter(mmbend)
+ensfilt = EnsembleFilter(mmbend)
 
 %% 
 % The <matlab:doc('EnsembleFilter') EnsembleFilter> object has the property 
@@ -29,14 +29,14 @@ unique(mmbend.fileid)
 %%
 % We can now create an <matlab:doc('EnsembleFilter') EnsembleFilter> object
 % that excludes data that was not in the first file:
-ef = EnsembleFilter(mmbend, mmbend.fileid ~= 1);
+ensfilt = EnsembleFilter(mmbend, mmbend.fileid ~= 1);
 
 %%
 % we can plot the result:
 
 %%
 figure
-plot(ef,mmbend)
+plot(ensfilt,mmbend)
 
 %% 
 % We can see that the last part of the ensembles is now marked as bad and
@@ -90,8 +90,15 @@ plot(ef,mmbend)
 %
 % <<cross_section_selector_6.png>>
 %
-
-
-
-
-
+% the result of the selection is 7 
+% <matlab:doc('EnsembleFilter') EnsembleFilter> objects, one for each
+% cross-section  
+transect_data_load_xsections % loading  previously generated EnsFilters
+ef
+%%
+% Also, 7 <matlab:doc('XSection') XSection> object were defined:
+xs
+%%
+% These define the origin and direction of cross-sections. More details
+% about these classes are given in the next section about 
+% <transect_cross_section.html Defining cross-sections>. 

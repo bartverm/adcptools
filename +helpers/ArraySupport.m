@@ -182,30 +182,53 @@ classdef ArraySupport < handle & matlab.mixin.Copyable
 %   as the object array. If all the outputs of the function are scalars, an
 %   array is produced instead of a cell
 %
+%   [...] = obj.run_method(method_name, ..., 'NoExpand', ...) Anything
+%   passed after the 'NoExpand' word is not expaned but passed as is to
+%   each call of the function.
+%
 %   See also:
 %   ArraySupport, assign_paramater
                 siz_out = size(obj);
                 argout = cell(numel(obj),nargout);
                 if ~isempty(varargin)
-                    siz_in = cellfun(@size, varargin, ...
-                        "UniformOutput",false);
-                    assert(isequal(size(obj), siz_in{:}),...
-                        'helper.ArraySupport:NonMatchingInputSize',...
-                        'Size of inputs must match size of object array')
-                    varargin = cellfun(@(x) reshape(x,[],1), varargin, ...
-                        'UniformOutput',false);
-                    not_cell = ~cellfun(@iscell,varargin);
-                    varargin(not_cell) = cellfun(@num2cell, ...
-                        varargin(not_cell),'UniformOutput',false);
-                    varargin = [varargin{:}];
-                    
+                    % handle inputs that should not be extended
+                    fnoexp = find(cellfun(@(x) ischar(x) &&...
+                        strcmp(x, 'NoExpand'), varargin),...
+                        1, 'first');
+                    no_exp_in = varargin(fnoexp+1:end);
+                    varargin(fnoexp:end) = [];
+
+                    % handle scalar inputs
+                    fscalar = cellfun(@isscalar,varargin);
+                    scal_in =  varargin(fscalar);
+                    varargin(fscalar)=[];
+
+                    % handle other input
+                    if ~isempty(varargin)
+                        siz_in = cellfun(@size, varargin, ...
+                            "UniformOutput",false);
+                        assert(isempty(siz_in) || isequal(size(obj),...
+                            siz_in{:}),...
+                            'helper.ArraySupport:NonMatchingInputSize',...
+                            ['Size of non-scalar inputs must match', ...
+                            ' size of object array'])
+                        varargin = cellfun(@(x) reshape(x,[],1),...
+                            varargin, ...
+                            'UniformOutput',false);
+                        not_cell = ~cellfun(@iscell,varargin);
+                        varargin(not_cell) = cellfun(@num2cell, ...
+                            varargin(not_cell),'UniformOutput',false);
+                        varargin = [varargin{:}];
+                    end
                 else 
                     varargin = cell.empty(numel(obj),0);
+                    scal_in = {};
+                    no_exp_in = {};
                 end
                 for co = 1:numel(obj)
-                    [argout{co,:}] = feval(method_name, obj(co), varargin{co,:});
+                    [argout{co,:}] = feval(method_name, obj(co),...
+                        varargin{co,:}, scal_in{:}, no_exp_in{:});
                 end
-
                 argout = num2cell(argout,1);
                 varargout = cellfun(@(x) obj.reshape_output(x,siz_out), ...
                     argout, 'UniformOutput',false);

@@ -14,7 +14,7 @@
 
 %%
 mmbend.plot_velocity
-set(gca,'xlim',[1500 2500]) % zooming in on portion of the data
+set(gca, 'xlim', mmbend.time([1500 2500])) % zooming in on portion of the data
 
 %%
 % We can see that by default the water surface is at 0 m elevation, and
@@ -63,7 +63,7 @@ mmbend.water_level_object.level = 60;
 %%
 figure
 mmbend.plot_velocity;
-set(gca,'xlim',[1500 2500]) % zooming in on portion of the data
+set(gca, 'xlim', mmbend.time([1500 2500])) % zooming in on portion of the data
 
 %% Vessel mounted ADCP: varying water surface
 

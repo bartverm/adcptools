@@ -129,7 +129,7 @@ classdef BathymetryScatteredPoints < Bathymetry
                 reshape(x ,1, []);...
                 reshape(y,1,[])]),sizin);
         end
-        function known_from_vmadcp(obj, vmadcp, filter)
+        function known_from_vmadcp(obj, varargin)
             % BathymetryScatteredPoints/known_from_adcp
             %
             %   obj.known_from_vmadcp(vmadcp) sets the known scattered points
@@ -141,11 +141,24 @@ classdef BathymetryScatteredPoints < Bathymetry
             %
             %   see also: BathymetryScatteredPoints, VMADCP, VMADCP/bed_position
             if ~isscalar(obj)
-                obj.run_method('known_from_vmadcp', vmadcp, filter);
+                obj.run_method('known_from_vmadcp', varargin{:});
                 return
             end
-            validateattributes(vmadcp, {'VMADCP'}, {}, ...
-                'pos_from_vmadcp', 'vmadcp', 2)
+            vmadcp = [];
+            construct_filter = true;
+            for ci = 1:numel(varargin)
+                carg = varargin{ci};
+                if isa(carg, 'VMADCP')
+                    vmadcp = carg;
+                elseif isa(carg,'EnsembleFilter')
+                    filter = carg;
+                    construct_filter=false;
+                end
+            end
+            assert(~isempty(vmadcp),'A VMADCP object is required as input')
+            if construct_filter
+                filter=EnsembleFilter(vmadcp);
+            end
             tpos = vmadcp.cat_property('bed_position');
             xpos = tpos(:, :, :, 1);
             ypos = tpos(:, :, :, 2);

@@ -48,7 +48,7 @@ mmbend.plot_track_velocity
 %%
 figure
 mmbend.plot_velocity
-set(gca,'xlim',[1500 2500]) % zooming in on portion of the data
+set(gca,'xlim',mmbend.time([1500 2500])) % zooming in on portion of the data
 
 %%
 % Note that by default the velocity is shown in earth coordinate system,
@@ -62,7 +62,7 @@ set(gca,'xlim',[1500 2500]) % zooming in on portion of the data
 %% 
 figure
 mmbend.plot_backscatter
-set(gca,'xlim',[1500 2500]) % zooming in on portion of the data
+set(gca, 'xlim', mmbend.time([1500 2500])) % zooming in on portion of the data
 
 
 
