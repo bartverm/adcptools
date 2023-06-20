@@ -18,11 +18,16 @@ jobs:
       - name: Create symbolic links for MATLAB
         run: |
           cur_dir=`pwd`
+          echo $cur_dir
           cd /usr/local/MATLAB/
           matlab_ver=`ls`
+          echo $matlab_ver
           cd $matlab_ver/sys/os/glnxa64
-          sudo rm libstdc++.so.6
-          sudo ln -s /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+          pwd
+          ls -alh
+          mkdir orig
+          sudo mv libstdc++.so.6 orig
+          sudo ln -s /usr/lib/x86_64-linux-gnu/libstdc++.so.7
           cd $cur_dir
       - name: Run tests
         uses: matlab-actions/run-command@v1
