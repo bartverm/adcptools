@@ -24,7 +24,7 @@ classdef Bathymetry < helpers.ArraySupport
 %   compute depth given position and time
 %
 %   see also: Bathymetry, get_depth, WaterLevel
-        water_level (1,1) WaterLevel=ConstantWaterLevel;
+        water_level (1, 1) WaterLevel = ConstantWaterLevel;
     end
     methods (Abstract)
 % Bathymetry/get_bed_elev abstract method
@@ -35,21 +35,26 @@ classdef Bathymetry < helpers.ArraySupport
 %   method needs to be reimplemented in concrete subclass
 %
 %   see also: Bathymetry, get_depth
-        z=get_bed_elev(obj,x,y)
+        z = get_bed_elev(obj, x, y)
     end
     methods
-        function obj=Bathymetry(varargin)
+        function obj = Bathymetry(varargin)
             obj = obj@helpers.ArraySupport(varargin{:});
-            for count_var=1:nargin
-                cvar=varargin{count_var};
-                if isa(cvar,'WaterLevel')
-                    obj.assign_property('water_level',cvar);
+            varargin = obj(1).unprocessed_construction_inputs;
+            isprocessed = false(size(varargin));
+            for count_var = 1 : numel(varargin)
+                cvar = varargin{count_var};
+                if isa(cvar, 'WaterLevel')
+                    obj.assign_property('water_level', cvar);
+                    isprocessed(count_var) = true;
                 end
             end
+            varargin(isprocessed) = [];
+            obj(1).unprocessed_construction_inputs = varargin;
         end
 
 
-        function d=get_depth(obj,x,y,time)
+        function d = get_depth(obj, x, y, time)
 % Bathymetry/get_depth
 %
 %   d=obj.get_depth(x,y,time) compute the depth given the position x,y and
@@ -57,13 +62,16 @@ classdef Bathymetry < helpers.ArraySupport
 %
 %   see also: Bathymetry, get_bed_elev
             if nargin > 3
-                d=obj.water_level.get_depth(obj.get_bed_elev(x,y),time);
+                d = obj.water_level.get_depth( ...
+                    obj.get_bed_elev(x, y), ...
+                    time);
             else
-                d=obj.obj.water_level.get_depth(obj.get_bed_elev(x,y));
+                d = obj.obj.water_level.get_depth( ...
+                    obj.get_bed_elev(x, y));
             end
         end
 
-        function plot(obj,varargin)
+        function plot(obj, varargin)
 % Bathymetry/plot
 %
 %   obj.plot(...) given an array of objects obj, calls the plot function on
@@ -73,14 +81,14 @@ classdef Bathymetry < helpers.ArraySupport
 %
 %   see also: Bathymetry
             obj(1).plot;
-            hold_stat=get(gca,'NextPlot');
+            hold_stat = get(gca, 'NextPlot');
             hold on;
             if ~isscalar(obj)
-                for ce=2:numel(obj)
+                for ce = 2 : numel(obj)
                     obj(ce).plot(varargin{:})
                 end % for
             end % if
-            set(gca,'NextPlot',hold_stat);
+            set(gca, 'NextPlot', hold_stat);
         end % function
     end % methods
 end % classdef

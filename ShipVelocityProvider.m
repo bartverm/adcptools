@@ -25,7 +25,6 @@ classdef ShipVelocityProvider < matlab.mixin.Heterogeneous & handle
 %  
 %   see also: VMADCP, CoordinateSystem
             validateattributes(adcp,{'VMADCP'},{'scalar'})
-            validateattributes(dst,{'CoordinateSystem'},{'scalar'})
             if nargin < 3
                 dst=CoordinateSystem.Earth;
             end
