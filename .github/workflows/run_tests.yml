@@ -13,9 +13,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install libcgal-dev libeigen3-dev
-      - name: Install gcc10
-        run: |
-          sudo apt-get install gcc-10 g++-10
       - name: Set up MATLAB
         uses: matlab-actions/setup-matlab@v1
       - name: Run tests
