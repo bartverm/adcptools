@@ -60,6 +60,9 @@ classdef BathymetryScatteredPoints < Bathymetry
             siz = size(obj);
             siz = num2cell(siz);
             int(siz{:}) = LoessNNInterpolator;
+            for cel = 1:numel(int)
+                int(cel) = LoessNNInterpolator;
+            end
             % make sure interpolators are different for array
             obj.assign_property('interpolator', int);
             addlistener(obj, 'known',...

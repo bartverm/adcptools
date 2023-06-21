@@ -6,7 +6,7 @@
    <!--
 This HTML was auto-generated from MATLAB code.
 To make changes, update the MATLAB code and republish this document.
-      --><title>Creation of a bathymetric model</title><meta name="generator" content="MATLAB 9.14"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2023-06-19"><meta name="DC.source" content="transect_bathymetry.m"><style type="text/css">
+      --><title>Creation of a bathymetric model</title><meta name="generator" content="MATLAB 9.14"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2023-06-21"><meta name="DC.source" content="transect_bathymetry.m"><style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
 
 html { min-height:100%; margin-bottom:1px; }
@@ -67,9 +67,132 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 
 
 
-  </style></head><body><div class="content"><h1>Creation of a bathymetric model</h1><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2023a</a><br></p></div><!--
+  </style></head><body><div class="content"><h1>Creation of a bathymetric model</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#2">The Bathymetry class</a></li><li><a href="#3">Bathymetry from VMADCP data</a></li><li><a href="#6">Fine tuning the bathymetry interpolation</a></li><li><a href="#11">Creating a custom Bathymetry</a></li></ul></div><p>Once the VMADCP data were selected and cross-sections are defined, it is necessary to define a bathymetric model, which will be used in the rest of the processing. The most obvious way, is to construct the bathymetry model from the VMADCP bottom tracking data. In some cases, however, these data maybe of poor quality and a bathymetric model might be constructed from another source.</p><h2 id="2">The Bathymetry class</h2><p>The requirements for a bathymetric model are defined in the <a href="matlab:doc('Bathymetry')">Bathymetry</a> class. In essence a <a href="matlab:doc('Bathymetry')">Bathymetry</a> object must be able to provide a bed elevation for any given (x,y) position.</p><h2 id="3">Bathymetry from VMADCP data</h2><p>The Bottom tracking of ADCPs produces a scattered cloud of bed detection. The <a href="matlab:doc('BathymetryScatteredPoints')">BathymetryScatteredPoints</a> class defines a bathymetric model from a given clous of scattered points. The class used an interpolator to smooth and interpolate the input cloud. The <a href="matlab:doc('BathymetryScatteredPoints')">BathymetryScatteredPoints</a> can be constructed from a <a href="matlab:doc('VMADCP')">VMADCP</a> object. In that case the class obtains the bed positions from the ADCP bottom tracking and uses those as source for the cloud of bed positions. In the case of the Muara Muntai bend dataset we have seven cross-sections. For each we wish to construct a bathymetry. We can do this by constructing the <a href="matlab:doc('BathymetryScatteredPoints')">BathymetryScatteredPoints</a> by passing it the <a href="matlab:doc('VMADCP')">VMADCP</a> object and the <a href="matlab:doc('EnsembleFilter')">EnsembleFilter</a> objects:</p><pre class="codeinput">B = BathymetryScatteredPoints(mmbend, ef);
+</pre><p>We can now plot the bathymetry</p><pre class="codeinput">figure
+B(4).plot
+colorbar
+</pre><img vspace="5" hspace="5" src="transect_bathymetry_01.png" alt=""> <p>We can see in the figure the black dots, representing the scattered cloud of bed detections. The colored surface is the bathymetric model that is fitted to the cloud of point.</p><h2 id="6">Fine tuning the bathymetry interpolation</h2><p>We take a close look at the bathymetry objects:</p><pre class="codeinput">B(4)
+</pre><pre class="codeoutput">
+ans = 
+
+  BathymetryScatteredPoints with properties:
+
+           known: [3&times;5940 double]
+    interpolator: [1&times;1 LoessNNInterpolator]
+     water_level: [1&times;1 ConstantWaterLevel]
+
+</pre><p>we see that the bathymetry object has the property <i>known</i> holding the measured bed detection. The <i>interpolator</i> property, which is an <a href="matlab:doc('Interpolator')">Interpolator</a> object that manages all interpolations and smoothing. The last property <i>water_level</i> is needed to compute the water depth of given points. The <a href="matlab:doc('Interpolator')">Interpolator</a> object looks like this:</p><pre class="codeinput">B(4).interpolator
+</pre><pre class="codeoutput">
+ans = 
+
+  LoessNNInterpolator with properties:
+
+                 span: 0.0100
+    robust_iterations: 0
+            n_threads: 6
+                order: 1
+                known: [3&times;5940 double]
+    density_reduction: 1
+               n_dims: 2
+
+</pre><p>The <i>interpolator</i> property holds a <a href="matlab:doc('LoessNNInterpolator')">LoessNNInterpolator</a> which uses a loess filter to smooth the input cloud of points and a natural neighbor interpolator to interpolate locations other than the input points. The smoothing step is done by the loess filter through a local linear regression. This regression is done over a portion of the input points indicated by the <a href="matlab:doc('LoessNNInterpolator.span')">span</a> property. This is now set to 0.01, meaning that the linear regression is done over 1% of the input points. The larger this number the smoother the fit. The risk in this step is to either overfit, or underfit. A good way to investigate this is by taking a look at the residuals:</p><pre class="codeinput">figure
+B(4).plot_residuals
+</pre><img vspace="5" hspace="5" src="transect_bathymetry_02.png" alt=""> <p>The residuals look quite randomly distributed in space. If some clear spatial structure can observed, the fit might be smoothing too much. Suppose we set the span rather high and then look at the residuals</p><pre class="codeinput">B(4).interpolator.span = 0.2;
+figure
+B(4).plot_residuals
+</pre><img vspace="5" hspace="5" src="transect_bathymetry_03.png" alt=""> <p>Now we clearly see regions of over and underestimation indicating we are smoothing too much. We set back the smoothing to a more reasonable value</p><pre class="codeinput">B(4).interpolator.span = 0.01;
+</pre><h2 id="11">Creating a custom Bathymetry</h2><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2023a</a><br></p></div><!--
 ##### SOURCE BEGIN #####
 %% Creation of a bathymetric model
+
+%%
+% Once the VMADCP data were selected and cross-sections are defined, it is
+% necessary to define a bathymetric model, which will be used in the rest
+% of the processing. The most obvious way, is to construct the bathymetry
+% model from the VMADCP bottom tracking data. In some cases, however, these
+% data maybe of poor quality and a bathymetric model might be constructed
+% from another source.
+
+%% The Bathymetry class
+% The requirements for a bathymetric model are defined in the 
+% <matlab:doc('Bathymetry') Bathymetry> class. In essence a 
+% <matlab:doc('Bathymetry') Bathymetry> object must be able to provide a
+% bed elevation for any given (x,y) position.
+
+%% Bathymetry from VMADCP data
+% The Bottom tracking of ADCPs produces a scattered cloud of bed
+% detection. The 
+% <matlab:doc('BathymetryScatteredPoints') BathymetryScatteredPoints> class
+% defines a bathymetric model from a given clous of scattered points. The
+% class used an interpolator to smooth and interpolate the input cloud.
+% The <matlab:doc('BathymetryScatteredPoints') BathymetryScatteredPoints>
+% can be constructed from a <matlab:doc('VMADCP') VMADCP> object. In that
+% case the class obtains the bed positions from the ADCP bottom tracking
+% and uses those as source for the cloud of bed positions.
+% In the case of the Muara Muntai bend dataset we have seven
+% cross-sections. For each we wish to construct a bathymetry. We can do
+% this by constructing the 
+% <matlab:doc('BathymetryScatteredPoints') BathymetryScatteredPoints> by
+% passing it the <matlab:doc('VMADCP') VMADCP> object and the 
+% <matlab:doc('EnsembleFilter') EnsembleFilter> objects:
+B = BathymetryScatteredPoints(mmbend, ef);
+
+%%
+% We can now plot the bathymetry
+figure
+B(4).plot
+colorbar
+
+%%
+% We can see in the figure the black dots, representing the scattered cloud
+% of bed detections. The colored surface is the bathymetric model that is
+% fitted to the cloud of point.
+
+%% Fine tuning the bathymetry interpolation
+% We take a close look at the bathymetry objects:
+B(4)
+
+%%
+% we see that the bathymetry object has the property _known_ holding the
+% measured bed detection. The _interpolator_ property, which is an 
+% <matlab:doc('Interpolator') Interpolator> object that manages all
+% interpolations and smoothing. The last property _water_level_ is needed
+% to compute the water depth of given points.
+% The <matlab:doc('Interpolator') Interpolator> object looks like this:
+B(4).interpolator
+
+%%
+% The _interpolator_ property holds a 
+% <matlab:doc('LoessNNInterpolator') LoessNNInterpolator> which uses a
+% loess filter to smooth the input cloud of points and a natural neighbor
+% interpolator to interpolate locations other than the input points. The
+% smoothing step is done by the loess filter through a local linear
+% regression. This regression is done over a portion of the input points
+% indicated by the <matlab:doc('LoessNNInterpolator.span') span> property.
+% This is now set to 0.01, meaning that the linear regression is done over
+% 1% of the input points. The larger this number the smoother the fit. The
+% risk in this step is to either overfit, or underfit. A good way to
+% investigate this is by taking a look at the residuals:
+figure
+B(4).plot_residuals
+
+%% 
+% The residuals look quite randomly distributed in space. If some clear
+% spatial structure can observed, the fit might be smoothing too much.
+% Suppose we set the span rather high and then look at the residuals
+B(4).interpolator.span = 0.2;
+figure
+B(4).plot_residuals
+
+%%
+% Now we clearly see regions of over and underestimation indicating we are
+% smoothing too much. We set back the smoothing to a more reasonable value
+B(4).interpolator.span = 0.01;
+
+
+
+%% Creating a custom Bathymetry
+
 
 ##### SOURCE END #####
 --></body></html>

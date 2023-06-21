@@ -32,5 +32,59 @@
 % <matlab:doc('EnsembleFilter') EnsembleFilter> objects:
 B = BathymetryScatteredPoints(mmbend, ef);
 
+%%
+% We can now plot the bathymetry
+figure
+B(4).plot
+colorbar
+
+%%
+% We can see in the figure the black dots, representing the scattered cloud
+% of bed detections. The colored surface is the bathymetric model that is
+% fitted to the cloud of point.
+
+%% Fine tuning the bathymetry interpolation
+% We take a close look at the bathymetry objects:
+B(4)
+
+%%
+% we see that the bathymetry object has the property _known_ holding the
+% measured bed detection. The _interpolator_ property, which is an 
+% <matlab:doc('Interpolator') Interpolator> object that manages all
+% interpolations and smoothing. The last property _water_level_ is needed
+% to compute the water depth of given points.
+% The <matlab:doc('Interpolator') Interpolator> object looks like this:
+B(4).interpolator
+
+%%
+% The _interpolator_ property holds a 
+% <matlab:doc('LoessNNInterpolator') LoessNNInterpolator> which uses a
+% loess filter to smooth the input cloud of points and a natural neighbor
+% interpolator to interpolate locations other than the input points. The
+% smoothing step is done by the loess filter through a local linear
+% regression. This regression is done over a portion of the input points
+% indicated by the <matlab:doc('LoessNNInterpolator.span') span> property.
+% This is now set to 0.01, meaning that the linear regression is done over
+% 1% of the input points. The larger this number the smoother the fit. The
+% risk in this step is to either overfit, or underfit. A good way to
+% investigate this is by taking a look at the residuals:
+figure
+B(4).plot_residuals
+
+%% 
+% The residuals look quite randomly distributed in space. If some clear
+% spatial structure can observed, the fit might be smoothing too much.
+% Suppose we set the span rather high and then look at the residuals
+B(4).interpolator.span = 0.2;
+figure
+B(4).plot_residuals
+
+%%
+% Now we clearly see regions of over and underestimation indicating we are
+% smoothing too much. We set back the smoothing to a more reasonable value
+B(4).interpolator.span = 0.01;
+
+
 
 %% Creating a custom Bathymetry
+
