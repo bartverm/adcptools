@@ -12,7 +12,7 @@ suite = testsuite('+tests', 'IncludeSubfolders', false);
 runner = TestRunner.withTextOutput();
 runner.addPlugin(TestReportPlugin.producingPDF('test-results/results.pdf'));
 runner.addPlugin(CodeCoveragePlugin.forFolder({'.'}, 'IncludingSubfolders', true,...
-    "Producing",CoverageReport('code-coverage')));
+  "Producing",CoverageReport('code-coverage')));
 
 results = runner.run(suite);
 display(results);
