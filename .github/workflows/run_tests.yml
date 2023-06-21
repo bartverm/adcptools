@@ -13,27 +13,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install libcgal-dev libeigen3-dev
+      - name: Install gcc10
+        run: |
+          sudo apt-get install gcc-10 g++-10
       - name: Set up MATLAB
         uses: matlab-actions/setup-matlab@v1
-      - name: Create symbolic links for MATLAB
-        run: |
-          cur_dir=`pwd`
-          echo $cur_dir
-          cd /usr/local/MATLAB/
-          matlab_ver=`ls`
-          echo $matlab_ver
-          cd $matlab_ver/sys/os/glnxa64
-          pwd
-          ls -alh
-          sudo mv libstdc++.so.6 orig
-          sudo ln -s /usr/x86_64-linux-gnu/lib/libstdc++.so.6
-          sudo mv libgcc_s.so.1 orig
-          sudo ln -s /usr/x86_64-linux-gnu/lib/libgcc_s.so.1
-          sudo mv libgfortran.so.5 orig
-          sudo ln -s /usr/x86_64-linux-gnu/lib/libgfortran.so.5
-          sudo mv libquadmath.so.0 orig
-          sudo ln -s /usr/x86_64-linux-gnu/lib/libquadmath.so.0
-          cd $cur_dir
       - name: Run tests
         uses: matlab-actions/run-command@v1
         with:
