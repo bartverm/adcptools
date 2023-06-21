@@ -25,9 +25,14 @@ jobs:
           cd $matlab_ver/sys/os/glnxa64
           pwd
           ls -alh
-          mkdir orig
           sudo mv libstdc++.so.6 orig
-          sudo ln -s /usr/lib/x86_64-linux-gnu/libstdc++.so.7
+          sudo ln -s /usr/x86_64-linux-gnu/lib/libstdc++.so.6
+          sudo mv libgcc_s.so.1 orig
+          sudo ln -s /usr/x86_64-linux-gnu/lib/libgcc_s.so.1
+          sudo mv libgfortran.so.5 orig
+          sudo ln -s /usr/x86_64-linux-gnu/lib/libgfortran.so.5
+          sudo mv libquadmath.so.0 orig
+          sudo ln -s /usr/x86_64-linux-gnu/lib/libquadmath.so.0
           cd $cur_dir
       - name: Run tests
         uses: matlab-actions/run-command@v1
