@@ -4,7 +4,7 @@
   import matlab.unittest.plugins.XMLPlugin;
   import matlab.unittest.plugins.codecoverage.CoverageReport;
  
-  suite = testsuite(pwd, 'IncludeSubfolders', true);
+  suite = testsuite('+tests', 'IncludeSubfolders', false);
   
   [~,~] = mkdir('code-coverage');
   [~,~] = mkdir('test-results');
