@@ -1,28 +1,53 @@
 function publish_all_doc(varargin)
+% publishes all adcptools documentation
+%
+%   publish_all_doc() publishes all ADCPtools documentation in the html
+%   folder. Only publishes files that were modified after html creation.
+%   Files that have a corresponding html that is newer, are run, but not
+%   published
+%
+%   publish_all_doc(["name1 name2"]) Do the above, but only for the given
+%   files
+%
+%   publish_all_doc(..., "force_publish",...) force publication of all
+%   files, regardless of what was generated before.
+
     close all
-    if nargin > 0 && isstring(varargin{1})
-        names = varargin{1};
-    else
-        names = [ ...
-            "main",...
-            "reading_data",...
-            "initial_inspection",...
-            "vertical_positioning",...
-            "horizontal_positioning",...
-            "repeat_transect_processing",...
-            "transect_data_selection",...
-            "transect_bathymetry",...
-            "transect_cross_section",...
-            "transect_mesh_construction",...
-            "transect_post_processing",...
-            "transect_solving_data"...
-        ];
+    force_publish = false;
+    names = [ ...
+        "main",...
+        "reading_data",...
+        "initial_inspection",...
+        "vertical_positioning",...
+        "horizontal_positioning",...
+        "repeat_transect_processing",...
+        "transect_data_selection",...
+        "transect_bathymetry",...
+        "transect_cross_section",...
+        "transect_mesh_construction",...
+        "transect_post_processing",...
+        "transect_solving_data"...
+    ];
+
+    for carg = 1:nargin
+        curarg = varargin{carg};
+        if isstring(curarg)
+            if strcmp(curarg,"force_publish")
+                force_publish = true;
+            else
+                assert(all(ismember(curarg, names),"all"),...
+                    "All given names should match a filename")
+                names = curarg;
+            end
+        else
+            error("Can only handle string input")
+        end
     end
 
 
     % note that the order of publishing the files matters, since the code
     % in the help files builds on code from previous files
-    is_modified = publish_or_run(names);
+    is_modified = publish_or_run(force_publish, names);
     close all
     
     if is_modified
@@ -33,7 +58,7 @@ function publish_all_doc(varargin)
     open_adcptools_documentation
 end
 
-function mod = publish_or_run(name)
+function mod = publish_or_run(fpublish, name)
     mdir = fullfile(helpers.adcptools_root, 'doc');
     hdir = fullfile(helpers.adcptools_root, 'html');
     mod = false;
@@ -56,7 +81,7 @@ function mod = publish_or_run(name)
         else
             generate_doc = true;
         end
-        if generate_doc
+        if fpublish || generate_doc
             publish(m_name, outputDir = hdir);
             mod = true;
         else

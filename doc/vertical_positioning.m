@@ -65,6 +65,10 @@ figure
 mmbend.plot_velocity;
 set(gca, 'xlim', mmbend.time([1500 2500])) % zooming in on portion of the data
 
+%%
+% we set the vertical position back to 0:
+mmbend.water_level_object.level = 0;
+
 %% Vessel mounted ADCP: varying water surface
 
 %% Customize vertical positioning

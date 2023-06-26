@@ -6,7 +6,7 @@
    <!--
 This HTML was auto-generated from MATLAB code.
 To make changes, update the MATLAB code and republish this document.
-      --><title>Mesh creation for repeat transect data processing</title><meta name="generator" content="MATLAB 9.14"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2023-06-19"><meta name="DC.source" content="transect_mesh_construction.m"><style type="text/css">
+      --><title>Mesh creation for repeat transect data processing</title><meta name="generator" content="MATLAB 9.14"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2023-06-26"><meta name="DC.source" content="transect_mesh_construction.m"><style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
 
 html { min-height:100%; margin-bottom:1px; }
@@ -67,9 +67,92 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 
 
 
-  </style></head><body><div class="content"><h1>Mesh creation for repeat transect data processing</h1><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2023a</a><br></p></div><!--
+  </style></head><body><div class="content"><h1>Mesh creation for repeat transect data processing</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#3">Mesh constructor creation</a></li><li><a href="#7">Generate the meshes</a></li></ul></div><p>The next step in the processing of ADCP data is the creation of a mesh on which we will eventually solve the velocity. The mesh that we will create is a so-called sigma-zeta mesh. It is a kind of hybrid between a zeta mesh, in which vertical cells all have equal size and a sigma mesh where the number of cells is everywhere the same. The mesh is implementend in the <a href="matlab:doc('SigmaZetaMesh')">SigmaZetaMesh</a> class, which can be constructed with a <a href="matlab:doc('SigmaZetaMeshGenerator')">SigmaZetaMeshGenerator</a>. In this case we will use the <a href="matlab:doc('SigmaZetaMeshFromVMADCP')">SigmaZetaMeshFromVMADCP</a> class. The class needs objects of the following classes</p><div><ul><li><a href="matlab:doc('VMADCP')">VMADCP</a>: to provide details about the flow measurements</li><li><a href="matlab:doc('Bathymetry')">Bathymetry</a>: to know the bed position</li><li><a href="matlab:doc('EnsembleFilter')">EnsembleFilter</a>: to know which data to include</li><li><a href="matlab:doc('XSection')">Xsection</a>: for the definition of a cross section.</li></ul></div><h2 id="3">Mesh constructor creation</h2><p>We first construct the mesh generator object:</p><pre class="codeinput">mesh_gen = SigmaZetaMeshFromVMADCP(mmbend, ef, xs, B)
+</pre><pre class="codeoutput">
+mesh_gen = 
+
+  1&times;7 SigmaZetaMeshFromVMADCP array with properties:
+
+    vmadcp
+    filter
+    bathymetry
+    deltan
+    deltaz
+    xs
+    time
+    water_level
+
+</pre><p>We get one generator for each cross-section. Some properties of the mesh generator are useful to consider:</p><div><ul><li><i>deltan</i>: lateral resolution of the mesh</li><li><i>deltaz</i>: vertical resolution of the mesh</li><li><i>water_level</i>: defines water level</li><li><i>time</i>: time for which mesh is to be generated</li></ul></div><p>The first two properties are quite straightforward, but the last two might need some explanation. The water_level property is important particularly when dealing with situations in which water level variations are significant during the measurements. In this case, also the time for which the mesh should be generated is important, since it sets the water level for which it will be generated.</p><h2 id="7">Generate the meshes</h2><p>We can now generat the mesh</p><pre class="codeinput">mesh = mesh_gen.get_mesh();
+</pre><p>Seven meshes were generated, one for each cross-section. We can visualize the meshes.</p><pre class="codeinput">figure
+mesh.plot
+</pre><img vspace="5" hspace="5" src="transect_mesh_construction_01.png" alt=""> <p>we can also visualize the meshes in 3D:</p><pre class="codeinput">figure
+B.plot
+hold <span class="string">on</span>
+mesh.plot3
+</pre><img vspace="5" hspace="5" src="transect_mesh_construction_02.png" alt=""> <p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2023a</a><br></p></div><!--
 ##### SOURCE BEGIN #####
 %% Mesh creation for repeat transect data processing
+
+%%
+% The next step in the processing of ADCP data is the creation of a mesh on
+% which we will eventually solve the velocity. The mesh that we will create
+% is a so-called sigma-zeta mesh. It is a kind of hybrid between a zeta
+% mesh, in which vertical cells all have equal size and a sigma mesh where
+% the number of cells is everywhere the same. The mesh is implementend in
+% the <matlab:doc('SigmaZetaMesh') SigmaZetaMesh> class, which can be
+% constructed with a 
+% <matlab:doc('SigmaZetaMeshGenerator') SigmaZetaMeshGenerator>. In this 
+% case we will use the 
+% <matlab:doc('SigmaZetaMeshFromVMADCP') SigmaZetaMeshFromVMADCP> class.
+% The class needs objects of the following classes
+%%
+% 
+% * <matlab:doc('VMADCP') VMADCP>: to provide details about the flow
+% measurements
+% * <matlab:doc('Bathymetry') Bathymetry>: to know the bed position
+% * <matlab:doc('EnsembleFilter') EnsembleFilter>: to know which data to
+% include
+% * <matlab:doc('XSection') Xsection>: for the definition of a cross
+% section.
+
+%% Mesh constructor creation
+% We first construct the mesh generator object:
+mesh_gen = SigmaZetaMeshFromVMADCP(mmbend, ef, xs, B)
+
+%%
+% We get one generator for each cross-section. Some properties of the mesh
+% generator are useful to consider:
+%%
+%
+% * _deltan_: lateral resolution of the mesh
+% * _deltaz_: vertical resolution of the mesh
+% * _water_level_: defines water level
+% * _time_: time for which mesh is to be generated
+%
+%%
+% The first two properties are quite straightforward, but the last two
+% might need some explanation. The water_level property is important
+% particularly when dealing with situations in which water level variations
+% are significant during the measurements. In this case, also the time for
+% which the mesh should be generated is important, since it sets the water
+% level for which it will be generated.
+
+%% Generate the meshes
+% We can now generat the mesh
+mesh = mesh_gen.get_mesh();
+
+%% 
+% Seven meshes were generated, one for each cross-section. We can visualize
+% the meshes.
+figure
+mesh.plot
+
+%% 
+% we can also visualize the meshes in 3D:
+figure
+B.plot
+hold on
+mesh.plot3
 
 ##### SOURCE END #####
 --></body></html>

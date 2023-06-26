@@ -322,10 +322,10 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
 %   see also: SigmaZetaMesh, plot3
             varargout = cell(1,nargout);
             if ~isscalar(obj)
+                tiledlayout("flow");
                 [varargout{:}] = obj.run_method('plot', varargin{:});
                 return
             end
-        
             plot_var=nan(obj.ncells,1);
             get_gca = true;
             for ca = 1:numel(varargin)
@@ -347,7 +347,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
                 end
             end
             if get_gca
-                ax = gca;
+                ax = nexttile;
             end
             hold_stat=get(ax,'NextPlot');
             hbed = plot(ax,obj.nb_all,obj.zb_all,'k','Linewidth',2);
