@@ -28,6 +28,9 @@ classdef ModelParameters < handle
         s_cmap = brewermap(15, 'YlOrBr');
 
         cv_results (1,:) double
+
+        GOF (1,:) struct % gof: goodness of fit measures.
+
     end
     properties(Dependent)
         phi_cmap
@@ -56,8 +59,83 @@ classdef ModelParameters < handle
         end
 
         function plot_residuals(obj)
+            % Plots 
         end
 
+        function [me, vare, mse, e] = get_residual(obj, A, x, b)
+            % Input: matrix A, solution x, data b
+            % Ax = b + e
+            % OLS estimator x will produce mimimal residual norm
+            % Biased estimators will produce larger residual norms
+            % Output: [me, vare, mse, e] = [mean(e), sample variance e,
+            % mse(e), e]
+            % variance computed as 1/(n-1)*sum(e_i - mean(e))^2
+
+            e = A*x-b;
+            me = mean(e);
+            mse = e'*e./(numel(e)-1);
+            vare = mse - numel(e)*me^2/(numel(e)-1); 
+        end
+
+
+        function idx = eq2mesh(obj, neq)
+            % Mapping between equation index and 
+            % mesh cell index
+            
+            % neq(cell_idx) = number of equations within cell_idx
+            % idx{cell_idx} = equation indices within cell_idx
+            idx = cell([numel(neq),1]);
+            cur_idx = 1;
+            for cidx = 1:numel(neq)
+                idx{cidx} = [cur_idx:(cur_idx + neq(cidx) - 1)]';
+                cur_idx = cur_idx + neq(cidx);  
+            end
+        end
+
+        function [me, vare, mse, e] = get_residual_mesh(obj, A, x, b, neq)
+            % Function that obtains the residuals for each mesh cell.
+            % Provide the large matrix, solution vector, and rhs
+            % Also provide the number of eqs per mesh cell
+
+            % Output: same as get_residual, but now splitted out between
+            % mesh cells (added dimension of size mesh.ncells)
+            
+            % Implementation using for loop, not very efficient
+            
+            me = nan([numel(neq),1]);
+            vare = nan([numel(neq),1]);
+            mse = nan([numel(neq),1]);
+            e = cell([numel(neq),1]);
+
+            idx = obj.eq2mesh(neq);
+
+            for cidx = 1:numel(neq)
+                [me(cidx,1), vare(cidx,1), mse(cidx,1), e{cidx, 1}] = obj.get_residual(A(idx{cidx}, :), x, b(idx{cidx}, 1));
+                disp(me(cidx,1))
+            end
+        end
+
+        function gof=get_residuals(obj)
+            % Data residuals per mesh:
+            for n = 1:size(obj.p,2)
+                % Data
+                [obj.GOF(n).me, obj.GOF(n).vare, obj.GOF(n).mse, obj.GOF(n).e] = obj.get_residual(obj.M, obj.p(:,n), obj.b);
+                [obj.GOF(n).mem, obj.GOF(n).varem, obj.GOF(n).msem, obj.GOF(n).em] = obj.get_residual_mesh(obj.M, obj.p(:,n), obj.b, obj.ns);
+                % Constraints
+                for nc = 1:5
+                    if nc < 5
+                        rhs = zeros([size(obj.regularization.C{nc}, 1),1]);
+                    else
+                        rhs = obj.regularization.rhs;
+                    end
+                    [obj.GOF(n).cme{nc}, obj.GOF(n).cvare{nc}, obj.GOF(n).cmse{nc}, obj.GOF(n).ce{nc}]...
+                        = obj.get_residual(obj.regularization.C{nc}, obj.p(:,n), rhs);
+                    [obj.GOF(n).cmem{nc}, obj.GOF(n).cvarem{nc}, obj.GOF(n).cmsem{nc}, obj.GOF(n).cem{nc}]...
+                        = obj.get_residual_mesh(obj.regularization.C{nc}, obj.p(:,n), rhs, obj.regularization.neq{nc});
+                end
+            end
+            gof = obj.GOF;
+        end
 
         function plot_solution(obj, names_selection, par_idx, varargin)
 
@@ -145,7 +223,7 @@ classdef ModelParameters < handle
                             ylabel(c, 'deg','Rotation',270, 'interpreter', 'latex');
 
                         end
-                        %pos = get(c,'Position');
+                        %pos = _r(c,'Position');
                         %if row == 1
                        %     pos1 = pos;
                        % end

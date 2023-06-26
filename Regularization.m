@@ -10,6 +10,7 @@ classdef Regularization <...
         model (1,1) DataModel
         C (1,:) cell = {sparse(0), sparse(0), sparse(0), sparse(0), sparse(0)}
         Cg (1,:) cell = {sparse(0), sparse(0), sparse(0), sparse(0), sparse(0)}
+        neq (1,:) cell 
         rhs (:,1) double = sparse(0);
         assembled (1,1) logical = false
     end
@@ -22,7 +23,6 @@ classdef Regularization <...
         zb0 (1,:) double
         zbxy (2,:) double
         zbsn (2,:) double
-
     end
 
     methods
@@ -34,6 +34,7 @@ classdef Regularization <...
         end
 
         function assemble_matrices(obj)
+            obj.neq = repmat({zeros([obj.mesh.ncells,1])}, 1, 5);
             if(isa(obj.model,"TaylorModel"))
                 if (obj.model.s_order(1) > 0) && (obj.model.n_order(2) > 0)...
                         && (obj.model.sigma_order(3) > 0 || obj.model.z_order(3) > 0)
@@ -70,8 +71,7 @@ classdef Regularization <...
                 obj.C{5} = sparse(0);
                 obj.rhs = sparse(0);
             end
-
-            obj.C{3} = obj.assemble_coherence();
+            obj.C{3}= obj.assemble_coherence();
             obj.gramian_matrices()
             obj.assembled = true;
         end
@@ -171,6 +171,7 @@ classdef Regularization <...
                     end
                     Cj{cell_idx}(eq,col{eq}) = term{eq};
                 end
+                obj.neq{1}(cell_idx) = numel(const_names); % number of equations per mesh cell
             end
             C1 = helpers.spblkdiag(Cj{:});
         end
@@ -228,6 +229,7 @@ classdef Regularization <...
                     cols = [cols [col{:}]];
                     terms = [terms [term{:}]];
                     row_idx = max(rows);
+                    obj.neq{2}(cell_idx) = numel(const_names);
                 end
             end
             C2 = sparse(rows, cols, terms, obj.mesh.ncells*numel(const_names), obj.mesh.ncells*sum(obj.model.npars));
@@ -253,6 +255,7 @@ classdef Regularization <...
                     cols = [cols col];
                     vals = [vals val];
                 end
+                obj.neq{3}(cell_idx) = Np;
             end
             C3 = Diag + sparse(rows, cols, vals, obj.mesh.ncells*Np, obj.mesh.ncells*Np);
 
@@ -308,6 +311,7 @@ classdef Regularization <...
                         row_idx = max(rows) + 1;
                     end
                 end
+                obj.neq{4}(cell_idx) = numel(keep_idx{cell_idx});
             end
             C4 = sparse(rows, cols, terms, 6*obj.mesh.ncells*numel(const_names), obj.mesh.ncells*sum(obj.model.npars));
         end
@@ -354,7 +358,11 @@ classdef Regularization <...
                     for eq = 1:numel(const_names)
                         Cj{cell_idx}(eq, col{eq}) = terms;
                     end
+                    obj.neq{5}(cell_idx) = size(Cj{cell_idx},1);
+                    % at boundary cells, there are obj.neq{5}(cell_idx)
+                    % equations.
                 end
+                
             end
             C5 = helpers.spblkdiag(Cj{:});
             rhsvec = cell2mat(rhsj);
