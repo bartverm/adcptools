@@ -412,10 +412,10 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
                 axis equal
             end
 
-            ylab = cellfun(@str2num, get(gca,'YTickLabel'));
-            ylab = ylab/aspect_ratio;
-            set(gca,'YTickLabel', ylab)
-            set(gca,'YTickLabelMode','manual','YTickMode','manual')
+%             ylab = cellfun(@str2num, get(gca,'YTickLabel'));
+%             ylab = ylab/aspect_ratio;
+%             set(gca,'YTickLabel', ylab)
+%             set(gca,'YTickLabelMode','manual','YTickMode','manual')
 
             set(gca,'NextPlot',hold_stat);
             ax = gca;

@@ -44,9 +44,9 @@ classdef ModelParameters < handle
         end
 
         function ax = plot_mesh(obj, varargin)
-            
+
             ax = obj.regularization.mesh.plot(varargin{:});
-            
+
             xlabel('y [m]')
             if any(strcmp(varargin,'sig')) %dirty
                 ylabel('$\sigma$', 'Interpreter', 'latex')
@@ -56,10 +56,6 @@ classdef ModelParameters < handle
             axis tight
             set(ax, 'XDir','reverse')
             ax.TickLabelInterpreter = 'latex';
-        end
-
-        function plot_residuals(obj)
-            % Plots 
         end
 
         function [me, vare, mse, e] = get_residual(obj, A, x, b)
@@ -74,21 +70,24 @@ classdef ModelParameters < handle
             e = A*x-b;
             me = mean(e);
             mse = e'*e./(numel(e)-1);
-            vare = mse - numel(e)*me^2/(numel(e)-1); 
+            if isnan(me)
+                mse = nan;
+            end
+            vare = mse - numel(e)*me^2/(numel(e)-1);
         end
 
 
         function idx = eq2mesh(obj, neq)
-            % Mapping between equation index and 
+            % Mapping between equation index and
             % mesh cell index
-            
+
             % neq(cell_idx) = number of equations within cell_idx
             % idx{cell_idx} = equation indices within cell_idx
             idx = cell([numel(neq),1]);
             cur_idx = 1;
             for cidx = 1:numel(neq)
                 idx{cidx} = [cur_idx:(cur_idx + neq(cidx) - 1)]';
-                cur_idx = cur_idx + neq(cidx);  
+                cur_idx = cur_idx + neq(cidx);
             end
         end
 
@@ -99,9 +98,9 @@ classdef ModelParameters < handle
 
             % Output: same as get_residual, but now splitted out between
             % mesh cells (added dimension of size mesh.ncells)
-            
+
             % Implementation using for loop, not very efficient
-            
+
             me = nan([numel(neq),1]);
             vare = nan([numel(neq),1]);
             mse = nan([numel(neq),1]);
@@ -119,8 +118,8 @@ classdef ModelParameters < handle
             % Data residuals per mesh:
             for n = 1:size(obj.p,2)
                 % Data
-                [obj.GOF(n).me, obj.GOF(n).vare, obj.GOF(n).mse, obj.GOF(n).e] = obj.get_residual(obj.M, obj.p(:,n), obj.b);
-                [obj.GOF(n).mem, obj.GOF(n).varem, obj.GOF(n).msem, obj.GOF(n).em] = obj.get_residual_mesh(obj.M, obj.p(:,n), obj.b, obj.ns);
+                [obj.GOF(n).m, obj.GOF(n).var, obj.GOF(n).mse, obj.GOF(n).e] = obj.get_residual(obj.M, obj.p(:,n), obj.b);
+                [obj.GOF(n).mm, obj.GOF(n).varm, obj.GOF(n).msem, obj.GOF(n).em] = obj.get_residual_mesh(obj.M, obj.p(:,n), obj.b, obj.ns);
                 % Constraints
                 for nc = 1:5
                     if nc < 5
@@ -128,17 +127,96 @@ classdef ModelParameters < handle
                     else
                         rhs = obj.regularization.rhs;
                     end
-                    [obj.GOF(n).cme{nc}, obj.GOF(n).cvare{nc}, obj.GOF(n).cmse{nc}, obj.GOF(n).ce{nc}]...
+                    [obj.GOF(n).cm{nc}, obj.GOF(n).cvar{nc}, obj.GOF(n).cmse{nc}, obj.GOF(n).ce{nc}]...
                         = obj.get_residual(obj.regularization.C{nc}, obj.p(:,n), rhs);
-                    [obj.GOF(n).cmem{nc}, obj.GOF(n).cvarem{nc}, obj.GOF(n).cmsem{nc}, obj.GOF(n).cem{nc}]...
+                    [obj.GOF(n).cmm{nc}, obj.GOF(n).cvarm{nc}, obj.GOF(n).cmsem{nc}, obj.GOF(n).cem{nc}]...
                         = obj.get_residual_mesh(obj.regularization.C{nc}, obj.p(:,n), rhs, obj.regularization.neq{nc});
                 end
             end
             gof = obj.GOF;
         end
 
-        function plot_solution(obj, names_selection, par_idx, varargin)
 
+        function plot_residual(obj, p_idx, meas_name, var_idx)
+            % Plots mesh-based residuals with respect do the data and
+            % regularization constraints
+            % measure_name = subarray of {"m", "var", "mse"}
+            % var_idx = 0,1,2,3,4,5 (0: data, 1 - 5: constraints)
+
+            if var_idx == 0
+                fi = strcat(meas_name, "m");
+                var = obj.GOF(p_idx).(fi);
+                %var(var==0) = nan;
+                obj.regularization.mesh.plot('var', var, 'FixAspectRatio', false)
+                amax = max(abs(var), [], 'omitnan');
+                %if strmp(meas_name, m)
+                caxis([-amax, amax])
+                %end
+            else
+                fi = strcat("c", meas_name, "m");
+                var = obj.GOF(p_idx).(fi){var_idx};
+                amax = max(abs(var), [], 'omitnan');
+                %var(var==0) = nan;
+                obj.regularization.mesh.plot('var', var, 'FixAspectRatio', false)
+                caxis([-amax, amax])
+            end        
+        end
+
+%         function meas_tit = modify_titles(obj, )
+
+
+        function plot_residuals(obj, var_idx)
+            nreg = size(obj.p, 2);
+            nn = numel(var_idx);
+            
+            for fig_idx = 1:3
+                m = makefigure(20,3*numel(var_idx));
+                if nreg>1 % Compare different vectors
+                    t = tiledlayout(nn, nreg, TileSpacing = "tight", Padding = "tight", TileIndexing = "columnmajor");
+                else
+                    t = tiledlayout('flow', TileSpacing="tight", Padding="tight");
+                end
+
+                t.XLabel.String = 'y [m]';
+                t.YLabel.String = 'z [m]';
+                t.XLabel.Interpreter = 'latex';
+                t.YLabel.Interpreter = 'latex';
+                var_tit = {'M\vec{p} - \vec{b}', 'C_1\vec{p}',...
+                    'C_2\vec{p}', 'C_3\vec{p}', 'C_4\vec{p}', 'C_5\vec{p} - \vec{\zeta}'};
+                meas_name = {'m', 'var', 'mse'};
+                meas_tit = {'n_s^{-1}\Sigma', 'Var', 'MSE'};
+                for col = 1:nreg
+                    for row = 1:nn
+                        nexttile;
+                        obj.plot_residual(col, meas_name{fig_idx}, var_idx{row})
+
+                        lam = {'\mathbf{\lambda}_0', '\mathbf{\lambda}_1', '\mathbf{\lambda}_2'};
+                        if row == 1
+                            title(['$', meas_tit{fig_idx}, '(',  var_tit{var_idx{row}+1}, ')', ', \hspace{.1cm}  \lambda = ', lam{col}, '$'], 'interpreter', 'latex', 'FontSize', 12);
+                        else
+                            title(['$', meas_tit{fig_idx}, '(',  var_tit{var_idx{row}+1}, ')', '$'], 'interpreter', 'latex', 'FontSize', 12);
+                        end %['$', titles{row}, ', \hspace{.1cm}  \lambda = ', lam{col}, '$']
+                        %tit = strcat();
+                        %title(tit, 'interpreter', 'latex', 'FontSize', 12);
+                        c = colorbar();
+                        set(c,'TickLabelInterpreter','latex')
+                        colormap(gca, flipud(obj.vel_cmap))
+                        c.FontSize = 12;
+                        
+                        axis tight
+                        set(gca, 'XDir','reverse') % Very important
+
+                        set(gca, 'XTick',[])
+                        set(gca, 'YTick',[])
+
+                    end
+                end
+            end
+
+        end
+
+        function plot_solution(obj, names_selection, par_idx, varargin)
+            
             if nargin < 2
                 names_selection = [obj.regularization.model.names{:}];
             end
@@ -162,7 +240,7 @@ classdef ModelParameters < handle
             nc = obj.regularization.mesh.ncells;
             np = sum(obj.regularization.model.npars); % Number of parameters in each cell
             Np = size(P,1); %= nc*np;
-
+            m = makefigure(20, 3*nn);
             if nreg>1 % Compare different vectors
                 t = tiledlayout(nn, nreg, TileSpacing = "tight", Padding = "tight", TileIndexing = "columnmajor");
             else
@@ -199,46 +277,58 @@ classdef ModelParameters < handle
                     %ylim([-armax(1), armax(1)])
                     hold on
                     obj.regularization.mesh.plot('var', var, 'FixAspectRatio', false)
-                    %     loc_tit = str,old,new)
-                    lam = {'\lambda_0', '\lambda_1', '\lambda_2'};
-                    title(['$', lam{col},': ' titles{row}, '$'], 'interpreter', 'latex', 'FontSize', 12);
-
-                    %         set(c,'TickLabelInterpreter','latex')
-                    % colorbar
                     if col == nreg
                         if ~contains(titles{row}, 'phi')
                             %amax = max(abs(var(:,1)), [], 'omitnan') + 1e-5;
                             c = colorbar;
                             set(c,'TickLabelInterpreter','latex')
-                            if ~contains(titles{row}, '\partial')
-                                ylabel(c, '$m/s$','Rotation',270, 'interpreter', 'latex');
-                            elseif contains(titles{row}, '\sigma')
-                                ylabel(c, '$m/s$','Rotation',270, 'interpreter', 'latex');
-                            else
-                                ylabel(c, '$m/s^2$','Rotation',270, 'interpreter', 'latex');
-                            end
-
                         else
                             c = colorbar;
                             ylabel(c, 'deg','Rotation',270, 'interpreter', 'latex');
 
                         end
-                        %pos = _r(c,'Position');
-                        %if row == 1
-                       %     pos1 = pos;
-                       % end
-                        %         disp(pos)
-                        %c.Label.Position(1) = pos1(1)+.5/col; % to change its position
-                        %         c.Label.Position(2) = c.Label.Position(2) + .2; % to change its position
-                        %c.Label.HorizontalAlignment = 'center'; % to change its position
-                        %c.TickLabelInterpreter = 'latex';
-                        %         c.Label.Rotation = 270; % to rotate the text
+                    end
+                    lam = {'\mathbf{\lambda}_0', '\mathbf{\lambda}_1', '\mathbf{\lambda}_2'};
+
+                    if ~contains(titles{row}, '\partial') % Velocities
+                        unit = '[m/s]';
+                    elseif contains(titles{row}, '\sigma') % Velocities
+                        unit = '[m/s]';
+                    else % derivatives of velocities in x,y,z directions: m/s/m = 1/s
+                        unit = '[1/s]';
+                    end
+                    if row == 1
+                        title(['$', titles{row}, ', \hspace{.1cm}  \lambda = ', lam{col}, '$'], 'interpreter', 'latex', 'FontSize', 12);
+                    else
+                        title(['$', titles{row}, '$'], 'interpreter', 'latex', 'FontSize', 12);
+                    end
+
+                    if col == nreg
+                        pos = get(c,'Position');
+                        if row == 1
+                            pos1 = pos;
+                        end
+                        % disp(pos)
+                        c.Label.String = unit;
+                        c.Label.Interpreter = 'latex';
+                        %c.Label.Position(1) = pos1(1) + 3; % to change its position
+                        %c.Label.Position(2) = c.Label.Position(2) + .2; % to change its position
+                        c.Label.HorizontalAlignment = 'center'; % to change its position
+                        c.TickLabelInterpreter = 'latex';
+                        c.Label.Rotation = 270; % to rotate the text
+                        c.FontSize = 12;
                     end
 
                     % colormap
                     if ~contains(titles{row}, 'phi')    % linear variable
                         caxis([-amax, amax])
                         colormap(gca, obj.vel_cmap)
+                        %                         if col == nreg
+                        %                         if amax < 1e-2 % change colorbar ticklabels and ylabel to remove scientific notation
+                        %                             c.Ticks = 100*c.Ticks;
+                        %                             c.Label.String = [c.Label.String, "$\times 10^{-2}$"];
+                        %                         end
+                        %                         end
                     else
                         caxis([-180, 180])              % cyclic variable
                         temp = get(gca, 'Children');
@@ -251,6 +341,7 @@ classdef ModelParameters < handle
 
                     set(gca, 'XTick',[])
                     set(gca, 'YTick',[])
+
                 end
             end
             % Tight = get(gca, 'TightInset');  %Gives you the bording spacing between plot box and any axis labels
@@ -309,8 +400,8 @@ classdef ModelParameters < handle
         end
 
         function CV = cross_validate_single(obj, reg_pars_cell, pguess)
-            
-            p_train = cell(size(reg_pars_cell)); 
+
+            p_train = cell(size(reg_pars_cell));
 
             if strcmp(obj.opts.cv_mode, 'random')
                 nepochs = obj.opts.cv_iter;
@@ -394,15 +485,15 @@ classdef ModelParameters < handle
 
 
         function [Pe, P] = local_sensitivity_analysis(obj)
-%             M = dat.M; C1 = dat.C1; C2 = dat.C2; C3 = dat.C3; C4 = dat.C4; C5 = dat.C5; bc = dat.bc; b = dat.b;
-%             Np = size(M,2); % number of parameters
-%             nc = max(dat.cell_idx); % number of cells
-%             np = Np/nc; %number of parameters per cell
-%             opts = dat.opts;
-%             nepochs = opts.cv_iter; %nepochs now serves the role
-%             Mp = M'*M; C1p = C1'*C1; C2p = C2'*C2; C3p = C3'*C3; C4p = C4'*C4; C5p = C5'*C5;
-%             regP = combine_regpars(opts);
-%             pcg_opts = struct('michol','on','type','ict','droptol',1e-3);
+            %             M = dat.M; C1 = dat.C1; C2 = dat.C2; C3 = dat.C3; C4 = dat.C4; C5 = dat.C5; bc = dat.bc; b = dat.b;
+            %             Np = size(M,2); % number of parameters
+            %             nc = max(dat.cell_idx); % number of cells
+            %             np = Np/nc; %number of parameters per cell
+            %             opts = dat.opts;
+            %             nepochs = opts.cv_iter; %nepochs now serves the role
+            %             Mp = M'*M; C1p = C1'*C1; C2p = C2'*C2; C3p = C3'*C3; C4p = C4'*C4; C5p = C5'*C5;
+            %             regP = combine_regpars(opts);
+            %             pcg_opts = struct('michol','on','type','ict','droptol',1e-3);
             reg_pars_cell = reg_pars2cell(obj);
             if strcmp(obj.opts.generate, 'nullspace') % deprecated
                 %     D0 = C3;
@@ -410,11 +501,11 @@ classdef ModelParameters < handle
                 %         D0(row,:) = D0(row,:)/C3(row,row);
                 %     end
                 %     tic;
-%                 NS = generate_null_intersection({C1, C2, C3, C4, C5});
+                %                 NS = generate_null_intersection({C1, C2, C3, C4, C5});
                 %     to = toc;
-%                 fprintf('Finished calculating intersection of null spaces after %2.2f s \n', to)
+                %                 fprintf('Finished calculating intersection of null spaces after %2.2f s \n', to)
 
-%                 p = NS*randn(size(NS,2), nepochs);
+                %                 p = NS*randn(size(NS,2), nepochs);
             elseif strcmp(obj.opts.generate, 'local')
                 Mp = obj.M'*obj.M;
                 p0 = nan([size(obj.p,1),numel(reg_pars_cell)]);
@@ -447,7 +538,7 @@ classdef ModelParameters < handle
                 [A, ~, L] = obj.assemble_single(obj.M, obj.b, Mp, regp);
                 for nn = 1:numel(stdn)
                     for it = 1:obj.opts.sa_iter % Bootstrapping random iterations
-                        Bp = B + stdn(nn)*randn(size(B)); 
+                        Bp = B + stdn(nn)*randn(size(B));
                         for ep = 1:obj.opts.ens_size
                             % TODO apply variation in sa_iter: Noise term must change.
                             i = i+1;
@@ -473,19 +564,19 @@ classdef ModelParameters < handle
                 end
             end
         end
-            %err(rp, ep) = 
-            %rel_err(rp, ep) = err(rp, ep)./sqrt(mean(P(:,ep).^2));
+        %err(rp, ep) =
+        %rel_err(rp, ep) = err(rp, ep)./sqrt(mean(P(:,ep).^2));
 
-            % Investigate sensitivity wrt all parameters small quantities
-            %                         for ip = 1:np
-            %                             perr(ip,rp, ep) = sqrt(sum((p(ip:np:end,ep)-phat(ip:np:end, rp, ep) ).^2));
-            %                             rel_perr(ip,rp, ep) = perr(ip,rp, ep)./sqrt(sum(p(ip:np:end,ep).^2));
-            %                         end
+        % Investigate sensitivity wrt all parameters small quantities
+        %                         for ip = 1:np
+        %                             perr(ip,rp, ep) = sqrt(sum((p(ip:np:end,ep)-phat(ip:np:end, rp, ep) ).^2));
+        %                             rel_perr(ip,rp, ep) = perr(ip,rp, ep)./sqrt(sum(p(ip:np:end,ep).^2));
+        %                         end
 
-            %                     avg_err(rp, nn) = mean(err(rp, :));
-            %                     avg_perr(:, rp, nn) = mean(squeeze(perr(:, rp, :)),2);
-            %                     avg_rel_err(rp, nn) = mean(rel_err(rp, :));
-            %                     avg_rel_perr(:, rp, nn) = mean(squeeze(rel_perr(:, rp, :)),2);
+        %                     avg_err(rp, nn) = mean(err(rp, :));
+        %                     avg_perr(:, rp, nn) = mean(squeeze(perr(:, rp, :)),2);
+        %                     avg_rel_err(rp, nn) = mean(rel_err(rp, :));
+        %                     avg_rel_perr(:, rp, nn) = mean(squeeze(rel_perr(:, rp, :)),2);
 
 
 
