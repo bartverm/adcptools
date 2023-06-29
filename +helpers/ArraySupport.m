@@ -219,6 +219,8 @@ classdef ArraySupport < handle & matlab.mixin.Copyable
                         varargin(not_cell) = cellfun(@num2cell, ...
                             varargin(not_cell),'UniformOutput',false);
                         varargin = [varargin{:}];
+                    else
+                        varargin = cell.empty(numel(obj),0);
                     end
                 else 
                     varargin = cell.empty(numel(obj),0);
