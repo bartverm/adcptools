@@ -1,0 +1,161 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Initial inspection of ADCP data</title><meta name="generator" content="MATLAB 9.14"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2023-06-19"><meta name="DC.source" content="initial_inspection.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; }
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+span.typesection { color:#A0522D }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1>Initial inspection of ADCP data</h1><!--introduction--><p>The classes <a href="matlab:doc('ADCP')">ADCP</a> and <a href="matlab:doc('VMADCP')">VMADCP</a> implement a number of methods that help the user to inspect the data. These functions are mostly plot functions</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Reading data</a></li><li><a href="#2">Instrument orientation</a></li><li><a href="#5">Ship track</a></li><li><a href="#7">Detected bed elevation</a></li><li><a href="#10">Depth averaged velocity</a></li><li><a href="#12">Velocity data</a></li><li><a href="#15">Acoustic backscatter</a></li></ul></div><h2 id="1">Reading data</h2><p>For instructions on how to read ADCP data see: <a href="reading_data.html">Reading the data</a></p><h2 id="2">Instrument orientation</h2><p>Inspect the tilts of the instrument during deployment:</p><pre class="codeinput">mmbend.plot_orientations
+</pre><img vspace="5" hspace="5" src="initial_inspection_01.png" alt=""> <p>The orientations are within reasonable limits for ship borne deployments</p><h2 id="5">Ship track</h2><p>We can plot the ship track as follows:</p><pre class="codeinput">figure
+mmbend.plot_track
+</pre><img vspace="5" hspace="5" src="initial_inspection_02.png" alt=""> <h2 id="7">Detected bed elevation</h2><p>The bed elevations as detected by each of the acoustic beams and corrected for tilts of the instrument can be displayed with:</p><pre class="codeinput">figure
+mmbend.plot_bed_position
+</pre><img vspace="5" hspace="5" src="initial_inspection_03.png" alt=""> <p>This plot displays the elevation of the bed.</p><h2 id="10">Depth averaged velocity</h2><p>The depth averaged velocity is plotted as:</p><pre class="codeinput">figure
+mmbend.plot_track_velocity
+</pre><img vspace="5" hspace="5" src="initial_inspection_04.png" alt=""> <h2 id="12">Velocity data</h2><p>The velocity data can be inspected as follows:</p><pre class="codeinput">figure
+mmbend.plot_velocity
+set(gca,<span class="string">'xlim'</span>,mmbend.time([1500 2500])) <span class="comment">% zooming in on portion of the data</span>
+</pre><img vspace="5" hspace="5" src="initial_inspection_05.png" alt=""> <p>Note that by default the velocity is shown in earth coordinate system, i.e. Vx is east velocity, Vy is north velocity and Vz is upward velocity. The changes to the vertical positioning settings are also reflected in the velocity plot.</p><h2 id="15">Acoustic backscatter</h2><p>We can inspect also the backscatter profiles</p><pre class="codeinput">figure
+mmbend.plot_backscatter
+set(gca, <span class="string">'xlim'</span>, mmbend.time([1500 2500])) <span class="comment">% zooming in on portion of the data</span>
+</pre><img vspace="5" hspace="5" src="initial_inspection_06.png" alt=""> <p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2023a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% Initial inspection of ADCP data
+% The classes <matlab:doc('ADCP') ADCP> and <matlab:doc('VMADCP') VMADCP>
+% implement a number of methods that help the user to inspect the data. 
+% These functions are mostly plot functions
+%
+
+%% Reading data
+% For instructions on how to read ADCP data see: <reading_data.html Reading the data>
+
+%% Instrument orientation
+% Inspect the tilts of the instrument during deployment:
+
+%%
+mmbend.plot_orientations
+
+%%
+% The orientations are within reasonable limits for ship borne deployments
+
+%% Ship track
+% We can plot the ship track as follows:
+
+%%
+figure
+mmbend.plot_track
+
+%% Detected bed elevation
+% The bed elevations as detected by each of the acoustic beams and
+% corrected for tilts of the instrument can be displayed with:
+
+%%
+figure
+mmbend.plot_bed_position
+
+%%
+% This plot displays the elevation of the bed. 
+
+%% Depth averaged velocity
+% The depth averaged velocity is plotted as:
+
+%%
+figure
+mmbend.plot_track_velocity
+
+
+%% Velocity data
+% The velocity data can be inspected as follows:
+
+%%
+figure
+mmbend.plot_velocity
+set(gca,'xlim',mmbend.time([1500 2500])) % zooming in on portion of the data
+
+%%
+% Note that by default the velocity is shown in earth coordinate system,
+% i.e. Vx is east velocity, Vy is north velocity and Vz is upward velocity.
+% The changes to the vertical positioning settings are also reflected in
+% the velocity plot.
+
+%% Acoustic backscatter
+% We can inspect also the backscatter profiles
+
+%% 
+figure
+mmbend.plot_backscatter
+set(gca, 'xlim', mmbend.time([1500 2500])) % zooming in on portion of the data
+
+
+
+
+
+
+
+
+
+
+##### SOURCE END #####
+--></body></html>

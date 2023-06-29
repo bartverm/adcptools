@@ -143,6 +143,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         x_patch
         y_patch
         z_patch
+        sig_patch
         sig_bottom_left
         sig_top_left
         sig_bottom_mid
@@ -247,6 +248,15 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
                  obj.z_top_left,...
                  obj.z_bottom_left]';
         end
+        function val=get.sig_patch(obj)
+            val=[obj.sig_bottom_left,...
+                 obj.sig_bottom_mid,...
+                 obj.sig_bottom_right,...
+                 obj.sig_top_right,...
+                 obj.sig_top_mid,...
+                 obj.sig_top_left,...
+                 obj.sig_bottom_left]';
+        end
         function val=get.area_cells(obj)
             val = (1/2.*(obj.n_patch(2,:)-obj.n_patch(1,:)).*(2.*(obj.z_patch(5,:) - obj.z_patch(2,:)) +...
                 obj.z_patch(4,:) + obj.z_patch(6,:) - obj.z_patch(3,:) - obj.z_patch(7,:)))';
@@ -280,6 +290,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
             end
 
         end
+
         function idx=index(obj,n,sigma)
 % Indices of mesh cells for given positions
 %
@@ -319,15 +330,19 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
 %
 %   plot(obj,var) plot the mesh and color the cells with the varibale var
 %
+%   plot(obj,...,"sigma",...) specify that the plot should be in sigma
+%   coordinates instead of z coordinates.
+%
 %   see also: SigmaZetaMesh, plot3
             varargout = cell(1,nargout);
             if ~isscalar(obj)
+                tiledlayout("flow");
                 [varargout{:}] = obj.run_method('plot', varargin{:});
                 return
             end
-        
             plot_var=nan(obj.ncells,1);
             get_gca = true;
+            sigma = false;
             for ca = 1:numel(varargin)
                 carg = varargin{ca};
                 if isa(carg,'double')
@@ -344,22 +359,36 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
                         'Only supports scalar axis handle')
                     ax = carg;
                     get_gca = false;
+                elseif (isa(carg,'char') || isa(carg,'string')) &&...
+                        strcmpi(carg,'Sigma')
+                    sigma = true;
                 end
             end
             if get_gca
-                ax = gca;
+                ax = nexttile;
             end
             hold_stat=get(ax,'NextPlot');
-            hbed = plot(ax,obj.nb_all,obj.zb_all,'k','Linewidth',2);
+            if sigma
+                zb = obj.nb_all * 0;
+                zw = [1 1];
+                zpatch = obj.sig_patch;
+                zcenter = obj.z_center;
+            else
+                zb = obj.zb_all;
+                zw = obj.nw*0+obj.water_level;
+                zpatch = obj.z_patch;
+                zcenter = obj.sig_center;
+            end
+            hbed = plot(ax,obj.nb_all,zb,'k','Linewidth',2);
             set(ax,'NextPlot','add')
-            hwater = plot(ax,obj.nw,obj.nw*0+obj.water_level,'b','Linewidth',2);
-            hmesh = patch(ax,obj.n_patch, obj.z_patch, plot_var(:,1));
+            hwater = plot(ax,obj.nw,zw,'b','Linewidth',2);
+            hmesh = patch(ax,obj.n_patch, zpatch, plot_var(:,1));
             if nargout>0
                 varargout = {hbed, hwater, hmesh};
             end
             if size(plot_var,2)==3
                 hquiv = quiver(ax, obj.n_middle(obj.col_to_cell)',...
-                    obj.z_center, plot_var(:,2), plot_var(:,3),...
+                    zcenter, plot_var(:,2), plot_var(:,3),...
                     'Color','k');
                 if nargout > 0
                     varargout = [varargout, {hquiv}];

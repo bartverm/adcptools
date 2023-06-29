@@ -64,6 +64,7 @@ classdef XSection < handle & helpers.ArraySupport
     end
     methods
         function obj=XSection(varargin)
+            obj = obj@helpers.ArraySupport(varargin{:})
             filter=EnsembleFilter.empty(1,0);
             construct_from_vmadcp=false;
             for ca=1:nargin
@@ -76,7 +77,7 @@ classdef XSection < handle & helpers.ArraySupport
                 end
             end
             if construct_from_vmadcp
-                obj.set_from_vmadcp(vadcp, filter)
+                obj.run_method('set_from_vmadcp', filter, 'NoExpand',vadcp)
             end
         end
         function val=get.direction_orthogonal(obj)
@@ -276,7 +277,13 @@ classdef XSection < handle & helpers.ArraySupport
                 argin = [argin {scale}];
             end
             if ~isscalar(obj)
-                varargout = obj.run_method('plot',argin{:});
+                hold_stat = get(gca,'NextPlot');
+                set(gca,'NextPlot','add')
+                out = obj.run_method('plot',argin{:});
+                if nargout > 1
+                    varargout = out;
+                end
+                set(gca,'NextPlot', hold_stat);
                 return
             end
             if nargin < 2
@@ -293,7 +300,7 @@ classdef XSection < handle & helpers.ArraySupport
                 varargout{1}=h;
             end
         end
-        function set_from_vmadcp(obj,V,filter)
+        function set_from_vmadcp(obj,varargin)
             % Set the direction and origin of the cross-section based on the adcp track
             %
             %   set_from_vmadcp(obj,V) sets the direction of the by calculating the
@@ -308,14 +315,32 @@ classdef XSection < handle & helpers.ArraySupport
             %   exclude parts of the track
             %
             %   see also: XSection, EnsembleFilter, VMADCP
+            V=[];
+            filter=[];
+            for cin = 1:numel(varargin)
+                if isa(varargin{cin},'VMADCP') && ~isempty(varargin{cin})
+                    V=varargin{cin};
+                elseif isa(varargin{cin},'EnsembleFilter') &&...
+                        ~isempty(varargin{cin})
+                    filter = varargin{cin};
+                else
+                    error(['Unhandled input number ', num2str(cin)])
+                end
+            end
+            if isempty(V)
+                error('A VMADCP object is a required input')
+            end
+            if isempty(filter)
+                filter = EnsembleFilter(V);
+            end
+
             hpos = [V.horizontal_position];
             [x,y]=deal(hpos(1,:), hpos(2,:));
-            if nargin > 2 && ~isempty(filter)
-                assert(isa(filter,'EnsembleFilter'),'filter should be of class EnsembleFilter')
-                fbad=filter.all_cells_bad(V);
-                x(fbad)=nan;
-                y(fbad)=nan;
-            end
+
+            fbad=filter.all_cells_bad(V);
+            x(fbad)=nan;
+            y(fbad)=nan;
+
             C=cov([x;y]','omitrows');
             [eigvec,eigval]=eig(C);
             [~, fprinc]=max(sum(eigval,2));
