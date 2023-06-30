@@ -1,105 +1,107 @@
-classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
-% Defines a sigma-z mesh
-%   
-%   The SigmaZetaMesh should be generated with a SigmaZetaMeshGenerator.
-%
-%   The mesh consists of verticals. Each vertical has a certain number of
-%   cells. In each vertical the cells follow the bed. The name Sigma-Zeta
-%   refers to the fact that this mesh is a hyrbid between a z-mesh and a
-%   sigma-mesh. It tries to combine the best of both worlds: it follows
-%   nicely the bed just like a sigma mesh would, but the vertical spacing
-%   of the cells is constant, just like a z-mesh would. This means that
-%   each cell will hold approximately the same number of adcp velocity
-%   estimates.
-%
-%   Each mesh cell consists of six edges, called:
-%           *         ---> top-middle
-%         /   \
-%       /       \
-%     /          *    ---> top-right
-%   *             |   ---> top-left 
-%   |       *     |   ---> bottom-middle
-%   |     /   \   |
-%   |   /       \ |
-%   | /           *   ---> bottom-right
-%   *                 ---> bottom-left
-%
-%   Note that the left, middle and right edges are always vertically
-%   stacked and share the same n-coordinate.
-%
-%   Data can be stored either in a vector with a value for each cell or in
-%   a matrix which has a toplogy similar to the mesh. The indexing
-%   properties (see below) help map between these formats.
-%
-%   SigmaZetaMesh properties (read only):
-%   * General
-%   xs - defines the cross-section of the mesh
-%   water_level - the water level for the mesh
-%   time - time of the mesh
-%   ncells - number of cells in the mesh
-%   acells - area of cells in the mesh
-%   
-%   * Edge Position
-%   z_bottom_left - z-coordinate of the bottom-left edge
-%   z_top_left - z-coordinate of the top-left edge
-%   z_bottom_mid - z-coordinate of the bottom-middle edge
-%   z_top_mid - z-coordinate of the top-middle edge
-%   z_bottom_right - z-coordinate of the bottom-right edge
-%   z_top_right - z-coordinate of the top-right edge
-%   sig_bottom_left - sigma-coordinate of the bottom-left edge
-%   sig_top_left - sigma-coordinate of the top-left edge
-%   sig_bottom_mid - sigma-coordinate of the bottom-middle edge
-%   sig_top_mid - sigma-coordinate of the top-middle edge
-%   sig_bottom_right - sigma-coordinate of the bottom-right edge
-%   sig_top_right - sigma-coordinate of the top-right edge
-%   n_left - n-coordinate of the left edges
-%   n_middle - n-coordinate of the middle edges
-%   n_right - n-coordinate of the right edges
-%   x_left - x-coordinate of the left edges
-%   x_middle - x-coordinate of the middle edges
-%   x_right - x-coordinate of the right edges
-%   y_left - y-coordinate of the left edges
-%   y_middle - y-coordinate of the middle edges
-%   y_right - y-coordinate of the right edges
-%
-%   * Bed position
-%   zb_left - z-coordinate of bed at left edges
-%   zb_middle - z-coordinate of bed at middle edges
-%   zb_right - z-coordinate of bed at right edges
-%   zb_all - z-coordinate of bed at all edges from left to right
-%
-%   * Water surface position
-%   nw - n-coordinates of water surface boundaries
-%   xw - x-coordinates of water surface boundaries
-%   yw - y-coordinates of water surface boundaries
-%
-%   * Patch coordinates (for use with patch plotting function)
-%   n_patch - n-coordinate of edges for use with patch function
-%   x_patch - x-coordinate of edges for use with patch function
-%   y_patch - y-coordinate of edges for use with patch function
-%   z_patch - z-coordinate of edges for use with patch function
-%
-%   * Indexing
-%   col_to_mat - map column based data to matrix layout 
-%   row_to_mat - map row based data to matrix layout
-%   mat_to_cell - map matrix to cell vector layout
-%   cell_to_mat - map cell vector layout to matrix layout
-%   row_to_cell - map row based data to cell layout
-%   col_to_cell - map column based data to cell layout
-%
-%   SigmaZetaMesh methods:
-%   index - returns mesh cell indices for given positions
-%   plot - plot the mesh optionally coloring with a given variable
-%   plot3 - plot the mesh optionally coloring with a given variable in 3D
-%
-%   see also: Mesh, VelocitySolver
+classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
+    % Defines a sigma-z mesh
+    %
+    %   The SigmaZetaMesh should be generated with a SigmaZetaMeshGenerator.
+    %
+    %   The mesh consists of verticals. Each vertical has a certain number of
+    %   cells. In each vertical the cells follow the bed. The name Sigma-Zeta
+    %   refers to the fact that this mesh is a hyrbid between a z-mesh and a
+    %   sigma-mesh. It tries to combine the best of both worlds: it follows
+    %   nicely the bed just like a sigma mesh would, but the vertical spacing
+    %   of the cells is constant, just like a z-mesh would. This means that
+    %   each cell will hold approximately the same number of adcp velocity
+    %   estimates.
+    %
+    %   Each mesh cell consists of six edges, called:
+    %           *         ---> top-middle
+    %         /   \
+    %       /       \
+    %     /          *    ---> top-right
+    %   *             |   ---> top-left
+    %   |       *     |   ---> bottom-middle
+    %   |     /   \   |
+    %   |   /       \ |
+    %   | /           *   ---> bottom-right
+    %   *                 ---> bottom-left
+    %
+    %   Note that the left, middle and right edges are always vertically
+    %   stacked and share the same n-coordinate.
+    %
+    %   Data can be stored either in a vector with a value for each cell or in
+    %   a matrix which has a toplogy similar to the mesh. The indexing
+    %   properties (see below) help map between these formats.
+    %
+    %   SigmaZetaMesh properties (read only):
+    %   * General
+    %   xs - defines the cross-section of the mesh
+    %   water_level - the water level for the mesh
+    %   time - time of the mesh
+    %   ncells - number of cells in the mesh
+    %   acells - area of cells in the mesh
+    %
+    %   * Edge Position
+    %   z_bottom_left - z-coordinate of the bottom-left edge
+    %   z_top_left - z-coordinate of the top-left edge
+    %   z_bottom_mid - z-coordinate of the bottom-middle edge
+    %   z_top_mid - z-coordinate of the top-middle edge
+    %   z_bottom_right - z-coordinate of the bottom-right edge
+    %   z_top_right - z-coordinate of the top-right edge
+    %   sig_bottom_left - sigma-coordinate of the bottom-left edge
+    %   sig_top_left - sigma-coordinate of the top-left edge
+    %   sig_bottom_mid - sigma-coordinate of the bottom-middle edge
+    %   sig_top_mid - sigma-coordinate of the top-middle edge
+    %   sig_bottom_right - sigma-coordinate of the bottom-right edge
+    %   sig_top_right - sigma-coordinate of the top-right edge
+    %   n_left - n-coordinate of the left edges
+    %   n_middle - n-coordinate of the middle edges
+    %   n_right - n-coordinate of the right edges
+    %   x_left - x-coordinate of the left edges
+    %   x_middle - x-coordinate of the middle edges
+    %   x_right - x-coordinate of the right edges
+    %   y_left - y-coordinate of the left edges
+    %   y_middle - y-coordinate of the middle edges
+    %   y_right - y-coordinate of the right edges
+    %
+    %   * Bed position
+    %   zb_left - z-coordinate of bed at left edges
+    %   zb_middle - z-coordinate of bed at middle edges
+    %   zb_right - z-coordinate of bed at right edges
+    %   zb_all - z-coordinate of bed at all edges from left to right
+    %
+    %   * Water surface position
+    %   nw - n-coordinates of water surface boundaries
+    %   xw - x-coordinates of water surface boundaries
+    %   yw - y-coordinates of water surface boundaries
+    %
+    %   * Patch coordinates (for use with patch plotting function)
+    %   n_patch - n-coordinate of edges for use with patch function
+    %   x_patch - x-coordinate of edges for use with patch function
+    %   y_patch - y-coordinate of edges for use with patch function
+    %   z_patch - z-coordinate of edges for use with patch function
+    %
+    %   * Indexing
+    %   col_to_mat - map column based data to matrix layout
+    %   row_to_mat - map row based data to matrix layout
+    %   mat_to_cell - map matrix to cell vector layout
+    %   cell_to_mat - map cell vector layout to matrix layout
+    %   row_to_cell - map row based data to cell layout
+    %   col_to_cell - map column based data to cell layout
+    %
+    %   SigmaZetaMesh methods:
+    %   index - returns mesh cell indices for given positions
+    %   plot - plot the mesh optionally coloring with a given variable
+    %   plot3 - plot the mesh optionally coloring with a given variable in 3D
+    %
+    %   see also: Mesh, VelocitySolver
 
 
+    properties
+        time (1,1) datetime
+    end
     properties (SetAccess=?SigmaZetaMeshGenerator)
         xs (1,1) XSection
         water_level (1,1) double
-        time (1,1) datetime
-        
+
         z_bottom_left (:,1) double {mustBeFinite, mustBeReal}
         z_top_left (:,1) double {mustBeFinite, mustBeReal}
         z_bottom_mid (:,1) double {mustBeFinite, mustBeReal}
@@ -109,15 +111,15 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
         n_left (1,:) double {mustBeFinite, mustBeReal}
         n_middle (1,:) double {mustBeFinite, mustBeReal}
         n_right (1,:) double {mustBeFinite, mustBeReal}
-        
+
         zb_left (1,:) double {mustBeFinite, mustBeReal}
         zb_middle (1,:) double {mustBeFinite, mustBeReal}
         zb_right (1,:) double {mustBeFinite, mustBeReal}
         zb_all (1,:) double {mustBeFinite, mustBeReal}
         nb_all (1,:) double {mustBeFinite, mustBeReal}
-        
+
         nw (2,:) double {mustBeFinite, mustBeReal}
-               
+
         col_to_mat (:,:) double {mustBeInteger, mustBeFinite mustBeReal}
         row_to_mat (:,:) double {mustBeInteger, mustBeFinite mustBeReal}
         mat_to_cell (:,1) logical
@@ -141,6 +143,7 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
         x_patch
         y_patch
         z_patch
+        sig_patch
         sig_bottom_left
         sig_top_left
         sig_bottom_mid
@@ -156,7 +159,7 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
             [val,~]=obj.xs.sn2xy(obj.n_left*0, obj.n_left);
         end
         function val=get.x_middle(obj)
-            [val,~]=obj.xs.sn2xy(obj.n_middle*0, obj.n_middle);           
+            [val,~]=obj.xs.sn2xy(obj.n_middle*0, obj.n_middle);
         end
         function val=get.x_right(obj)
             [val,~]=obj.xs.sn2xy(obj.n_right*0, obj.n_right);
@@ -165,7 +168,7 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
             [~,val]=obj.xs.sn2xy(obj.n_left*0, obj.n_left);
         end
         function val=get.y_middle(obj)
-            [~,val]=obj.xs.sn2xy(obj.n_middle*0, obj.n_middle);           
+            [~,val]=obj.xs.sn2xy(obj.n_middle*0, obj.n_middle);
         end
         function val=get.y_right(obj)
             [~,val]=obj.xs.sn2xy(obj.n_right*0, obj.n_right);
@@ -229,28 +232,37 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
         end
         function val=get.n_patch(obj)
             val=[obj.n_left(obj.col_to_cell)
-                 obj.n_middle(obj.col_to_cell)
-                 obj.n_right(obj.col_to_cell)
-                 obj.n_right(obj.col_to_cell)
-                 obj.n_middle(obj.col_to_cell)
-                 obj.n_left(obj.col_to_cell)
-                 obj.n_left(obj.col_to_cell)];
+                obj.n_middle(obj.col_to_cell)
+                obj.n_right(obj.col_to_cell)
+                obj.n_right(obj.col_to_cell)
+                obj.n_middle(obj.col_to_cell)
+                obj.n_left(obj.col_to_cell)
+                obj.n_left(obj.col_to_cell)];
         end
         function val=get.z_patch(obj)
             val=[obj.z_bottom_left,...
-                 obj.z_bottom_mid,...
-                 obj.z_bottom_right,...
-                 obj.z_top_right,...
-                 obj.z_top_mid,...
-                 obj.z_top_left,...
-                 obj.z_bottom_left]';
+                obj.z_bottom_mid,...
+                obj.z_bottom_right,...
+                obj.z_top_right,...
+                obj.z_top_mid,...
+                obj.z_top_left,...
+                obj.z_bottom_left]';
+        end
+        function val=get.sig_patch(obj)
+            val=[obj.sig_bottom_left,...
+                obj.sig_bottom_mid,...
+                obj.sig_bottom_right,...
+                obj.sig_top_right,...
+                obj.sig_top_mid,...
+                obj.sig_top_left,...
+                obj.sig_bottom_left]';
         end
         function val=get.area_cells(obj)
-            val = [1/2.*(obj.n_patch(2,:)-obj.n_patch(1,:)).*(2.*(obj.z_patch(5,:) - obj.z_patch(2,:)) +...
-                obj.z_patch(4,:) + obj.z_patch(6,:) - obj.z_patch(3,:) - obj.z_patch(7,:))]';
+            val = (1/2.*(obj.n_patch(2,:)-obj.n_patch(1,:)).*(2.*(obj.z_patch(5,:) - obj.z_patch(2,:)) +...
+                obj.z_patch(4,:) + obj.z_patch(6,:) - obj.z_patch(3,:) - obj.z_patch(7,:)))';
         end
         function val=get.dn_cells(obj)
-            val = [obj.n_patch(3,:) - obj.n_patch(1,:)]';
+            val = (obj.n_patch(3,:) - obj.n_patch(1,:))';
         end
         function mesh=mesh_at_water_level(obj,target_wl, constant_z)
             mesh(numel(target_wl))=SigmaZetaMesh;
@@ -278,13 +290,14 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
             end
 
         end
+
         function idx=index(obj,n,sigma)
-% Indices of mesh cells for given positions
-%
-%   idx = index(obj, n, sigma) returns the indices of the mesh cells that
-%   hold the points given in (n,sigma) coordinates
-%
-%  see also: SigmaZetaMesh 
+            % Indices of mesh cells for given positions
+            %
+            %   idx = index(obj, n, sigma) returns the indices of the mesh cells that
+            %   hold the points given in (n,sigma) coordinates
+            %
+            %  see also: SigmaZetaMesh
             idx=nan(size(sigma));
             nl=obj.n_left(obj.col_to_cell);
             nm=obj.n_middle(obj.col_to_cell);
@@ -301,11 +314,11 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
                 fleft = n >= nl(cc) & n < nm(cc);
                 fright = n >= nm(cc) & n < nr(cc);
                 fsigleft = sigma >  obj.fit_sig(n,nl(cc),nm(cc),sbl(cc),sbm(cc)) &...
-                           sigma <= obj.fit_sig(n,nl(cc),nm(cc),stl(cc),stm(cc)) &...
-                           fleft;
+                    sigma <= obj.fit_sig(n,nl(cc),nm(cc),stl(cc),stm(cc)) &...
+                    fleft;
                 fsigright = sigma > obj.fit_sig(n,nm(cc),nr(cc),sbm(cc),sbr(cc)) &...
-                            sigma <= obj.fit_sig(n,nm(cc),nr(cc),stm(cc),str(cc)) &...
-                           fright;
+                    sigma <= obj.fit_sig(n,nm(cc),nr(cc),stm(cc),str(cc)) &...
+                    fright;
                 fincell = fsigleft | fsigright;
                 idx(fincell) = cc;
             end
@@ -350,53 +363,98 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
             domain = d;
         end
 
-        function plot(obj,var,varargin)
-% Plot the mesh optionally colored with a variable
-%
-%   plot(obj) plots the mesh with the bed and water surface
-%   plot(obj,var) with numel(var) = ncells plots the mesh and colors the cells with the variable var
-%   plot(obj,var) with numel(var) = 2*ncells or 3*ncells plots the mesh and
-%   colors the cells with the variable var and superimposes a quiver plot
-%   consisting of the 2nd and 3rd columns of var in n and z directions. 
-
-%   see also: SigmaZetaMesh, plot3
+        function varargout = plot(obj,varargin)
+            % Plot the mesh optionally colored with a variable
+            %
+            %   plot(obj) plots the mesh with the bed and water surface
+            %   plot(obj,var) with numel(var) = ncells plots the mesh and colors the cells with the variable var
+            %   plot(obj,var) with numel(var) = 2*ncells or 3*ncells plots the mesh and
+            %   colors the cells with the variable var and superimposes a quiver plot
+            %   consisting of the 2nd and 3rd columns of var in n and z directions.
+            %   plot(obj,...,"sigma",...) specify that the plot should be in sigma
+            %   coordinates instead of z coordinates.
+            %
+            %   see also: SigmaZetaMesh, plot3
+            varargout = cell(1,nargout);
             if ~isscalar(obj)
-                for ce=1:numel(obj)
-                    subplot(numel(obj),1,ce)
-                    plot(obj(ce))
-                end
+                tiledlayout("flow");
+                [varargout{:}] = obj.run_method('plot', varargin{:});
                 return
             end
             inp = inputParser;
+            inp.KeepUnmatched = true;
             inp.addOptional('var',[]);
             inp.addParameter('AspectRatio',1,@(x) isscalar(x) && isfinite(x));
-            inp.addParameter('FixAspectRatio',true,@(x) isscalar(x) && islogical(x));
-            inp.parse(var, varargin{:})
+            inp.addParameter('FixAspectRatio',false,@(x) isscalar(x) && islogical(x));
+            inp.addParameter('Sigma', false, @(x) isscalar(x) && islogical(x));
+            inp.parse(varargin{:})
             aspect_ratio = inp.Results.AspectRatio;
             fix_ratio =inp.Results.FixAspectRatio;
-            hold_stat=get(gca,'NextPlot');
-            plot(obj.nb_all,obj.zb_all*aspect_ratio,'k','Linewidth',2)
-            hold on
-            plot(obj.nw,(obj.nw*0+obj.water_level)*aspect_ratio,'b','Linewidth',2)
-            plot_var = nan(obj.ncells,3);
-            if nargin > 1                
-                assert(ismember(numel(var)/obj.ncells, [1,2,3]), 'Variable to plot should have same number of elements as cells in the mesh');
-                plot_var = zeros([size(var,1),3]);
-                if numel(var) == obj.ncells
-                    plot_var(:,1) = var(:);
-                end
-                if numel(var) == 2*obj.ncells
-                    plot_var(:,1:2) = var(:,1:2);
-                    plot_var(:,3) = 0;
-                end
-                if numel(var) == 3*obj.ncells
-                    plot_var = var;
+            sigma = inp.Results.Sigma;
+            if sigma
+                fix_ratio = false;
+            end
+            plot_var=nan(obj.ncells,1);
+            get_gca = true;
+            for ca = 1:numel(varargin)
+                carg = varargin{ca};
+                if isa(carg,'double')
+                    assert(size(plot_var,1)==obj.ncells,...
+                        'SigmaZetaMesh:PlotVarWrongNRows',...
+                        'Variable to plot should have same number of rows as cells in the mesh');
+                    assert(ismember(size(plot_var,2),[1 3]),...
+                        'SigmaZetaMesh:PlotVarWrongNCols',...
+                        'Variable to plot should have either one or three columns')
+                    plot_var = carg;
+                elseif isa(carg,'matlab.graphics.axis.Axes')
+                    assert(isscalar(carg),...
+                        'SigmaZetaMesh:AxHandleNotScalar',...
+                        'Only supports scalar axis handle')
+                    ax = carg;
+                    get_gca = false;
+        		elseif (isa(carg,'char') || isa(carg,'string')) &&...
+         		    ismember(carg,{'AspectRatio',...
+                    'FixAspectRatio', 'Sigma'})
+    			    varargin(ca)=[]; % skip next argument
+                    if ca + 1 > numel(varargin)
+                        break
+                    end
+    			    continue
                 end
             end
-            patch(obj.n_patch, obj.z_patch*aspect_ratio, plot_var(:,1), 'LineStyle', 'none');
-            q=quiver(obj.n_middle(obj.col_to_cell)', obj.z_center*aspect_ratio, plot_var(:,2), plot_var(:,3), 'k');
+            if get_gca
+                ax = nexttile;
+            end
+            hold_stat=get(ax,'NextPlot');
+            if sigma
+                zb = obj.nb_all * 0;
+                zw = [1 1];
+                zpatch = obj.sig_patch;
+                zcenter = obj.z_center;
+            else
+                zb = obj.zb_all;
+                zw = obj.nw*0+obj.water_level;
+                zpatch = obj.z_patch;
+                zcenter = obj.sig_center;
+            end
+            hbed = plot(ax,obj.nb_all,zb*aspect_ratio,'k','Linewidth',2);
+            set(ax,'NextPlot','add')
+            hwater = plot(ax,obj.nw,zw*aspect_ratio,'b','Linewidth',2);
+            hmesh = patch(ax,obj.n_patch, zpatch*aspect_ratio, plot_var(:,1));
+            if nargout>0
+                varargout = {hbed, hwater, hmesh};
+            end
+            if size(plot_var,2)==3
+                hquiv = quiver(ax, obj.n_middle(obj.col_to_cell)',...
+                    zcenter*aspect_ratio, plot_var(:,2), plot_var(:,3),...
+                    'Color','k');
+                if nargout > 0
+                    varargout = [varargout, {hquiv}];
+                end
+                shading(ax,'flat')
+            end
             if fix_ratio
-                axis equal
+        		axis equal
             end
 
             ylab = cellfun(@str2num, get(gca,'YTickLabel'));
@@ -407,38 +465,71 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
             set(gca,'NextPlot',hold_stat);
         end
 
-        function [hpatch, hwater, hbed]=plot3(obj,var)
-% Plot the mesh optionally colored with a variable in 3D
-%
-%   plot3(obj) plots the mesh with the bed and water surface
-%
-%   plot3(obj,var) plot the mesh and color the cells with the varibale var
-%
-%   see also: SigmaZetaMesh, plot
+        function varargout=plot3(obj,varargin)
+            % Plot the mesh optionally colored with a variable in 3D
+            %
+            %   plot3(obj) plots the mesh with the bed and water surface
+            %
+            %   plot3(obj,var) plot the mesh and color the cells with the varibale var
+            %
+            %   see also: SigmaZetaMesh, plot
+            varargout = cell(1,nargout);
             if ~isscalar(obj)
-                hold_stat=get(gca,'NextPlot');
+                hold_stat = get(gca,'NextPlot');
                 hold on
-                for ce=1:numel(obj)
-                    plot3(obj(ce))
-                end
-                set(gca,'NextPlot',hold_stat);
+                [varargout{:}] = obj.run_method('plot3', varargin{:});
+                set(gca,'NextPlot', hold_stat)
                 return
             end
-            hold_stat=get(gca,'NextPlot');
-            hbed=plot3(obj.xb_all,obj.yb_all,obj.zb_all, 'k', 'Linewidth',2);
-            hold on
-            hwater=plot3(obj.xw,obj.yw,obj.water_level+obj.xw*0, 'b', 'Linewidth',2);
             plot_var=nan(obj.ncells,1);
-            if nargin > 1
-                assert(numel(var)==obj.ncells, 'Variable to plot should have same number of elements as cells in the mesh');
-                plot_var=var;
+            get_gca = true;
+            for ca = 1:numel(varargin)
+                carg = varargin{ca};
+                if isa(carg,'double')
+                    assert(size(plot_var,1)==obj.ncells,...
+                        'SigmaZetaMesh:PlotVarWrongNRows',...
+                        'Variable to plot should have same number of rows as cells in the mesh');
+                    assert(ismember(size(plot_var,2),[1 3]),...
+                        'SigmaZetaMesh:PlotVarWrongNCols',...
+                        'Variable to plot should have either one or three columns')
+                    plot_var = carg;
+                elseif isa(carg,'matlab.graphics.axis.Axes')
+                    assert(isscalar(carg),...
+                        'SigmaZetaMesh:AxHandleNotScalar',...
+                        'Only supports scalar axis handle')
+                    ax = carg;
+                    get_gca = false;
+                end
             end
-            hpatch_tmp=patch(obj.x_patch,obj.y_patch, obj.z_patch,plot_var(:));
-            set(gca,'NextPlot',hold_stat);
-            set(gca,'DataAspectRatio',[5 5 1])
-            if nargout>1
-                hpatch=hpatch_tmp;
+            if get_gca
+                ax = gca;
             end
+            hold_stat=get(ax,'NextPlot');
+            hbed=plot3(ax,obj.xb_all,obj.yb_all,obj.zb_all, 'k', 'Linewidth',2);
+            set(ax,'NextPlot','add')
+            hwater=plot3(ax,obj.xw,obj.yw,obj.water_level+obj.xw*0, 'b', 'Linewidth',2);
+            hmesh=patch(ax,obj.x_patch,obj.y_patch, obj.z_patch,plot_var(:,1));
+            if nargout > 0
+                varargout = {hbed, hwater, hmesh};
+            end
+            if size(plot_var,2)==3
+                hquiv = quiver3(ax, obj.x_middle(obj.col_to_cell)',...
+                    obj.y_middle(obj.col_to_cell)',...
+                    obj.z_center,...
+                    plot_var(:,1),...
+                    plot_var(:,2), ...
+                    plot_var(:,3),...
+                    'Color','k');
+                varargout = [varargout, {hquiv}];
+                shading(ax,'flat')
+            end
+            set(ax,'NextPlot',hold_stat);
+            set(ax,'Clipping', 'off')
+            pbaspect([5 5 1])
+            da = daspect;
+            hrat = max(da(1:2))/da(3);
+            daspect([hrat hrat 1])
+            view(30,30)
         end
     end
     methods(Access=protected)
@@ -451,5 +542,5 @@ classdef SigmaZetaMesh < Mesh & matlab.mixin.Copyable
             sig=(sig1-sig0)./(n1-n0).*(n-n0)+sig0;
         end
     end
-    
+
 end

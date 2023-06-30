@@ -112,7 +112,7 @@ classdef Solver < helpers.ArraySupport
             end
             if ~has_reg
                 R = Regularization(bathy = obj.bathy, xs = obj.xs, mesh = obj.mesh, model = obj.data_model);
-                R.assemble_matrices(obj.opts)
+                R.assemble_matrices()
                 obj.assign_property('regularization', R);
             end
         end

@@ -29,6 +29,9 @@ classdef LatLonNMEAGGA < LatLonProvider
            fidx=sub2ind(size(dt),(1:size(dt,1))',fmin); % transform to linear index
            lat=reshape(lat(fidx),1,[]);
            lon=reshape(lon(fidx),1,[]);
+           fbad = lat == 0 | lon == 0;
+           lat(fbad) = nan;
+           lon(fbad) = nan;
         end
     end
 end

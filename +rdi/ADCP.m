@@ -308,6 +308,11 @@ classdef ADCP < ADCP
                     obj.raw=varargin{1};
                 end
             end
+            t = strsplit(string(obj.type(1)),'_');
+            t = strcat(t(1:end-1));
+            t = lower(t);
+            obj.description = "RDI" + " " + t + " " +...
+                obj.frequency(1)/1000 + " KHz";
         end
         
         %%% Set and Get methods %%%
@@ -503,25 +508,9 @@ classdef ADCP < ADCP
                rdi.ADCP_Type.WORKHORSE_78...                                                                      
                ]);
         end
-        function vel=velocity(obj,dst,filter)
-            vel=obj.int16_to_double(obj.raw.VEL)/1000;
-            B=CoordinateSystem.Beam;
-            src=obj.coordinate_system;
-            if nargin > 1 && ~all(dst == src)
-                if any(dst==B & ~(src==B) & obj.bin_mapping_used)
-                    warning('Bin mapping was used: backward transformation to beam coordinates might be incorrect')
-                end
-                tm=obj.xform(dst);
-                vel=helpers.matmult(tm, vel);
-            end
-            if nargin > 2
-                bad=obj.bad(filter);
-            else
-                bad=obj.bad();
-            end
-            vel(bad)=nan;
-        end
-        function tm=xform(obj,dst, src,varargin)
+    end
+    methods(Access = protected)
+        function tm=get_xform(obj,dst, src,varargin)
             if nargin < 3
                 src=obj.coordinate_system;
             end
@@ -585,8 +574,24 @@ classdef ADCP < ADCP
                 tmptm(:,cfilt,:,:),...
                 tm(1,cfilt,:,:));
         end
-    end
-    methods(Access = protected)
+        function vel=get_velocity(obj,dst,filter)
+            vel=obj.int16_to_double(obj.raw.VEL)/1000;
+            B=CoordinateSystem.Beam;
+            src=obj.coordinate_system;
+            if nargin > 1 && ~all(dst == src)
+                if any(dst==B & ~(src==B) & obj.bin_mapping_used)
+                    warning('Bin mapping was used: backward transformation to beam coordinates might be incorrect')
+                end
+                tm=obj.xform(dst);
+                vel=helpers.matmult(tm, vel);
+            end
+            if nargin > 2
+                bad=obj.bad(filter);
+            else
+                bad=obj.bad();
+            end
+            vel(bad)=nan;
+        end
         function cs=get_coordinate_system(obj)
             csnum=reshape(bin2dec(obj.raw.corinfo(4:5,:)'),1,[]);
             cs(1,obj.nensembles)=CoordinateSystem.Beam;

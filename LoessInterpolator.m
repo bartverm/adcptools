@@ -67,7 +67,8 @@ classdef LoessInterpolator < Interpolator
     methods
         function val=interpolate(obj,query_position)
             interpolate@Interpolator(obj,query_position);
-            
+            assert(helpers.load_loess_package,...
+                'Failed to load the loess submodule')
             % call to loess function
             fl=exist('loess','file');
             if ~(fl==2 || fl==3)

@@ -6,7 +6,7 @@
    <!--
 This HTML was auto-generated from MATLAB code.
 To make changes, update the MATLAB code and republish this document.
-      --><title>Reading data</title><meta name="generator" content="MATLAB 9.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2023-05-10"><meta name="DC.source" content="reading_data.m"><style type="text/css">
+      --><title>Reading data</title><meta name="generator" content="MATLAB 9.14"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2023-06-19"><meta name="DC.source" content="reading_data.m"><style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
 
 html { min-height:100%; margin-bottom:1px; }
@@ -73,25 +73,17 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
     fullfile(helpers.adcptools_root, <span class="string">'doc'</span>,<span class="string">'sample_data'</span>,<span class="keyword">...</span>
     <span class="string">'rdi_muara_muntai_bend'</span>));
 </pre><pre class="codeoutput">Reading ADCP raw data files...
-Found 12352 valid ensembles in file: C:\Users\jongb013\Documents\PHD\2-Programming\Tools\adcptoolsGit\doc\sample_data\rdi_muara_muntai_bend\trans25aug000r.000
-Found 3431 valid ensembles in file: C:\Users\jongb013\Documents\PHD\2-Programming\Tools\adcptoolsGit\doc\sample_data\rdi_muara_muntai_bend\trans25aug002r.000
+Found 12352 valid ensembles in file: /home/bartvermeulen/src/adcptools/doc/sample_data/rdi_muara_muntai_bend/trans25aug000r.000
+Found 3431 valid ensembles in file: /home/bartvermeulen/src/adcptools/doc/sample_data/rdi_muara_muntai_bend/trans25aug002r.000
 Found 15783 valid ensebles
 Reading data...
 Warning: No ambient sound data found. 
-</pre><pre class="codeoutput error">Unable to resolve the name nmea.GGAMessage.
-
-Error in rdi.readADCP (line 639)
-        readNMEAint(tmpgga,nmea.GGAMessage);
-
-Error in rdi.readDeployment (line 70)
-outADCP=rdi.readADCP(rfiles); % Read files
-
-Error in reading_data (line 46)
+Reading navigation files...
 </pre><p>This will read all data files starting with 'deploymentName'. The optional argument 'path' allows to specify the location of the data. The next step is to create a <a href="matlab:doc('VMADCP')">VMADCP</a> object:</p><pre class="codeinput">mmbend = rdi.VMADCP(mmbend_raw);
 </pre><h2 id="6">Reading Nortek data</h2><p>The ADCPtools currently supports reading AD2CP files for self-contained deployments and SigVM file for vessel mounted deployments. For self-contained deployments data can be read as:</p><pre class="language-matlab">Dataset = nortek.ADCP(<span class="string">'filename.ad2cp'</span>);
 </pre><p>This reads all data from the ad2cp file and constructs the <a href="matlab:doc('ADCP')">ADCP</a> object for further processing and visualization of the data.</p><p>For a vessel mounted dataset, data is read as follows:</p><pre class="language-matlab">VMDataset = nortek.VMADCP(<span class="string">'filename.SigVM'</span>);
 </pre><p>This reads the ad2cp data and the gnss data in the SigVM file and constructs the <a href="matlab:doc('VMADCP')">VMADCP</a> object</p><h2 id="7">Reading Sontek data</h2><p>ADCPtools can construct <a href="matlab:doc('ADCP')">ADCP</a> and <a href="matlab:doc('VMADCP')">VMADCP</a> objects based on the matlab exports which can be generated with the RiverSurveyor software from Sontek. Once the .mat files have been generated they can be read as follows:</p><pre class="language-matlab">Dataset = sontek.VMADCP(<span class="string">'filename.mat'</span>);
-</pre><p>This constructs the <a href="matlab:doc('VMADCP')">VMADCP</a> object for further processing.</p><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2021b</a><br></p></div><!--
+</pre><p>This constructs the <a href="matlab:doc('VMADCP')">VMADCP</a> object for further processing.</p><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2023a</a><br></p></div><!--
 ##### SOURCE BEGIN #####
 %% Reading data
 % How to read data

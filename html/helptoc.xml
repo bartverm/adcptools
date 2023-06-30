@@ -1,0 +1,108 @@
+<?xml version='1.0' encoding="utf-8"?>
+
+<toc version="2.0">
+<!-- First tocitem specifies top level in Help browser Contents pane -->
+<!-- This can be a roadmap page, as shown below, or a content page -->
+    <tocitem target="main.html">ADCPtools
+        <!-- Nest tocitems to create hierarchical entries in  Contents-->
+        <!-- To include icons, use the following syntax for tocitems: -->
+        <!-- <tocitem target="foo.html" image="HelpIcon.NAME"> -->
+        <!-- Title-of-Section </tocitem> -->
+        <!-- where NAME is one of the following (use capital letters): -->
+        <!-- FUNCTION, USER_GUIDE, EXAMPLES, BLOCK, GETTING_STARTED, -->
+        <!-- DEMOS, RELEASE_NOTES --> 
+        <!-- Icon images used for these entries are also stored in -->
+        <!-- matlabroot/toolbox/matlab/icons -->
+        <!-- A Getting Started Guide usually comes first -->
+        <tocitem target="reading_data.html" image="HelpIcon.GETTING_STARTED">
+            Reading data
+            <tocitem target="reading_data.html#2">
+                RDI data
+            </tocitem> 
+            <tocitem target="reading_data.html#3">
+                Nortek data
+            </tocitem> 
+            <tocitem target="reading_data.html#4">
+                Sontek data
+            </tocitem> 
+        </tocitem>
+        <tocitem target="initial_inspection.html">
+            Initial inspection
+            <tocitem target="initial_inspection.html#1">
+                Reading data
+            </tocitem>
+            <tocitem target="initial_inspection.html#2">
+                Instrument orientation
+            </tocitem>
+            <tocitem target="initial_inspection.html#5">
+                Ship track
+            </tocitem>
+            <tocitem target="initial_inspection.html#7">
+                Detected bed elevation
+            </tocitem>
+            <tocitem target="initial_inspection.html#19">
+                Depth averaged velocity
+            </tocitem>
+            <tocitem target="initial_inspection.html#21">
+                Velocity
+            </tocitem>
+            <tocitem target="initial_inspection.html#24">
+                Backscatter
+            </tocitem>
+        </tocitem>
+        <tocitem target="vertical_positioning.html">
+            Vertical positioning
+            <tocitem target="vertical_positioning.html#1">
+                Moored (Fixed)
+            </tocitem>
+            <tocitem target="vertical_positioning.html#2">
+                Vessel mounted (Constant water level)
+            </tocitem>
+            <tocitem target="vertical_positioning.html#11">
+                Vessel mounted (Varying water level)
+            </tocitem>
+            <tocitem target="vertical_positioning.html#12">
+                Customize vertical positioning
+            </tocitem>
+        </tocitem>
+        <tocitem target="horizontal_positioning.html">
+        Horizontal positioning
+            <tocitem target="horizontal_positioning.html#1">
+            Moored deployment
+            </tocitem>
+            <tocitem target="horizontal_positioning.html#2">
+            Vessel mounted GPS positioning
+            </tocitem>
+            <tocitem target="horizontal_positioning.html#16">
+            Change source of geographic coordinates
+            </tocitem>
+            <tocitem target="horizontal_positioning.html#21">
+            Changing projection
+            </tocitem>
+            <tocitem target="horizontal_positioning.html#22">
+            Customize horizontal positioning
+            </tocitem>
+        </tocitem>
+        <tocitem target="repeat_transect_processing.html">
+            Repeat transect processing
+            <tocitem target="transect_data_selection.html">
+                Data selection
+            </tocitem>
+            <tocitem target="transect_cross_section.html">
+                Setting the cross-section
+            </tocitem>
+            <tocitem target="transect_bathymetry.html">
+                Bathymetry model
+            </tocitem>
+            <tocitem target="transect_mesh_construction.html">
+                Mesh construction
+            </tocitem>
+            <tocitem target="transect_solving_data.html">
+                Solving data on the mesh
+            </tocitem>
+            <tocitem target="transect_post_processing.html">
+                Post processing data
+            </tocitem>
+        </tocitem>
+    </tocitem>
+</toc>

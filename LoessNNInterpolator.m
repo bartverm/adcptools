@@ -74,6 +74,8 @@ classdef LoessNNInterpolator < Interpolator
     end
     methods
         function obj=LoessNNInterpolator(varargin) % constructor
+            assert(helpers.load_loess_package,...
+                'Failed to load the loess submodule')
             obj@Interpolator(varargin{:}) % call parent constructor
             obj.update_int=true; % flag the interpolator to be updated
             addlistener(obj,'known','PostSet',@obj.reset_interpolant); % create property listener to trigger new smoothing
@@ -85,6 +87,7 @@ classdef LoessNNInterpolator < Interpolator
             obj.update_int=true; % makes sure smoother is called upon next interpolation
         end
         function make_interpolant(obj) % Smooth points and create the interpolant
+
             val=loess(obj.known(1:end-1,:)',... % call the loess function
                 obj.known(end,:)',...
                 obj.known(1:end-1,:)',...
