@@ -8,8 +8,7 @@ function tf = load_nmea_package()
     if tf
         return
     end
-    s=fileparts(which('ADCP'));
-    addpath(fullfile(s, "nmea_submodule"))
+    addpath(fullfile(helpers.adcptools_root, "nmea_submodule"))
     tf = nmea_is_loaded();
 end
 

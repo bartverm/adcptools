@@ -11,8 +11,13 @@ function varargout=grow_array(varargin)
 %   grown with unique new objects. If 'FillVal' is specified, it will be
 %   filled with copies of 'FillVal'
 %
-%   'SkipDim'
-%   specify dimensions that should not be grown. Default is empty
+%   'SkipDims'
+%   specify dimensions that should not be grown. Default is empty If both
+%   SkipDims and OnlyDims are given, SkipDims is ignored.
+%
+%   'OnlyDims'
+%   only grow arrays along given dimensions. Default is empty. If both
+%   SkipDims and OnlyDims are given, SkipDims is ignored.
 %
 %   'CollectOutput'
 %   Collect all grown arrays in a cell. Default is false
@@ -31,6 +36,7 @@ end
 P=inputParser;
 P.addParameter('FillVal',make_fillval(varargin{1}),@(x) isscalar(x) && isequal(class(x),class(varargin{1})));
 P.addParameter('SkipDims',[],@(x) isnumeric(x) && all(x>0) && all(mod(x,1)==0));
+P.addParameter('OnlyDims',[],@(x) isnumeric(x) && all(x>0) && all(mod(x,1)==0));
 P.addParameter('CollectOutput',false,@(x) islogical(x) && isscalar(x))
 
 % Compute number of input variables
@@ -47,13 +53,18 @@ end
 P.parse(varargin{n_var+1:nargin})
 fillval=P.Results.FillVal;
 skipdims=P.Results.SkipDims;
+onlydims=P.Results.OnlyDims;
 collect_output=P.Results.CollectOutput;
 
 fillsiz=size_equal(varargin(1:n_var));
 target_siz=max(fillsiz,[],1);
 n_grow=max(target_siz-fillsiz,0);
 dims=find(any(n_grow~=0,1));
-dims(intersect(dims,skipdims))=[];
+[~, skipidx] = intersect(dims,skipdims);
+dims(skipidx)=[];
+if ~isempty(onlydims)
+    dims = reshape(onlydims,1,[]);
+end
 for cd=dims
      vars=reshape(find(n_grow(:,cd)>0),1,[]);
      for cvar=vars
@@ -76,24 +87,34 @@ end
 
 end
 
-function out=make_handle_fill(siz,class) %#ok<STOUT>
+function out=make_handle_fill(siz,class_name) %#ok<STOUT>
     evstr=num2str(reshape(siz,[],1));
     evstr=[evstr, repmat(',',size(evstr))];
     evstr=reshape(evstr',1,[]);
     evstr(end)=[];
     if any(siz==0)
-        eval(['out=',class,'.empty(',siz,');'])
+        eval(['out=',class_name,'.empty(',siz,');'])
     else
-        eval(['out(',evstr,')=',class,';'])
+        eval(['out(',evstr,')=',class_name,';'])
     end 
 end
 function out=make_fillval(a)
-    if nargin < 4
-        try
-            out=cast(0,'like',a);
-        catch
-            out=eval(class(a));
-        end
+    if isfloat(a)
+        out = cast(NaN,'like', a);
+        return
+    end
+    if isinteger(a)
+        out = intmin(class(a));
+        return;
+    end
+    if ischar(a)
+        out = ' ';
+        return
+    end
+    try
+        out=cast(0,'like',a);
+    catch
+        out=eval(class(a));
     end
 end 
 function siz=size_equal(in)

@@ -41,10 +41,13 @@ classdef TimeBasedVelocitySolver < VelocitySolver
             vpos = repmat(vpos, [1, 1, 4, 1]); % replicate average position
 
             % get velocity data
-            vdat = obj.adcp.water_velocity(CoordinateSystem.Earth); % get velocity data
+            vdat = obj.adcp.cat_property('water_velocity',...
+                CoordinateSystem.Earth); % get velocity data
 
             % get transformation matrix
-            xform = obj.adcp.xform(CoordinateSystem.Earth,CoordinateSystem.Earth); % get Earth to Earth transformation matrix
+            xform = obj.adcp.cat_property('xform',...
+                CoordinateSystem.Earth,... destination: Earth
+                CoordinateSystem.Earth); % source: Earth
             xform(:,:,:,4)=[]; % remove Error velocity
 
             % filter and vectorize

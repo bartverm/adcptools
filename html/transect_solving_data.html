@@ -1,0 +1,139 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Solving repeat transect data on the mesh</title><meta name="generator" content="MATLAB 9.14"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2023-06-26"><meta name="DC.source" content="transect_solving_data.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; }
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+span.typesection { color:#A0522D }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1>Solving repeat transect data on the mesh</h1><!--introduction--><!--/introduction--><p>The last step in the processing of the repeat-transect data is the solution of the velocity field. This step is handled by the <a href="matlab:doc('VelocitySolver')">VelocitySolver class</a>. This is a generic class that cannot directly be used. Two implementations exist:</p><div><ul><li><a href="matlab:doc('TimeBasedVelocitySolver')">TimeBasedVelocitySolver</a>: Implements the classic way of processing ADCP data in which beam velocities are combined to obtain a Cartesian velocity based on the time at which they were measured</li><li><a href="matlab:doc('LocationBasedVelocitySolver)">LocationBasedVelocitySolver</a>: is a solver that combines the beam velocities based on where they were measured in space. This reduces the spatial homegeneity assumption</li></ul></div><p>In case you doubt use the first one. The second solver is recommended when measuring in highly sheared flows, and when positioning is of good quality. We will use the TimeBasedVelocitySolver:</p><pre class="codeinput">solver = TimeBasedVelocitySolver(mmbend, mesh, xs, ef, B);
+</pre><p>This again produces seven solvers, one for each cross-section. The last step is to solve for the velocity:</p><pre class="codeinput">vel = solver.get_velocity()
+</pre><pre class="codeoutput">
+vel =
+
+  1&times;7 cell array
+
+  Columns 1 through 4
+
+    {463&times;3 double}    {495&times;3 double}    {1399&times;3 double}    {1171&times;3 double}
+
+  Columns 5 through 7
+
+    {847&times;3 double}    {650&times;3 double}    {538&times;3 double}
+
+</pre><p>This returned a 1x7 cell each containing a matrix of Nx3, with N being the number of cells in the mesh, and 3 the velocity components. The velocity is solved in East-North-Up components. We may want to rotate the velocity to the direction of the cross-sections:</p><pre class="codeinput">vel_sn = solver.rotate_to_xs(vel);
+</pre><p>We can plot the velocity as follows:</p><pre class="codeinput">figure
+mesh.plot(vel_sn)
+</pre><img vspace="5" hspace="5" src="transect_solving_data_01.png" alt=""> <p>Or in 3D:</p><pre class="codeinput">figure
+mesh.plot3(vel_sn)
+</pre><img vspace="5" hspace="5" src="transect_solving_data_02.png" alt=""> <p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2023a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% Solving repeat transect data on the mesh
+
+%%
+% The last step in the processing of the repeat-transect data is the
+% solution of the velocity field. This step is handled by the 
+% <matlab:doc('VelocitySolver') VelocitySolver class>. This is a generic
+% class that cannot directly be used. Two implementations exist:
+%%
+%
+% * <matlab:doc('TimeBasedVelocitySolver') TimeBasedVelocitySolver>: 
+% Implements the classic
+% way of processing ADCP data in which beam velocities are combined to
+% obtain a Cartesian velocity based on the time at which they were measured
+% * <matlab:doc('LocationBasedVelocitySolver) LocationBasedVelocitySolver>:
+% is a solver
+% that combines the beam velocities based on where they were measured in
+% space. This reduces the spatial homegeneity assumption
+%
+%%
+% In case you doubt use the first one. The second solver is recommended
+% when measuring in highly sheared flows, and when positioning is of good
+% quality. We will use the TimeBasedVelocitySolver:
+solver = TimeBasedVelocitySolver(mmbend, mesh, xs, ef, B);
+
+%%
+% This again produces seven solvers, one for each cross-section. The last
+% step is to solve for the velocity:
+vel = solver.get_velocity()
+
+%%
+% This returned a 1x7 cell each containing a matrix of Nx3, with N being
+% the number of cells in the mesh, and 3 the velocity components. The
+% velocity is solved in East-North-Up components. We may want to rotate the
+% velocity to the direction of the cross-sections:
+vel_sn = solver.rotate_to_xs(vel);
+
+%% 
+% We can plot the velocity as follows:
+figure
+mesh.plot(vel_sn)
+
+%%
+% Or in 3D:
+figure
+mesh.plot3(vel_sn)
+
+##### SOURCE END #####
+--></body></html>
