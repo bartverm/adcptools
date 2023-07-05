@@ -1,4 +1,5 @@
-classdef Solver < helpers.ArraySupport
+classdef Solver < helpers.ArraySupport & ...
+        helpers.ClassParamsInputHandling
     % Abstract base class to solve ADCP repeat transect velocity data
     %
     %   Subclasses should implement the get_solver_input method.
@@ -73,7 +74,7 @@ classdef Solver < helpers.ArraySupport
         %   empty object will be created.
         %
         %   see also: Solver, DataModel
-        regularization (1,:) Regularization
+        regularization (1,:) Regularization = Regularization
 
 
         % Solver/opts
@@ -87,34 +88,38 @@ classdef Solver < helpers.ArraySupport
     methods
         function obj=Solver(varargin)
             obj = obj@helpers.ArraySupport(varargin{:})
-            has_reg = false;
-            for cnt_arg=1:nargin
-                cur_arg=varargin{cnt_arg};
-                if isa(cur_arg, 'Mesh')
-                    var = 'mesh';
-                elseif isa(cur_arg, 'Bathymetry')
-                    var = 'bathy';
-                elseif isa(cur_arg,'XSection')
-                    var = 'xs';
-                elseif isa(cur_arg,'DataModel')
-                    var = 'data_model';
-                elseif isa(cur_arg,'SolverOptions')
-                    var = 'opts';
-                elseif isa(cur_arg,'WaterLevel')
-                    var = 'water_level';
-                elseif isa(cur_arg,'Regularization')
-                    var = 'regularization';
-                    has_reg = true;
-                else
-                    continue
-                end
-                obj.assign_property(var,cur_arg);
-            end
-            if ~has_reg
-                R = Regularization(bathy = obj.bathy, xs = obj.xs, mesh = obj.mesh, model = obj.data_model);
-                R.assemble_matrices()
-                obj.assign_property('regularization', R);
-            end
+            f_unprocessed = obj.parse_class_params_inputs(varargin{:});
+            % no_expand = {};
+            % varargin = obj(1).unprocessed_construction_inputs;
+            % isprocessed = true(size(varargin));
+            % for cnt_arg=1:numel(varargin)
+            %     cur_arg=varargin{cnt_arg};
+            %     if isa(cur_arg, 'Mesh')
+            %         var = 'mesh';
+            %     elseif isa(cur_arg, 'Bathymetry')
+            %         var = 'bathy';
+            %     elseif isa(cur_arg,'XSection')
+            %         var = 'xs';
+            %     elseif isa(cur_arg,'DataModel')
+            %         var = 'data_model';
+            %     elseif isa(cur_arg,'SolverOptions')
+            %         var = 'opts';
+            %     elseif isa(cur_arg,'WaterLevel')
+            %         var = 'water_level';
+            %     elseif isa(cur_arg,'Regularization')
+            %         var = 'regularization';
+            %     elseif isa(cur_arg,'char') && strcmp(cur_arg,'NoExpand')
+            %         no_expand = {'NoExpand'};
+            %         isprocessed(cnt_arg) = false; % pass on the noexpand arg
+            %         continue
+            %     else
+            %         isprocessed(cnt_arg) = false;
+            %         continue
+            %     end
+            %     obj.assign_property(var,cur_arg,no_expand{:});
+            % end
+            % varargin(isprocessed) = [];
+            obj(1).unprocessed_construction_inputs = varargin(f_unprocessed);
         end
 
         function MP = get_parameters(obj)
@@ -129,7 +134,7 @@ classdef Solver < helpers.ArraySupport
             % see also: Solver, get_velocity, Mesh, VMADCP
 
             if ~isscalar(obj)
-                [pars, cov_pars, n_vels] = obj.run_method('get_parameters');
+                mp = obj.run_method('get_parameters');
                 return
             end
 
@@ -297,8 +302,7 @@ classdef Solver < helpers.ArraySupport
 
             % scalar call
             if nargin == 1
-                varargin = cell(1,3);
-                [varargin{:}] = get_parameters(obj);
+                mp = get_parameters(obj);
             end
             if nargin > 1
                 if nargin - 1 < nargout

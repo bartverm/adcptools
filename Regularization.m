@@ -8,7 +8,7 @@ classdef Regularization <...
         bathy (1,1) Bathymetry = BathymetryScatteredPoints
         xs (1,1) XSection = XSection
         mesh (1,1) Mesh = SigmaZetaMesh
-        model (1,1) DataModel = DataModel
+        model (1,1) DataModel = VelocityModel
         weight (1,:) double
 
     end
@@ -40,11 +40,25 @@ classdef Regularization <...
             assert(issparse(val),'Value must be sparse')
         end
         function regs = get_all_regs(varargin)
-            regs = [InternalContinuityRegularization(varargin{:});...
-                    ExternalContinuityRegularization(varargin{:});
-                    CoherenceRegularization(varargin{:});...
-                    ConsistencyRegularization(varargin{:});...
-                    KinematicRegularization(varargin{:})];
+            regs = {InternalContinuityRegularization(varargin{:}),...
+                    ExternalContinuityRegularization(varargin{:}),...
+                    CoherenceRegularization(varargin{:}),...
+                    ConsistencyRegularization(varargin{:}),...
+                    KinematicRegularization(varargin{:})};
+            siz = cellfun(@size, regs, 'UniformOutput',false);
+            assert(isequal(siz{:}),...
+                'Size of generated regularizations should be equal')
+            siz = siz{1};
+            if isequal(siz, [1 1])
+                return
+            end
+            out = cell(siz);
+            for co = 1:numel(out)
+                tmp = cellfun(@(x) x(co), regs, 'UniformOutput',false);
+                tmp = [tmp{:}];
+                out{co} = tmp;
+            end
+            regs = out;
         end
     end
 

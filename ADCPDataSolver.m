@@ -17,43 +17,30 @@ classdef ADCPDataSolver < Solver
     methods
         function obj=ADCPDataSolver(varargin)
             obj = obj@Solver(varargin{:})
-            has_vmadcp = false;
-            exp_vmadcp = {};
-            has_bathy = false;
-            has_xs = false;
-            no_expand = {};
-            for cnt_arg = 1 : nargin
-                cur_arg = varargin{cnt_arg};
-                if isa(cur_arg,'VMADCP')
-                    has_vmadcp = true;
-                    exp_vmadcp = no_expand;
-                    var = 'adcp';
-                elseif isa(cur_arg, 'Bathymetry')
-                    has_bathy = true;
-                    continue
-                elseif isa(cur_arg,'Filter')
-                    var = 'ensemble_filter';
-                elseif isa(cur_arg,'XSection')
-                    has_xs = true;
-                    continue
-                elseif isa(cur_arg,'char') && strcmp(cur_arg,'NoExpand')
-                    no_expand = {'NoExpand'};
-                    continue
-                else 
-                    continue
-                end
-                obj.assign_property(var, cur_arg, no_expand{:})
-            end
+            varargin = obj(1).unprocessed_construction_inputs;
+            f_unprocessed = obj.parse_class_params_inputs(varargin{:});
 
-            if ~has_bathy && has_vmadcp
-                B = BathymetryScatteredPoints(exp_vmadcp{:}, obj.adcp);
-                obj.assign_property('bathy', B);
-            end
-            if ~has_xs && has_vmadcp
-                XS = XSection(obj.ensemble_filter, exp_vmadcp{:},...
-                    obj.adcp);
-                obj.assign_property('xs',XS);
-            end
+            % no_expand = {};
+            % varargin = obj(1).unprocessed_construction_inputs;
+            % isprocessed = true(size(varargin));
+            % for cnt_arg = 1 : numel(varargin)
+            %     cur_arg = varargin{cnt_arg};
+            %     if isa(cur_arg,'VMADCP')
+            %         var = 'adcp';
+            %     elseif isa(cur_arg,'Filter')
+            %         var = 'ensemble_filter';
+            %     elseif isa(cur_arg,'char') && strcmp(cur_arg,'NoExpand')
+            %         no_expand = {'NoExpand'};
+            %         isprocessed(cnt_arg) = false; %pass on
+            %         continue
+            %     else 
+            %         isprocessed(cnt_arg) = false;
+            %         continue
+            %     end
+            %     obj.assign_property(var, cur_arg, no_expand{:})
+            % end
+            % varargin(isprocessed) = [];
+            obj(1).unprocessed_construction_inputs = varargin(f_unprocessed);
         end
 
     end

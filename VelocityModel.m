@@ -34,7 +34,7 @@ classdef VelocityModel < DataModel
             val = [1 1 1];
         end
         function val=get_names(~)
-            val = {'u', 'v', 'w'};
+            val = {{'u'}, {'v'}, {'w'}};
         end
         function Mrot = rotate_matrix(obj, M)
             % assuming M is a n_data x n_pars x n_comp matrix

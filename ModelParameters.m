@@ -23,9 +23,9 @@ classdef ModelParameters < handle
 
         cell_idx (:,1) cell
 
-        vel_cmap = brewermap(20, 'RdBu');
+        vel_cmap (:,3) double = jet(20);
 
-        s_cmap = brewermap(15, 'YlOrBr');
+        s_cmap (:,3) double = jet(15);
 
         cv_results (1,:) double
     end
@@ -34,6 +34,11 @@ classdef ModelParameters < handle
     end
     methods
         function obj = ModelParameters(varargin)
+            if helpers.load_brewermap_package
+                obj.vel_cmap = brewermap(20, 'RdBu');
+                obj.s_cmap = brewermap(15, 'YlOrBr');
+            end
+
             % Overwrite default options
             for ia = 1:2:nargin
                 obj.(varargin{ia}) = varargin{ia+1};

@@ -81,20 +81,22 @@ classdef ArraySupport < handle & matlab.mixin.Copyable
 %   see also:
 %   ArraySupport, run_method
 
-            assert(isscalar(var) || isequal(size(var), size(obj)),...
+            assert(isscalar(obj) || isscalar(var) || isequal(size(var), size(obj)),...
                 'ArrayOnConstruct:WrongInputSize',...
                  ['Input variable should either be scalar or match the',...
                  'size of object array.'])
 
+            if isscalar(obj)
+                if iscell(var) && isscalar(var)
+                    var = var{1};
+                end
+                obj.(var_name) = var;
+                return
+            end
             
             if nargin > 3 && strcmp(varargin{1}, 'NoExpand')
                 [obj.(var_name)] = deal(var);
-            else
-                assert(isscalar(var) || isequal(numel(var), numel(obj)),...
-                    'ArrayOnConstruct:WrongInputSize',...
-                     ['Input variable should either be scalar or match the',...
-                     ' size of object array.'])
-    
+            else   
                 if ~iscell(var)
                     var=num2cell(var);
                 end
