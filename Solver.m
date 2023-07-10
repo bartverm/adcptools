@@ -1,5 +1,4 @@
-classdef Solver < helpers.ArraySupport & ...
-        helpers.ClassParamsInputHandling
+classdef Solver < helpers.ArraySupport
     % Abstract base class to solve ADCP repeat transect velocity data
     %
     %   Subclasses should implement the get_solver_input method.
@@ -86,41 +85,10 @@ classdef Solver < helpers.ArraySupport & ...
 
     end
     methods
-        function obj=Solver(varargin)
-            obj = obj@helpers.ArraySupport(varargin{:})
-            f_unprocessed = obj.parse_class_params_inputs(varargin{:});
-            % no_expand = {};
-            % varargin = obj(1).unprocessed_construction_inputs;
-            % isprocessed = true(size(varargin));
-            % for cnt_arg=1:numel(varargin)
-            %     cur_arg=varargin{cnt_arg};
-            %     if isa(cur_arg, 'Mesh')
-            %         var = 'mesh';
-            %     elseif isa(cur_arg, 'Bathymetry')
-            %         var = 'bathy';
-            %     elseif isa(cur_arg,'XSection')
-            %         var = 'xs';
-            %     elseif isa(cur_arg,'DataModel')
-            %         var = 'data_model';
-            %     elseif isa(cur_arg,'SolverOptions')
-            %         var = 'opts';
-            %     elseif isa(cur_arg,'WaterLevel')
-            %         var = 'water_level';
-            %     elseif isa(cur_arg,'Regularization')
-            %         var = 'regularization';
-            %     elseif isa(cur_arg,'char') && strcmp(cur_arg,'NoExpand')
-            %         no_expand = {'NoExpand'};
-            %         isprocessed(cnt_arg) = false; % pass on the noexpand arg
-            %         continue
-            %     else
-            %         isprocessed(cnt_arg) = false;
-            %         continue
-            %     end
-            %     obj.assign_property(var,cur_arg,no_expand{:});
-            % end
-            % varargin(isprocessed) = [];
-            obj(1).unprocessed_construction_inputs = varargin(f_unprocessed);
-        end
+        % function obj=Solver(varargin)
+        %     obj = obj@helpers.ArraySupport(varargin{:})
+        %     obj.parse_class_params_inputs(varargin{:});
+        % end
 
         function MP = get_parameters(obj)
             % Solve velocity model parameters
@@ -134,7 +102,7 @@ classdef Solver < helpers.ArraySupport & ...
             % see also: Solver, get_velocity, Mesh, VMADCP
 
             if ~isscalar(obj)
-                mp = obj.run_method('get_parameters');
+                MP = obj.run_method('get_parameters');
                 return
             end
 
@@ -276,7 +244,9 @@ classdef Solver < helpers.ArraySupport & ...
                         M(:,:,3).*xform(:,3)]; %Model matrix times unit vectors q
                     disp('Assembled parameter - data mapping')
                     [M, b, cell_idx_shuffled, ns] = obj.reorder_model_matrix(Mb0, dat, cell_idx);
-                    MP = ModelParameters(M = M, b = b, regularization = obj.regularization, opts = obj.opts, cell_idx = cell_idx_shuffled);
+                    MP = ModelParameters(M = M, b = b,...
+                        opts = obj.opts, cell_idx = cell_idx_shuffled,...
+                        regularization = obj.regularization);
                     MP.p = obj.solve(M,b);
                     MP.ns = ns;
                     disp('Finished')

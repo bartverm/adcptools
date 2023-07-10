@@ -1,4 +1,4 @@
-classdef ModelParameters < handle
+classdef ModelParameters < handle & helpers.ArraySupport
     %MODELPARAMETERS Class for capturing model parameters as output of
     %get_parameters
 
@@ -15,7 +15,7 @@ classdef ModelParameters < handle
 
         cov_pars (:,:,:) double;
 
-        regularization (1,1) Regularization
+        regularization (1,:) Regularization
 
         opts (1,1) SolverOptions
 
@@ -34,14 +34,10 @@ classdef ModelParameters < handle
     end
     methods
         function obj = ModelParameters(varargin)
+            obj = obj@helpers.ArraySupport(varargin{:})
             if helpers.load_brewermap_package
                 obj.vel_cmap = brewermap(20, 'RdBu');
                 obj.s_cmap = brewermap(15, 'YlOrBr');
-            end
-
-            % Overwrite default options
-            for ia = 1:2:nargin
-                obj.(varargin{ia}) = varargin{ia+1};
             end
         end
 

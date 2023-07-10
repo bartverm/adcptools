@@ -15,37 +15,38 @@ classdef ADCPDataSolver < Solver
         ensemble_filter (1,1) EnsembleFilter
     end
     methods
-        function obj=ADCPDataSolver(varargin)
-            obj = obj@Solver(varargin{:})
-            varargin = obj(1).unprocessed_construction_inputs;
-            f_unprocessed = obj.parse_class_params_inputs(varargin{:});
-
-            % no_expand = {};
-            % varargin = obj(1).unprocessed_construction_inputs;
-            % isprocessed = true(size(varargin));
-            % for cnt_arg = 1 : numel(varargin)
-            %     cur_arg = varargin{cnt_arg};
-            %     if isa(cur_arg,'VMADCP')
-            %         var = 'adcp';
-            %     elseif isa(cur_arg,'Filter')
-            %         var = 'ensemble_filter';
-            %     elseif isa(cur_arg,'char') && strcmp(cur_arg,'NoExpand')
-            %         no_expand = {'NoExpand'};
-            %         isprocessed(cnt_arg) = false; %pass on
-            %         continue
-            %     else 
-            %         isprocessed(cnt_arg) = false;
-            %         continue
-            %     end
-            %     obj.assign_property(var, cur_arg, no_expand{:})
-            % end
-            % varargin(isprocessed) = [];
-            obj(1).unprocessed_construction_inputs = varargin(f_unprocessed);
-        end
+        % function obj=ADCPDataSolver(varargin)
+        %     obj = obj@Solver(varargin{:})
+        %     varargin = obj(1).unprocessed_construction_inputs;
+        %     f_unprocessed = obj.parse_class_params_inputs(varargin{:});
+        % 
+        %     % no_expand = {};
+        %     % varargin = obj(1).unprocessed_construction_inputs;
+        %     % isprocessed = true(size(varargin));
+        %     % for cnt_arg = 1 : numel(varargin)
+        %     %     cur_arg = varargin{cnt_arg};
+        %     %     if isa(cur_arg,'VMADCP')
+        %     %         var = 'adcp';
+        %     %     elseif isa(cur_arg,'Filter')
+        %     %         var = 'ensemble_filter';
+        %     %     elseif isa(cur_arg,'char') && strcmp(cur_arg,'NoExpand')
+        %     %         no_expand = {'NoExpand'};
+        %     %         isprocessed(cnt_arg) = false; %pass on
+        %     %         continue
+        %     %     else 
+        %     %         isprocessed(cnt_arg) = false;
+        %     %         continue
+        %     %     end
+        %     %     obj.assign_property(var, cur_arg, no_expand{:})
+        %     % end
+        %     % varargin(isprocessed) = [];
+        %     obj(1).unprocessed_construction_inputs = varargin(f_unprocessed);
+        % end
 
     end
     methods (Access=protected)
         function [vpos, vdat, xform, time, wl] = get_solver_input(obj)
+            assert(~isempty(obj.adcp),'Adcp property is empty, cannot continue')
             vpos = obj.adcp.cat_property('depth_cell_position'); % velocity positions
             vdat = [];
             xform = [];

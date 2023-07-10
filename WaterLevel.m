@@ -1,4 +1,4 @@
-classdef WaterLevel < handle
+classdef WaterLevel < handle & matlab.mixin.Copyable
 % Defines ADCP vertical position based on the water level
 %
 %   Subclasses should implement the get_water_level method

@@ -1,14 +1,35 @@
-classdef ArraySupport < handle & matlab.mixin.Copyable
+classdef ArraySupport < handle
 % Class to help onstruct object arrays based on array input to constructor
-%
-%   obj = ArraySupport(...) constructs obj. The size of any non-scalar
-%   cell or handle class input determines the size of the output object
-%   array. All non scalar inputs of type cell or handle class will need to
-%   have the same size. To use this constructor subclass from
-%   ArraySupport and call the superclass constructor in your class.
-%
+%     
+%   obj = ArraySupport(...) constructs the object array obj. The size of 
+%   the object array is determined based on the inputs, and the inputs are
+%   assigned to the objects in the array. Which inputs are considered to
+%   determine the size and how they are assigned to the array depends on
+%   the type of inputs:
+%   name = value inputs are not included in determining the size of the
+%       output array. The given value is assigned as is to each of the
+%       objects in the array.
+%   'ParamName', paramValue input pairs are considered in determining the
+%       size only if 'ParamName' is an assignable property of the class and
+%       the pair is not given after the 'NoExpand' input argument (see
+%       below). The paramValue is assigned to object property by assigning
+%       each element of paramValue to the property with name 'ParamName' of
+%       the element in the object array.
+%   handleClasses are used to determine the output array size only if they
+%       are assignable based on their class, i.e. there is only one
+%       property with that particular handle class. The elements in the
+%       input array are assigned to the property with corresponding class
+%       of the corresponding element in the output array
+%   cell inputs are used to determine the size of the output array only if
+%       all the values held by the cell are of the same assignable handle 
+%       class.
+%   All inputs that determine the size of the output array must all be
+%   scalar or have matching size.
+%       
 %   obj = ArraySupport('NoExpand',...) any input given after this argument
-%   is not used to determine size of constructed array
+%   is not used to determine size of constructed array. All name=value
+%   pairs cannot be given before the 'NoExpand' argument and therefor will
+%   never be expanded.
 %
 % 
 %   ArraySupport methods:
@@ -27,43 +48,227 @@ classdef ArraySupport < handle & matlab.mixin.Copyable
 %  
     properties(Access = protected)
         unprocessed_construction_inputs (1,:) cell = {};
+        unassigned_properties (1,:) cell = {};
     end
     methods
         function obj = ArraySupport(varargin)
             if isempty(varargin)
                 return
             end
-            f_expand = find(strcmp('NoExpand',varargin));
-            nin = numel(varargin);
-            obj(1).unprocessed_construction_inputs = varargin;
+
+            % inputs to use to determine size
+            expand_inputs = false(size(varargin)); % variables to expand
+            processed_inputs = false(size(varargin)); % used inputs
+            propname = cell(size(varargin)); % property name to assign 
+                       
+            % keep value of all assignable 'ParamName', paramValue pairs
+            f_unprocessed_inputs = find(~processed_inputs);
+            f_pnampval = obj.find_paramname_paramvalue(...
+                varargin{~ processed_inputs});
+            f_pnampval = f_unprocessed_inputs(f_pnampval);
+            propname(f_pnampval+1) = varargin(f_pnampval);
+            processed_inputs(f_pnampval) = true;
+            processed_inputs(f_pnampval + 1) = true;
+            expand_inputs(f_pnampval + 1) = true;
+
+            % keep value of all assignable name=value pairs
+            f_unprocessed_inputs = find(~processed_inputs);
+            f_namval = obj.find_name_value(varargin{~processed_inputs});
+            f_namval = f_unprocessed_inputs(f_namval);
+            processed_inputs(f_namval) = true;
+            processed_inputs(f_namval + 1) = true;
+            propname(f_namval + 1) = varargin(f_namval);
+            propname(f_namval + 1) = cellfun(@char,...
+                propname(f_namval + 1), UniformOutput=false);
+
+            % cell inputs
+            f_unprocessed_inputs = find(~processed_inputs);
+            [f_cell_inputs, assignable, cell_names] = ...
+                obj.find_cell(varargin{~processed_inputs});
+            f_cell_inputs = f_unprocessed_inputs(f_cell_inputs);
+            expand_inputs(f_cell_inputs) = true;
+            processed_inputs(f_cell_inputs(assignable)) = true;
+            propname(f_cell_inputs(assignable)) = cell_names;
+
+            % handle class inputs
+            f_unprocessed_inputs = find(~processed_inputs);
+            [f_handle_inputs, assignable, handle_names] =...
+                obj.find_handle(varargin{~processed_inputs});
+            f_handle_inputs = f_unprocessed_inputs(f_handle_inputs);
+            expand_inputs(f_handle_inputs) = true;
+            processed_inputs(f_handle_inputs(assignable)) = true;
+            propname(f_handle_inputs(assignable)) = handle_names(assignable);
+
+            % remove all inputs given after 'NoExpand'
+            f_expand = find(strcmp('NoExpand',varargin),1,'first');
             if ~isempty(f_expand) 
-                obj(1).unprocessed_construction_inputs(f_expand(1)) = [];
-                varargin(f_expand(1):nin) = [];
-            end
-            if isempty(varargin)
-                return
+                expand_inputs(f_expand:end) = false;
             end
 
-            % figure out which are the non scalar expanded input
-            expand_var = cellfun(@(x) (iscell(x) || isa(x,'handle') )...
-                && ~isscalar(x), varargin);
-            if any(expand_var)
+            % don't expand scalar inputs
+            f_scalar = cellfun(@isscalar, varargin);
+            expand_inputs(f_scalar) = false;
+    
+            %%% create object array
+            if any(expand_inputs)
                 % get size of expanded variables
-                siz_nscal = cellfun(@size,varargin(expand_var), ...
+                siz_nscal = cellfun(@size,varargin(expand_inputs), ...
                     'UniformOutput', false);
                 % make sure their sizes match
                 assert(isscalar(siz_nscal) || isequal(siz_nscal{:}),...
                     'Solver:NonMatchingInputSize',...
                     'Size of all non-scalar input should match')
                 siz_obj = num2cell(siz_nscal{1});
-                obj(siz_obj{:}) = copy(obj);
+                obj(siz_obj{:}) = feval(class(obj(1)));
                 for co = 2:numel(obj)-1 % needed for heterogeneous classes
-                    obj(co) = copy(obj(1));
+                    obj(co) = feval(class(obj(1)));
                 end
             end
+
+            %%% assign inputs
+            f_remove = cellfun(@isempty, propname);
+            propname(f_remove) = [];
+            assign_vars = varargin;
+            assign_vars(f_remove)=[];
+            expand_inputs(f_remove) = [];
+            exp_states = {'NoExpand',[]};
+            expand_inputs = exp_states(expand_inputs + 1);
+            for ci = 1:numel(propname)
+                obj.assign_property(propname{ci}, assign_vars{ci},...
+                    expand_inputs{ci})
+            end
+            allprops = obj.find_assignable_properties();
+            obj(1).unassigned_properties = setdiff(allprops, propname);
+            obj(1).unprocessed_construction_inputs = ...
+                varargin(~ processed_inputs);
+
+            obj.init_handle_properties();
         end
     end
     methods(Access = public, Sealed)
+        function init_handle_properties(obj)
+            if isscalar(obj)
+                return
+            end
+            propnames = obj(1).unassigned_properties;
+            f_handle = cellfun(@(x) isa(obj(1).(x), 'handle'), propnames);
+            propnames = propnames(f_handle);
+            for co=2:numel(obj)
+                for cp=1:numel(propnames)
+                    obj(co).(propnames{cp}) =...
+                        feval(class(obj(1).(propnames{cp})));
+                end
+            end
+        end
+        function propnames = find_assignable_properties(obj)
+            mc = metaclass(obj);
+            propnames = {mc.PropertyList.Name};
+            f_props = strcmp({mc.PropertyList.SetAccess},'public') & ...
+                ~[mc.PropertyList.Dependent] & ...
+                ~[mc.PropertyList.Constant] ;
+            propnames = propnames(f_props);
+        end
+        function [propnames, props_class] =...
+            find_assignable_handle_properties(obj)
+            propnames = obj.find_assignable_properties();
+            mc = metaclass(obj);
+            plist = mc.PropertyList;
+            allprops = {plist.Name};
+            [~, f_assignable] = intersect(allprops,propnames,'stable');
+            plist = plist(sort(f_assignable));
+            val = [plist.Validation];
+            val_class = [val.Class];
+            props_class = {val_class.Name};
+            [props_class,idx] = unique(props_class,'stable');
+            propnames = propnames(idx);
+        end
+        function fpars = find_paramname_paramvalue(obj,varargin)
+            propnames = obj.find_assignable_properties;
+
+            % find string or character inputs that match assignable
+            % property names
+            fpars = find(cellfun(@(x) ischar(x) &&...
+                any(strcmp(x,propnames)),varargin));
+
+            % check paramter names are not consecutive
+            fpars(diff(fpars)<2) = [];
+
+            % check parameter name is not last input
+            fpars(fpars == numel(varargin))=[];
+        end
+
+        function fpars = find_name_value(obj,varargin)
+            propnames = obj.find_assignable_properties;
+
+            % find string or character inputs that match assignable
+            % property names
+            fpars = find(cellfun(@(x) isstring(x) &&...
+                any(strcmp(x,propnames)),varargin));
+
+            % check paramter names are not consecutive
+            fpars(diff(fpars)<2) = [];
+
+            % check parameter name is not last input
+            fpars(fpars == numel(varargin))=[];
+        end
+        
+        function [f_handle, assignable, prop_names] = find_handle(obj,varargin)
+            [hpropnames, hpropclass] = obj.find_assignable_handle_properties();
+            f_handle = find(cellfun(@(x) isa(x,'handle'), varargin));
+            handle_inputs = varargin(f_handle);
+            assignable = false(size(handle_inputs));
+            prop_names = cell(size(handle_inputs));
+            for ci = 1:numel(handle_inputs)
+                fprop=cellfun(@(x) isa(handle_inputs{ci},x), hpropclass);
+                if any(fprop)
+                    assignable(ci) = true;
+                    fprop = find(fprop,1,'first');
+                    prop_names(ci) = hpropnames(fprop);
+                end
+            end
+        end
+        function [f_cell, assignable, prop_names] = find_cell(obj, varargin)
+            [hpropnames, hpropclass] = obj.find_assignable_handle_properties();
+            f_cell = find(cellfun(@iscell, varargin));
+            cell_inputs = varargin(f_cell);
+            prop_names = cell(size(cell_inputs));
+            cell_is_assignable = false(size(cell_inputs));
+            for cc = 1:numel(f_cell)
+                cur_cell = cell_inputs{cc};
+                if ~all(cellfun(@(x) isa(x,'handle'), cur_cell))
+                    continue
+                end
+                cell_classes = cellfun(@class, cur_cell,...
+                    'UniformOutput',false);
+                if ~isequal(cell_classes{:})
+                    continue
+                end
+                cur_class = cell_classes{1};
+                fmatch = strcmp(cur_class, hpropclass);
+                if any(fmatch)
+                    prop_names(cc) = hpropnames(fmatch);
+                    cell_is_assignable(cc) = true;
+                end
+            end
+            assignable = cell_is_assignable;
+            prop_names = prop_names(cell_is_assignable);
+        end
+        function warn_unprocessed(obj)
+            unhandled = obj(1).unprocessed_construction_inputs;
+            if ~isempty(unhandled)
+                if numel(unhandled) == 1
+                    inp_num_str = sprintf('%d',unhandled);
+                else
+                    inp_num_str = sprintf('%d, ',unhandled(1:end-1));
+                    inp_num_str(end-1:end)=[];
+                    inp_num_str = [inp_num_str ' and ' sprintf('%d',unhandled(end))];
+                end
+                msg_id = 'ClassParamsInputHandling:unhadled_inputs';
+                msg = ['Could not handle inputs number ', inp_num_str];
+                warning(msg_id, msg)
+            end
+        end
+
         function assign_property(obj, var_name, var, varargin)
 % Assign elements of an array to property of object array
 %

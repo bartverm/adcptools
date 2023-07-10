@@ -1,8 +1,6 @@
 classdef Regularization <...
-        handle &... % handle object
         helpers.ArraySupport &... % add array functionality
-        matlab.mixin.Heterogeneous &...  % allow arrays of different subclasses
-        helpers.ClassParamsInputHandling % add support for class and name-value arguements
+        matlab.mixin.Heterogeneous  % allow arrays of different subclasses
 
     properties(SetObservable)
         bathy (1,1) Bathymetry = BathymetryScatteredPoints
@@ -76,14 +74,6 @@ classdef Regularization <...
         end
     end
     methods
-        function obj = Regularization(varargin)
-            % call array constructor
-            obj = obj@helpers.ArraySupport(varargin{:})
-                      
-            obj.parse_class_params_inputs(varargin{:});
-            
-
-        end
         function names_all = get.names_all(obj)
             % -> TaylorBasedRegular.
             flat_names = obj.flatten_names();

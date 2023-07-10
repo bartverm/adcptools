@@ -87,7 +87,7 @@ classdef LoessNNInterpolator < Interpolator
             obj.update_int=true; % makes sure smoother is called upon next interpolation
         end
         function make_interpolant(obj) % Smooth points and create the interpolant
-
+            assert(~isempty(obj.known), 'Please set known values to use interpolator')
             val=loess(obj.known(1:end-1,:)',... % call the loess function
                 obj.known(end,:)',...
                 obj.known(1:end-1,:)',...
