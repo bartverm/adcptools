@@ -352,7 +352,7 @@ classdef TaylorModel < DataModel
 
                 % order 1
                 idx = 2;
-                vars_ord1 = find(lo(:,comp)>1);
+                vars_ord1 = find(lo(:,comp)>0);
                 for cv = 1:numel(vars_ord1)
                     cur_var = vars_ord1(cv);
                     var_name = coord_names{cur_var};
