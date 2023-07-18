@@ -1,18 +1,20 @@
-classdef TaylorModel < VelocityModel
+classdef TaylorModel < DataModel
     % Velocity model based on Taylor expansions.
     %
     %   TaylorModel properties:
+    %   time_order - expand to given orders in time
     %   s_order - expand to given orders in s coordinate
     %   n_order - expand to given orders in n coordinate
     %   z_order - expand to given orders in z coordinate
     %   sigma_order - expand to given orders in sigma coordinate
-    %   time_order - expand to given orders in time
     %
     %   TaylorModel methods:
-    %   get_velocity - return velocity based on model parameters
     %
-    %  see also: DataModel
-    
+    %  see also: VelocityModel, DataModel
+    properties(Constant)
+        var_names = {'t', 's', 'n', 'z', 'sig'};
+    end
+
     properties
         % TaylorModel/time-order order of expansion in time
         %
@@ -131,6 +133,143 @@ classdef TaylorModel < VelocityModel
     end
 
     methods
+        function set.time_order(obj,val)
+            obj.check_order(val);
+            obj.time_order = val;
+        end
+        function set.s_order(obj,val)
+            obj.check_order(val);
+            obj.s_order = val;
+        end
+        function set.n_order(obj,val)
+            obj.check_order(val);
+            obj.n_order = val;
+        end
+        function set.z_order(obj,val)
+            obj.check_order(val);
+            obj.z_order = val;
+        end
+        function set.sigma_order(obj,val)
+            obj.check_order(val);
+            obj.sigma_order = val;
+        end
+        function val = find_par(obj,...
+                order_in,... % expansion order
+                comp_in,... % component
+                vars_in)    % expansion variable
+            % select given parameters
+            %
+            % idx = obj.find_par(order) find index of terms with the given
+            %   order (0, 1 or 2). If it is empty, returns terms of all
+            %   orders
+            %
+            % idx = obj.find_par(order, comp) find index of terms of given
+            %   order and component (one of obj.component_names). If empty
+            %   returs all 
+            %
+            % idx = obj.find_par(order, comp, var) find index of terms of
+            %   given order, component, and expanded to the given variable.
+            %   For second order, all double and cross-derivatives with the
+            %   given variable are returned
+            all_comps = obj.get_component_names;
+            all_vars = obj.var_names;
+            if nargin < 2
+                val = true(sum(obj.npars),1);
+                return
+            end
+            if isempty(order_in)
+                order_in = [0 1 2];
+            end
+            if nargin < 3 || isempty(comp_in)
+                comp_in = all_comps;
+            end
+            if nargin < 4 || isempty(vars_in)
+                vars_in = all_vars;
+            end
+            assert(iscellstr(comp_in) || ischar(comp_in),...
+                'Components should be given as char or cell of chars')
+            if ischar(comp_in)
+                comp_in = {comp_in};
+            end
+            assert(all(ismember(comp_in, all_comps)),...
+                ['Components should be one or more of ''',...
+                strjoin(all_comps),...
+                ''''])
+            assert(iscellstr(vars_in) || ischar(vars_in),...
+                'Expansion variable should be a char or a cell of chars')
+            if ischar(vars_in)
+                vars_in = {vars_in};
+            end
+            assert(all(ismember(vars_in, all_vars)),...
+                ['Expansion variables should be one or more of ''',...
+                strjoin(all_vars),...
+                ''''])
+            assert(isnumeric(order_in),'Order should be numeric')
+            assert(isreal(order_in), 'Order should be a real number')
+            assert(all(isfinite(order_in)), 'Order should be finite')
+            assert(all(order_in >= 0, 'all'), 'Order should not be negative')
+            assert(all(order_in < 3, 'all'), 'Order cannot be larger than two');
+            assert(all(floor(order_in)==order_in,'all'),...
+                'Order should contain only integer numbers')
+            lo = obj.lump_orders();
+            np = sum(obj.get_npars_tay);
+            nc = obj.ncomponents;
+            vnames = obj.var_names;
+            val = false(np,1);
+           
+            pos = 1;
+            for comp = 1:nc
+                comp_name = all_comps(comp);
+
+                % order 0
+                ord = 0;
+                if ismember(ord, order_in) &&...
+                        ismember(comp_name, comp_in)
+                    val(pos) = true;
+                end
+                pos = pos + 1;
+                
+                % order 1
+                ord = 1;
+                exp_vars = find(lo(:,comp)>0);
+                for cvar = 1:numel(exp_vars)
+                    cur_var = exp_vars(cvar);
+                    var_name = vnames(cur_var);
+                    if ismember(ord, order_in) &&...
+                            ismember(comp_name, comp_in) &&...
+                            ismember(var_name, vars_in)
+                        val(pos) = true;
+                    end
+                    pos = pos + 1;
+                end
+
+                % order 2
+                ord = 2;
+                exp_vars = find(lo(:,comp)>1);
+                for cvar1 = 1:numel(exp_vars)
+                    cur_var1 = exp_vars(cvar1);
+                    var_name1 = vnames(cur_var1);
+                    if ismember(ord, order_in) &&...
+                            ismember(comp_name, comp_in) &&...
+                            ismember(var_name1, vars_in)
+                        val(pos) = true;
+                    end
+                    pos = pos + 1;
+                    for cvar2 = cvar1+1:numel(exp_vars)
+                        cur_var2 = exp_vars(cvar2);
+                        var_name2 = vnames(cur_var2);
+                        if ismember(ord, order_in) &&...
+                                ismember(comp_name, comp_in) &&...
+                                ismember(var_name1, vars_in) &&...
+                                ismember(var_name2, vars_in)
+                            val(pos) = true;
+                        end
+                        pos = pos + 1;
+                    end                     
+                end                
+            end
+            
+        end
         function val = get.npars_per_order(obj)
             lo = obj.lump_orders();
             nc = obj.ncomponents;
@@ -172,35 +311,69 @@ classdef TaylorModel < VelocityModel
                     end
                 end
             end
-            %M = obj.rotate_matrix(M);
         end
-        function par_name = tayl_name(obj, comp, coord, ord)
+    end
+    methods(Static)
+        function par_name = tayl_name(comp, coord, ord)
             if ord == 0
                 par_name = sprintf('%s', [comp, '0']);
-            else
-                par_name = sprintf('d^%u%s/d%s^%u', ord, comp, coord, ord);
+            elseif ord == 1
+                par_name = sprintf('d%s/d%s', comp, coord);
+            elseif ord == 2
+                if iscell(coord)
+                    par_name = sprintf('d^2%s/d%sd%s', comp, coord{1},...
+                        coord{2});
+                else
+                    par_name = sprintf('d^2%s/d%s^2',comp, coord);
+                end
             end
         end
 
-
     end
     methods (Access = protected)
+        function check_order(obj,val)
+            assert(numel(val) == obj.ncomponents, 'The number of elements should match the number of components')
+        end
         function names = get_names(obj)
-            % Only supports diagonal Hessian matrices
-
             % Forms a cell array of dimensions 1xobj.ncomponents
             % Elements of the cell array are cell arrays containing the
             % Taylor expansion names per component
-            orders = {obj.time_order, obj.s_order, obj.n_order, obj.z_order, obj.sigma_order};
-            coord_names = {'t', 'x', 'y', 'z', 'sig'};
+            coord_names = obj.var_names;
             names = cell([obj.ncomponents, 1]);
-            for comp = 1:obj.ncomponents
-                names{comp}{1} = [obj.components{comp}, '0']; % Spatially constant part
+            lo = obj.lump_orders;
+            ncomp = obj.ncomponents;
+            npars = obj.get_npars_tay; % calling protected method for subclasses
+            for comp = 1:ncomp
+                comp_name = obj.component_names{comp};
+                names{comp} = cell(1,npars(comp));
+
+                % order zero
+                names{comp}{1} = [obj.component_names{comp}, '0']; % Spatially constant part
+
+                % order 1
                 idx = 2;
-                for coord = 1:length(orders)
-                    cur_order = orders{coord}(comp);
-                    for ord = 1:cur_order
-                        names{comp}{idx} = obj.tayl_name(obj.components{comp}, coord_names{coord}, ord);
+                vars_ord1 = find(lo(:,comp)>1);
+                for cv = 1:numel(vars_ord1)
+                    cur_var = vars_ord1(cv);
+                    var_name = coord_names{cur_var};
+                    names{comp}{idx} = obj.tayl_name(comp_name,...
+                        var_name, 1);
+                    idx = idx + 1;
+                end
+
+                % order 2
+                vars_ord2 = find(lo(:,comp)>1);
+                for cv1 = 1:numel(vars_ord2)
+                    cur_var1 = vars_ord2(cv1);
+                    var_name1 = coord_names{cur_var1};
+                    names{comp}{idx} = obj.tayl_name(comp_name,...
+                        var_name1, 2); % diagonal terms
+                    idx = idx + 1;
+                    for cv2 = cv1+1:numel(vars_ord2)
+                        cur_var2 = vars_ord2(cv2);
+                        var_name2 = coord_names{cur_var2};
+                        names{comp}{idx} = obj.tayl_name(comp_name,...
+                            {var_name1, var_name2}, 2); % cross derivatives
                         idx = idx + 1;
                     end
                 end

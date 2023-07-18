@@ -10,43 +10,59 @@ classdef DataModel <...
     %   implement a new velocity model.
     %
     %   DataModel properties:
-    %   npars - number of parameters in the velocity model
+    %   ncomponents - number of components in the model
+    %   npars - number of parameters for each component
+    %   names - names of parameters per component
+    %   all_names - all model parameter names
     %
     %   DataModel methods:
-    %   get_velocity - return velocity based on model parameters
+    %   get_data - reconstructs data from model parameters
     %
-    %  see also: TaylorModel, TidalModel, DataSolver
+    %  see also: VelocityModel, TaylorModel, TidalModel, DataSolver
 
     properties(Dependent, SetAccess=private)
         % DataModel/npars (read only) number of parameters in the model
         %
         %   1xNCOMP row vector holding the number of model parameters for each
-        %   data components. For DataModel this always returns [1 1
-        %   1] since this class implements the simplest model, i.e. the
-        %   velocity is equal to the mean velocity.
+        %   data components. 
         %
         %   see also: DataModel, get_model
         npars
 
-        % DataModel/ncomponents (read only) components in data
+        % DataModel/ncomponents (read only) components in model
         %
-        %   3x1 row vector holding the number of model parameters for each
-        %   velocity components. For DataModel this always returns [1 1
-        %   1] since this class implements the simplest model, i.e. the
-        %   velocity is equal to the mean velocity.
+        %   scalar value holding the number of components considered in the
+        %   model
         %
         %   see also: DataModel, get_model
         ncomponents
 
+        % DataModel/component_names
+        %
+        %   ncomponent x 1 cell holding the name of components in the model.
+        %
+        %   see also: DataModel, names
+        component_names
+        
+        % DataModel/names (read only) of parameters per component
+        %
+        %   ncomponents x 1 cell holding the names of the parameters in the
+        %   model for each component.
+        %
+        % see also: DataModel, all_names
         names
 
+        % DataModel/all_names (read only) of parameters
+        %
+        %   1 x sum(npars) cell array with the names of all the parameters
+        %   in the model
+        %
+        % see also: DataModel, names
         all_names
     end
     methods
-        % function obj = DataModel(varargin)
-        %     obj = obj@helpers.ArraySupport(varargin{:});
-        % end
-        function [dat, cov_dat, n_bvels] = get_data(obj, pars, cov_pars, n_bvels, d_time, d_s, d_n, d_z, d_sigma)
+        function [dat, cov_dat, n_bvels] = get_data(obj, pars, cov_pars,...
+                n_bvels, d_time, d_s, d_n, d_z, d_sigma)
             % Compute data values from model parameters.
             %
             %   dat = get_data(obj, pars) computes data based on model
@@ -107,7 +123,7 @@ classdef DataModel <...
             end
             M=Mnew;
 
-            % apply model to obtain vel (permutations for use of pagemtimes)
+            % apply model to obtain vel
             dat = helpers.matmult(M,pars);
 
             % apply model to obtain covariance matrix
@@ -138,6 +154,14 @@ classdef DataModel <...
                 obj.npars),...
                 ['Number of parameter names for each component should',...
                 ' match the number of parameters for each component.'])
+        end
+        function val = get.component_names(obj)
+            val = obj.get_component_names();
+            assert(iscellstr(val), ...
+                'components must be given as a cell of chars') %#ok<ISCLSTR>
+            assert(numel(val)==obj.ncomponents,...
+                ['number of component names should match number of ',...
+                'components'])
         end
         function val = get.all_names(obj)
             val = [obj.names{:}];
@@ -174,5 +198,6 @@ classdef DataModel <...
         get_names
         get_ncomponents
         get_npars
+        get_component_names
     end
 end

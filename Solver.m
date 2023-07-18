@@ -305,13 +305,20 @@ classdef Solver < helpers.ArraySupport
         function p = solve(obj, M, b)
             Np = size(M,2);
             % Generate first guess for p <-> estimate parameters
-            p = nan([Np,length(obj.opts.reg_pars)]);
+            reg_pars = {obj.regularization.weight};
+            siz_reg = cellfun(@size,reg_pars,'UniformOutput',false);
+            assert(isscalar(reg_pars) || isequal(siz_reg{:}),...
+                'Weights of regression objects must have the same size')
+            reg_pars = vertcat(reg_pars{:});
+            n_sols = size(reg_pars,1);
+            n_regs = size(reg_pars,2);
+            p = nan([Np,n_sols]);
             Mg = M'*M; % Expensive operation -> minimize number of calls
-            for idx = 1:length(obj.opts.reg_pars)
-                rp = obj.opts.reg_pars{idx};
+            for idx = n_sols
+                rp = reg_pars(idx,:);
                 Cg = sparse(0);
-                for reg_idx = 1:numel(obj.regularization.Cg)
-                    Cg = Cg + rp(reg_idx)*obj.regularization.Cg{reg_idx};
+                for reg_idx = 1:n_regs
+                    Cg = Cg + rp(reg_idx)*obj.regularization(reg_idx).Cg;
                 end
                 A = Mg + Cg; % Data plus constraints
                 rhs = M'*b + rp(end)*obj.regularization.C{end}'*obj.regularization.rhs;

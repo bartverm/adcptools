@@ -1,5 +1,5 @@
-classdef TidalModel < VelocityModel
-    % Velocity model to include tidal dynamics
+classdef TidalModel < DataModel
+    % Tidal model of the data
     %
     %   TidalModel properties:
     %   constituents
@@ -8,7 +8,10 @@ classdef TidalModel < VelocityModel
     %   get_tidal_pars - compute the tidal amplitude and phase
     %
     %   see also: DataModel, TaylorModel
-
+    properties(Constant)
+        supported_constituents = {'M2','S2','N2','K1','M4','O1','M6',...
+            'MK3','S4','MN4'}
+    end
     properties
         % TidalModel/constituents constituents to fit data with
         %
@@ -38,6 +41,63 @@ classdef TidalModel < VelocityModel
 
 
     methods
+        function set.constituents(obj,val)
+            assert(ischar(val) || iscellstr(val),...
+                'Give constituents as char or cell of chars') %#ok<ISCLSTR>
+            if ischar(val)
+                val = {val};
+            end
+            assert(all(ismember(val, obj.supported_constituents)),...
+                'Not all given constituents are supported')
+            obj.constituents = val;
+        end
+        function val = find_par(obj, comp, const)
+            all_comps = obj.get_component_names;
+            all_const = [{'M0'}, obj.supported_constituents];
+            if nargin < 3 || isempty(const)
+                const = obj.constituents;
+            end
+            if nargin < 2 || isempty(comp)
+                comp = obj.component_names;
+            end
+            assert(ischar(const) || iscellstr(const),...
+                'Give constituents as char or cell of chars') %#ok<ISCLSTR>
+            if ischar(const)
+                const = {const};
+            end
+            assert(all(ismember(const, all_const)),...
+                'Not all given constituents are supported')
+            
+            assert(iscellstr(comp) || ischar(comp),...
+                'Components should be given as char or cell of chars') %#ok<ISCLSTR>
+            if ischar(comp)
+                comp = {comp};
+            end
+            assert(all(ismember(comp, all_comps)),...
+                ['Components should be one or more of ''',...
+                strjoin(all_comps),...
+                ''''])
+            
+            val = false(sum(obj.get_npars_tid),1);
+            pos = 1;
+            for cc = 1:obj.ncomponents
+                comp_name = all_comps(cc);
+                if ismember(comp_name, comp) &&...
+                    ismember({'M0'}, const)
+                    val(pos) = true;
+                end
+                pos = pos + 1;
+
+                for ct = 1:numel(obj.constituents)
+                    const_name = obj.constituents(ct);
+                    if ismember(comp_name, comp) &&...
+                        ismember(const_name, const)
+                        val(pos+[0 1]) = true;
+                    end
+                    pos = pos + 2;
+                end
+            end
+        end
         function M = get_model(obj, d_time, ~, ~, ~, ~)
             % This model fits the following parameters to the velocity
             % within each cell:
@@ -67,7 +127,6 @@ classdef TidalModel < VelocityModel
                         2*pi/obj.periods(c_comp,c_const)*d_t);
                 end
             end
-            %M = obj.rotate_matrix(M);
         end
 
         function [pars_h, cov_pars_h] = get_tidal_pars(obj, pars, cov_pars)
@@ -137,11 +196,11 @@ classdef TidalModel < VelocityModel
             const_names = obj.constituents; % cell array of length n_comp containing constituents of each component
             names = cell([obj.ncomponents, 1]);
             for comp = 1:obj.ncomponents
-                names{comp}{1} = [obj.components{comp}, ': M0']; % Subtidal part
+                names{comp}{1} = [obj.component_names{comp}, ': M0']; % Subtidal part
                 idx = 2;
                 for const = 1:length(const_names)
-                    names{comp}{idx} = [obj.components{comp}, ': ', const_names{const}, 'a']; % Cosine part
-                    names{comp}{idx+1} = [obj.components{comp}, ': ', const_names{const}, 'b']; % Cosine part
+                    names{comp}{idx} = [obj.component_names{comp}, ': ', const_names{const}, 'a']; % Cosine part
+                    names{comp}{idx+1} = [obj.component_names{comp}, ': ', const_names{const}, 'b']; % Cosine part
                     idx = idx + 2;
                 end
             end

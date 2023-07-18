@@ -50,7 +50,7 @@ classdef SolverOptions < handle
 
         % Regularization options
 
-        reg_pars (1,:) cell = {[100, 100, 5, 5, 100]}; % Regularization parameters. Can be cell array of double vectors of same length
+        % reg_pars (1,:) cell = {[100, 100, 5, 5, 100]}; % Regularization parameters. Can be cell array of double vectors of same length
         
         % Affects both reg_pars and reg_pars_sens
         no_flow = {'right', 'surface', 'left', 'bottom'}; % Declare no-flow boundaries (affects all computations)

@@ -7,7 +7,9 @@ classdef Regularization <...
         xs (1,1) XSection = XSection
         mesh (1,1) Mesh = SigmaZetaMesh
         model (1,1) DataModel = VelocityModel
-        weight (1,:) double
+        weight (1,:) double {mustBeNonempty,...
+            mustBeFinite,...
+            mustBeNonnegative} = 1
 
     end
     properties(SetAccess = protected)
@@ -18,17 +20,36 @@ classdef Regularization <...
         assembled (1,1) logical = false
     end
 
-    properties(Dependent)
+    properties(GetAccess = public, SetAccess = private, Dependent)
+        Cg_weight (:,:) double
+        rhs_weight (:,:) double
         names_all (1,:) cell
         neighbors (:,1) cell
         domains (:,1) cell
-
         zb0 (1,:) double
         zbxy (2,:) double
         zbsn (2,:) double
-
+    end
+    methods
+        function val = get.Cg_weight(obj)
+            if isscalar(obj)
+                val = obj.Cg .* shiftdim(obj.weight, -1);
+                return
+            end
+            obj.check_regpars;
+            val = obj(1).Cg_weight;
+            for co = 2:numel(obj)
+                val = val + obj(co).Cg_weight;
+            end
+        end
     end
     methods(Access = protected)
+        function check_regpars(obj)
+            reg_pars = {obj.weight};
+            siz_reg = cellfun(@size,reg_pars,'UniformOutput',false);
+            assert(isscalar(reg_pars) || isequal(siz_reg{:}),...
+                'Weights of regression objects must have the same size')
+        end
         function assemble_matrix_private(obj)
             obj.assembled = true;
         end

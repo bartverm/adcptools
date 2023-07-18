@@ -29,6 +29,25 @@ classdef TaylorTidalModel < TaylorModel & TidalModel
 
 
     methods
+        function val = find_par(obj,ord,comp,vars,const)
+            f_tayl = find_par@TaylorModel(obj, ord, comp, vars);
+            np_tayl = obj.get_npars_tay();
+            f_tid = find_par@TidalModel(obj,comp, const);
+            val = false(sum(obj.npars),1);
+            pos_tayl = 1;
+            pos_tayltid = 1;
+            pos_tid = 1;
+            for cc = 1:obj.ncomponents
+                for par = 1:np_tayl(cc)
+                    if f_tayl(pos_tayl)
+                        val(pos_tayltid+(0:2)) = f_tid(pos_tid+(0:2));
+                    end
+                    pos_tayltid = pos_tayltid + 3;
+                    pos_tayl = pos_tayl + 1; 
+                end
+                pos_tid = pos_tid + 3;
+            end
+        end
         function M = get_model(obj, d_t, d_s, d_n, d_z, d_sigma)
             %   [Mu, Mv, Mw]=get_model(obj, time, d_s, d_n, d_z, d_sigma)
             %   procuces the model matrices consisting of Kronecker
@@ -48,10 +67,6 @@ classdef TaylorTidalModel < TaylorModel & TidalModel
                 M(:,:,dim) = helpers.kron_modified_mat(S(:,:,dim), T(:,:,dim));
             end
         end
-
-
-
-
     end
 
 
