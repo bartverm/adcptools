@@ -25,7 +25,7 @@ classdef ArraySupport < handle & matlab.mixin.Copyable
 %               obj = obj@helpers.ArraySupport(varargin{:});
 %           end
 %  
-    properties(Access = protected)
+    properties(Access = protected, Transient)
         unprocessed_construction_inputs (1,:) cell = {};
     end
     methods
