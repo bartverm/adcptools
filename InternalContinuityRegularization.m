@@ -62,6 +62,8 @@ classdef InternalContinuityRegularization < TaylorBasedRegularization
             val = repmat(val, [npars_ne, 1, 1]);
 
             % add correlation with water level variation for tidal model
+            % these are added to horizontal derivatives to s and n
+            % coefficients 1 and 3 (see above du/ds, dv/dn)
             if isa(obj.model,'TidalModel')
                 assert(isa(wl,'VaryingWaterLevel') &&...
                     isa(wl.model,'TidalModel'),...

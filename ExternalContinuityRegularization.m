@@ -1,5 +1,10 @@
 classdef ExternalContinuityRegularization < TaylorBasedRegularization
-methods (Access = protected)
+
+    properties
+        nscale(1,1) double {mustBeFinite, mustBeReal} = 1;
+        sscale(1,1) double {mustBeFinite, mustBeReal} = 1;
+    end
+    methods (Access = protected)
         function assemble_matrix_private(obj)
             assemble_matrix_private@TaylorBasedRegularization(obj);
             if ~obj.model_is_taylor
@@ -16,59 +21,96 @@ methods (Access = protected)
             end
             wl = obj.bathy.water_level;
             D0 = obj.get_subtidal_depth();
-            const_names = obj.get_const_names(); % Cell array
             D0s = -obj.zbsn(1,:);
             D0n = -obj.zbsn(2,:);
-            
-            sig_center = obj.mesh.sig_center;
+
+            sig_center = reshape(obj.mesh.sig_center,1,[]);
             n_center = obj.mesh.n_middle(obj.mesh.col_to_cell);
-            nscale = 1;
-            sscale = 1;
 
             nb = obj.neighbors;
             dom = obj.domains;
-            rows = []; cols = []; terms = [];
-            pnames = obj.names_all;
-            row_idx = 0;
-            for cell_idx = 1:obj.mesh.ncells
-                %cell_idx
-                if dom(cell_idx) == 0
-                    % Extended continuity only works on interior of domain.
-                    dsig = sig_center(nb(2, cell_idx))-sig_center(nb(4, cell_idx));
-                    dn = n_center(nb(1, cell_idx))-n_center(nb(3, cell_idx));
-                    col = cell([1,numel(const_names)]);
-                    term = cell([1,numel(const_names)]);
-                    row = cell([1,numel(const_names)]);
-                    for eq = 1:numel(const_names)
-                        col{eq} = [find(strcmp(pnames, ['cell ',num2str(cell_idx),': d^1u/dx^1', const_names{eq}])) , ...
-                            find(strcmp(pnames, ['cell ',num2str(nb(2, cell_idx)),': u0', const_names{eq}])) , ...
-                            find(strcmp(pnames, ['cell ',num2str(nb(4, cell_idx)),': u0', const_names{eq}])) , ...
-                            find(strcmp(pnames, ['cell ',num2str(nb(1, cell_idx)),': v0', const_names{eq}])) , ...
-                            find(strcmp(pnames, ['cell ',num2str(nb(3, cell_idx)),': v0', const_names{eq}])) , ...
-                            find(strcmp(pnames, ['cell ',num2str(nb(2, cell_idx)),': v0', const_names{eq}])) , ...
-                            find(strcmp(pnames, ['cell ',num2str(nb(4, cell_idx)),': v0', const_names{eq}])) , ...
-                            find(strcmp(pnames, ['cell ',num2str(nb(2, cell_idx)),': w0', const_names{eq}])) , ...
-                            find(strcmp(pnames, ['cell ',num2str(nb(4, cell_idx)),': w0', const_names{eq}]))];
 
-                        term{eq} = [nscale*D0(cell_idx), nscale*(1-sig_center(cell_idx))*D0s(cell_idx)/dsig, -nscale*(1-sig_center(cell_idx))*D0s(cell_idx)/dsig,...
-                            sscale*D0(cell_idx)/dn, -sscale*D0(cell_idx)/dn, sscale*(1-sig_center(cell_idx))*D0n(cell_idx)/dsig, -sscale*(1-sig_center(cell_idx))*D0n(cell_idx)/dsig,...
-                            sscale*nscale/dsig, -sscale*nscale/dsig];
-                        if eq > 1 % For tidal constituents, correlations between water level and velocity in sigma coordinates have to be included.
-                            col{eq}(numel(col{eq}):(numel(col{eq})+1)) = [find(strcmp(pnames, ['cell ',num2str(cell_idx),': d^1u/dx^1', const_names{1}])),...
-                                find(strcmp(pnames, ['cell ',num2str(cell_idx),': d^1u/dx^1', const_names{1}]))];
-                            term{eq}(numel(term{eq}):(numel(term{eq})+1)) = [nscale*wl.parameters(eq),...
-                                nscale*wl.parameters(eq)];
-                        end
-                        row{eq} = row_idx + eq*ones(size(col{eq}));
-                    end
-                    rows = [rows [row{:}]];
-                    cols = [cols [col{:}]];
-                    terms = [terms [term{:}]];
-                    row_idx = max(rows);
-                end
+            is_in = dom == 0;
+            n_in = sum(is_in);
+            dsig = sig_center(nb(2, is_in))-sig_center(nb(4, is_in));
+            dn = n_center(nb(1, is_in))-n_center(nb(3, is_in));
+            sig_center = sig_center(is_in);
+            D0 = D0(is_in);
+            D0s = D0s(is_in);
+            D0n = D0n(is_in);
+           
+            % number of parameters, when not taylor expanded
+            npars_ne = obj.model.npars_not_expanded;
+            assert(all(npars_ne == npars_ne(1)),...
+                'Number of non-expanded parameters per component should match')
+            npars_ne = npars_ne(1);
+            ncells = obj.mesh.ncells;
+            npars = obj.model.npars;
+            npars_total = sum(npars) * ncells;
+
+            par_idx = [...
+                find(obj.find_par(1,'u','s')),...
+                find(obj.find_par(0,'u')),...
+                find(obj.find_par(0,'v')),...
+                find(obj.find_par(0,'w'))
+                ];
+            par_idx = reshape(par_idx, npars_ne, ncells, 4);
+
+            col = cat(3,...
+                par_idx(:,       is_in , 1),... du/ds at cell
+                par_idx(:, nb(2, is_in), 2),... u top
+                par_idx(:, nb(4, is_in), 2),... u bottom
+                par_idx(:, nb(1, is_in), 3),... v right
+                par_idx(:, nb(3, is_in), 3),... v left
+                par_idx(:, nb(2, is_in), 3),... v top
+                par_idx(:, nb(4, is_in), 3),... v bottom
+                par_idx(:, nb(2, is_in), 4),... w top
+                par_idx(:, nb(4, is_in), 4) ... w bottom
+                );
+
+            row = repmat((1:npars_ne*n_in)',[1, 9]);
+            row = reshape(row,npars_ne,n_in,9);
+ 
+            val = cat(3,...
+                 obj.nscale * D0,... du/ds
+                 obj.nscale * (1 - sig_center) .* D0s ./ dsig,... du/dsig
+                -obj.nscale * (1 - sig_center) .* D0s ./ dsig,... du/dsig
+                 obj.sscale * D0 ./ dn,... dv/dn
+                -obj.sscale * D0 ./ dn,... dv/dn
+                 obj.sscale * (1 - sig_center) .* D0n ./ dsig,... dv/dsig
+                -obj.sscale * (1 - sig_center) .* D0n ./ dsig,... dv/dsig
+                 obj.sscale * obj.nscale ./ dsig,... dw/dsig
+                -obj.sscale * obj.nscale ./ dsig... dw/dsig
+                );
+            val = repmat(val, [npars_ne, 1, 1]);
+
+            % add correlation with water level variation for tidal model
+            % these are added to horizontal derivatives to s and n
+            % These are determined in coefficients 1 (du/ds) and 4 & 5
+            % (dv/dn)
+            if isa(obj.model,'TidalModel')
+                assert(isa(wl,'VaryingWaterLevel') &&...
+                    isa(wl.model,'TidalModel'),...
+                    ['A Tidal velocity model also requires a ',...
+                    'VaryingWaterLevel with an underlying tidal model'])
+                assert(isequal(...
+                    wl.model.constituents,...
+                    obj.model.constituents),...
+                    ['Constituents of water level model ',...
+                    'and data model should match'])
+                wl_pars = reshape(wl.parameters(2:npars_ne),[],1);
+                val(2:npars_ne,:,1) = val(2:npars_ne,:,1) +...
+                    obj.nscale*wl_pars; %du/ds
+                val(2:npars_ne,:,[4 5]) = val(2:npars_ne,:,[4 5]) * ...
+                    (1 + obj.nscale*wl_pars); % dv/dn (different than above
+                    % since derivative is computed as a difference)
             end
-            obj.C = sparse(rows, cols, terms, obj.mesh.ncells*numel(const_names), obj.mesh.ncells*sum(obj.model.npars));
+            obj.C = sparse(...
+                row(:), ...
+                col(:),...
+                val(:),...
+                n_in*npars_ne,...
+                npars_total);
         end
-
-end
+    end
 end
