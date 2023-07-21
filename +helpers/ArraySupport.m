@@ -46,7 +46,7 @@ classdef ArraySupport < handle
 %               obj = obj@helpers.ArraySupport(varargin{:});
 %           end
 %  
-    properties(Access = protected)
+    properties(Access = protected, Transient)
         unprocessed_construction_inputs (1,:) cell = {};
         unassigned_properties (1,:) cell = {};
     end

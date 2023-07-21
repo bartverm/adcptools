@@ -6,7 +6,7 @@
 
 %% Vessel mounted GPS positioning
 % The horizontal position of the ADCP can be controlled by setting the 
-% <matlab:doc('ADCP.vertical_position_provider') vertical_position_provider>
+% <matlab:doc('ADCP.horizontal_position_provider') horizontal_position_provider>
 % property in the <matlab:doc('ADCP') ADCP> object.
 
 %%

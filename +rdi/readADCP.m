@@ -119,7 +119,7 @@ nens=enscnt;                                                             % Calcu
 if nens<1                                                                  % If no ensmble is found
     error('readADCP:NoEnsemble','Could not find any valid ensemble')      % Generate error
 end
-disp(['Found ',num2str(nens),' valid ensebles'])                           % Display total number of valid ensembles
+disp(['Found ',num2str(nens),' valid ensembles'])                           % Display total number of valid ensembles
 clear enscnt
 dataout.FileNumber=fileid;
 for cntfiles=1:nValidFiles
