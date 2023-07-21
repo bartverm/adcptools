@@ -1,63 +1,93 @@
 classdef InternalContinuityRegularization < TaylorBasedRegularization
+% Impose continuity within a mesh cell
+    properties
+        nscale(1,1) double {mustBeFinite, mustBeReal} = 1;
+        sscale(1,1) double {mustBeFinite, mustBeReal} = 1;
+    end
     methods(Access=protected)
         function assemble_matrix_private(obj)
             assemble_matrix_private@TaylorBasedRegularization(obj);
-            if ~obj.model_is_taylor
-                return
-            end
-            if ~((obj.model.s_order(1) > 0) && (obj.model.n_order(2) > 0)...
-                    && (obj.model.sigma_order(3) > 0 ||...
-                    obj.model.z_order(3) > 0))
-                warning(['InternalContinuityRegularization:',...
-                    'TaylorOrderTooLow'],...
-                    ['Internal continuity matrix requires Taylor',...
-                    'expansion of first order or higher in all spatial',...
-                    'directions'])
-                return
-            end
+            assert(obj.model_is_velocity,...
+                "Regularization requires a VelocityModel");
+            assert(isa(obj.mesh, 'SigmaZetaMesh'), ...
+                "Only SigmaZetaMesh supported")
+
+            min_order = ...
+                [0 0 0;... % t
+                 1 0 1;... % s
+                 0 1 1;... % n
+                 0 0 0;... % z
+                 0 0 1]; % sigma
+
+            assert(all(obj.model.lumped_orders >= min_order,"all"),...
+                ['First order expansion needed for:\n',...
+                'u to s and sigma,\n',...
+                'v to n and sigma,\n',...
+                'w to sigma']);
+
             % Function that assembles cell-based continuity equation
             wl = obj.bathy.water_level;
 
-            nscale = 1; % B and L are possible lateral and longitudinal scaling factors
-            sscale = 1;
+            D0 = reshape(obj.get_subtidal_depth(),1,[]);
+            % const_names = obj.get_const_names(); % Cell array
+            D0s = reshape(-obj.zbsn(1,:),1,[]);
+            D0n = reshape(-obj.zbsn(2,:),1,[]);
+            sig = reshape(obj.mesh.sig_center,1,[]);
 
-            D0 = obj.get_subtidal_depth();
-            const_names = obj.get_const_names(); % Cell array
-            D0s = -obj.zbsn(1,:);
-            D0n = -obj.zbsn(2,:);
-            sig = obj.mesh.sig_center;
-            Cj = cell([obj.mesh.ncells,1]);
+            % number of parameters, when not taylor expanded
+            npars_ne = obj.model.npars_not_expanded;
+            assert(all(npars_ne == npars_ne(1)),...
+                'Number of non-expanded parameters per component should match')
+            npars_ne = npars_ne(1);
+            ncells = obj.mesh.ncells;
+            npars_total = sum(obj.model.npars) * ncells;
 
-            % C1 is block diagonal and can thus be assembled per cell
-            pnames = obj.flatten_names();
+            % find indices of parameters in regularization matrix
+            col =[find(obj.find_par(1, 'u', 's' )),... % du/ds
+                    find(obj.find_par(1, 'u', 'sig')),... % du/dsig
+                    find(obj.find_par(1, 'v', 'n'  )),... % dv/dn
+                    find(obj.find_par(1, 'v', 'sig')),... % dv/dsig
+                    find(obj.find_par(1, 'w', 'sig'))]; % dw/dsig
+            col = reshape(col,npars_ne,ncells,5);
+            row = repmat((1:npars_ne*ncells)',[1, 5]);
+            row = reshape(row,npars_ne,ncells,5);
 
-            col = cell([1, numel(const_names)]);
-            term = cell([1, numel(const_names)]);
-            for eq = 1:numel(const_names)
-                col{eq} = [find(strcmp(pnames, ['d^1u/dx^1', const_names{eq}])) , ...
-                    find(strcmp(pnames, ['d^1u/dsig^1', const_names{eq}])) , ...
-                    find(strcmp(pnames, ['d^1v/dy^1', const_names{eq}])) , ...
-                    find(strcmp(pnames, ['d^1v/dsig^1', const_names{eq}])) , ...
-                    find(strcmp(pnames, ['d^1w/dsig^1', const_names{eq}]))];
-                if eq > 1 % For tidal constituents, correlations between water level and velocity in sigma coordinates have to be included.
-                    col{eq}((numel(col{eq})+1):(numel(col{eq})+2)) =...
-                        [find(strcmp(pnames, ['d^1u/dx^1', const_names{1}])),...
-                        find(strcmp(pnames, ['d^1v/dy^1', const_names{1}]))];
-                end
+            % calculate coefficients of parameters in matrix
+            val = cat(3,...
+                    obj.nscale*D0,... %du/ds
+                    obj.nscale*(1-sig).*D0s,... %du/dsig
+                    obj.sscale*D0,... % dv/dn
+                    obj.sscale*(1-sig).*D0n,... % dv/dsig
+                    obj.sscale*obj.nscale*ones(size(sig))); %dw/dsig
+            val = repmat(val, [npars_ne, 1, 1]);
+
+            % add correlation with water level variation for tidal model
+            if isa(obj.model,'TidalModel')
+                assert(isa(wl,'VaryingWaterLevel') &&...
+                    isa(wl.model,'TidalModel'),...
+                    ['A Tidal velocity model also requires a ',...
+                    'VaryingWaterLevel with an underlying tidal model'])
+                assert(isequal(...
+                    wl.model.constituents,...
+                    obj.model.constituents),...
+                    ['Constituents of water level model ',...
+                    'and data model should match'])
+                wl_pars = reshape(wl.parameters(2:npars_ne),[],1);
+                val(2:npars_ne,:,[1 3]) = val(2:npars_ne,:,[1 3]) +...
+                    obj.nscale*wl_pars;
             end
 
-            for cell_idx = 1:obj.mesh.ncells
-                Cj{cell_idx} = zeros([numel(const_names), sum(obj.model.npars)]);
-                for eq = 1:numel(const_names)
-                    term{eq} = [nscale*D0(cell_idx), nscale*(1-sig(cell_idx))*D0s(cell_idx), sscale*D0(cell_idx), sscale*(1-sig(cell_idx))*D0n(cell_idx), sscale*nscale];
-                    if eq > 1                    
-                        term{eq}((numel(term{eq})+1):(numel(term{eq})+2)) = [nscale*wl.parameters(eq),...
-                        nscale*wl.parameters(eq)];
-                    end
-                    Cj{cell_idx}(eq,col{eq}) = term{eq};
-                end
-            end
-            obj.C = helpers.spblkdiag(Cj{:});
+            % build sparse matrix
+            obj.C = sparse(...
+                row(:),...
+                col(:), ...
+                val(:), ...
+                npars_ne*ncells, ...
+                npars_total);
+
+        end
+        function val = model_is_velocity(obj)
+            val = isa(obj.model,'VelocityModel');
         end
     end
 end

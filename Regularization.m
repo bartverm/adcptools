@@ -225,7 +225,6 @@ classdef Regularization <...
                 end
             end
         end
-
         function const_names = get_const_names(obj)
             if isa(obj.model, 'TidalModel')
                 const_names{1} = ': M0'; % Subtidal always included
@@ -249,7 +248,7 @@ classdef Regularization <...
         end
 
         function flat_names = flatten_names(obj)
-            flat_names = obj.model.all_names{:};
+            flat_names = obj.model.all_names;
         end
 
         function res = findn(obj, cell_of_str, str)

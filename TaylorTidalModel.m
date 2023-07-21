@@ -29,7 +29,22 @@ classdef TaylorTidalModel < TaylorModel & TidalModel
 
 
     methods
-        function val = find_par(obj,ord,comp,vars,const)
+        function val = find_par(obj, ord, comp, vars, const)
+            all_comps = obj.get_component_names;
+            all_vars = obj.var_names;
+            all_const = [{'M0'}, obj.constituents];
+            if nargin < 2 || isempty(ord)
+                ord = [0 1 2];
+            end
+            if nargin < 3 || isempty(comp)
+                comp = all_comps;
+            end
+            if nargin < 4 || isempty(vars)
+                vars = all_vars;
+            end
+            if nargin < 5 || isempty(const)
+                const = all_const;
+            end
             f_tayl = find_par@TaylorModel(obj, ord, comp, vars);
             np_tayl = obj.get_npars_tay();
             f_tid = find_par@TidalModel(obj,comp, const);

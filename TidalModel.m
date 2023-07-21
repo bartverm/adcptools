@@ -36,11 +36,15 @@ classdef TidalModel < DataModel
         %   see also: TidalModel, get_tidal_pars
         periods
 
+        nconstituents
     end
 
 
 
     methods
+        function val = get.nconstituents(obj)
+            val = obj.get_nconstituents;
+        end
         function set.constituents(obj,val)
             assert(ischar(val) || iscellstr(val),...
                 'Give constituents as char or cell of chars') %#ok<ISCLSTR>
@@ -178,7 +182,7 @@ classdef TidalModel < DataModel
         end
 
         function val = get_npars_tid(obj)
-            val = ones(1, obj.get_ncomponents).*(1 + 2*obj.get_nconstituents);
+            val = ones(1, obj.get_ncomponents).*(1 + 2*obj.nconstituents);
         end
 
     end

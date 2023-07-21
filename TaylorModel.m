@@ -130,9 +130,17 @@ classdef TaylorModel < DataModel
     end
     properties(Dependent, SetAccess=protected, GetAccess = public)
         npars_per_order
+        npars_not_expanded
+        lumped_orders
     end
 
     methods
+        function val = get.npars_not_expanded(obj)
+            val = obj.npars ./ obj.get_npars_tay;
+        end
+        function val = get.lumped_orders(obj)
+            val = obj.lump_orders;
+        end
         function set.time_order(obj,val)
             obj.check_order(val);
             obj.time_order = val;
