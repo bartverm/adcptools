@@ -6,4 +6,4 @@
 	url = https://github.com/bartverm/nmea-toolbox.git
 [submodule "brewermap_submodule"]
 	path = brewermap_submodule
-	url = git@github.com:DrosteEffect/BrewerMap.git
+	url = https://github.com/DrosteEffect/BrewerMap.git
