@@ -151,7 +151,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
                 if construct_time
                     t = [obj(co).vmadcp.time];
                     obj(co).time=mean(t(~ obj(co).filter.bad_ensembles),...
-                        'omitmissing');
+                        'omitnat');
                 end
             end
         end
@@ -177,7 +177,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
                 end
             end
             t(obj.filter.bad_ensembles) = [];
-            val = mean(t, 'omitmissing');
+            val = mean(t, 'omitnat');
         end
         function mesh=get_mesh(obj)
 % Construct the SigmaZetaMesh
@@ -228,7 +228,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
             % compute vertical limits of mesh
             minsigma = 1 - cosd(max(...
                 obj.vmadcp.cat_property('beam_angle'),...
-                [],'all','omitmissing'));
+                [],'all','omitnan'));
             intt = [obj.vmadcp.time]';
             intv = [ obj.vmadcp.cat_property('vertical_position'); ...
                   obj.vmadcp.cat_property('distmidfirstcell'); ...

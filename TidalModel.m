@@ -192,8 +192,6 @@ classdef TidalModel < DataModel
                 end
                 periods(1,const) = T*3600; % in seconds
             end
-
-
         end
     end
 

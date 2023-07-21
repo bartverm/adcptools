@@ -8,6 +8,7 @@ function [ef, xs]=cross_section_selector(vmadcp)
 %   cross-sections
 %
 %   see also: VMADCP, EnsembleFilter, XSection
+    figure
     vmadcp.plot_track('-','color',[.5 .5 .5]);
     title('Press Enter to end selection')
     hpos=[vmadcp.horizontal_position];
@@ -56,7 +57,7 @@ function [ef, xs]=cross_section_selector(vmadcp)
         else
             if strcmp('Yes',questdlg('Are you happy with this selction?','Selection finished!','Yes','No','Yes'))
                 ef=[ef EnsembleFilter(~inpol)]; %#ok<AGROW>
-                xs=[xs XSection(vmadcp,ef(end))]; %#ok<AGROW>
+                xs=[xs XSection(ef(end),'NoExpand',vmadcp)]; %#ok<AGROW>
                 leg.AutoUpdate='on';
                 plot(xa(~ef(end).bad_ensembles),ya(~ef(end).bad_ensembles),'.')
                 leg.String{end}=['Cross section ',num2str(numel(ef))];
