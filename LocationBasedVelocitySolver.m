@@ -35,13 +35,14 @@ classdef LocationBasedVelocitySolver < VelocitySolver
             [vpos, ~, ~, time, wl] = get_solver_input@ADCPDataSolver(obj);
 
             % get velocity data
-            vdat = obj.adcp.cat_property('velocity',...
+            vdat = obj.adcp.cat_property('water_velocity',...
                 CoordinateSystem.Beam); % get velocity data in Beam coords
 
             % get transformation matrix
             xform = obj.adcp.cat_property('xform',...
                 CoordinateSystem.Beam,... destination: Beam
-                CoordinateSystem.Earth); % source: Earth
+                CoordinateSystem.Earth,...% source: Earth
+                'Geometry', true); % Force use of tilts
             xform(:,:,:,4)=[]; % remove Error velocity to beam transformation
             
             % filter and vectorize
