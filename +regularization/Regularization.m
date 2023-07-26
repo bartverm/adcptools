@@ -1,6 +1,6 @@
 classdef Regularization <...
-        helpers.ArraySupport &... % add array functionality
-        matlab.mixin.Heterogeneous  % allow arrays of different subclasses
+        helpers.ArraySupport% &... % add array functionality
+        % matlab.mixin.Heterogeneous  % allow arrays of different subclasses
 
     properties(SetObservable)
         bathy (1,1) Bathymetry = BathymetryScatteredPoints
@@ -14,9 +14,9 @@ classdef Regularization <...
     end
     properties(SetAccess = protected)
         % Regularization/matrix
-        C (:,:) double {Regularization.mustBeSparse} = sparse(0)
-        Cg (:,:) double {Regularization.mustBeSparse} = sparse(0)
-        rhs (:,1) double {Regularization.mustBeSparse} = sparse(0)
+        C (:,:) double {helpers.mustBeSparse} = sparse(0)
+        Cg (:,:) double {helpers.mustBeSparse} = sparse(0)
+        rhs (:,1) double {helpers.mustBeSparse} = sparse(0)
         assembled (1,1) logical = false
     end
 
@@ -54,31 +54,9 @@ classdef Regularization <...
             obj.assembled = true;
         end
     end
-    methods(Static)     
-        function mustBeSparse(val)
-            assert(issparse(val),'Value must be sparse')
-        end
-        function regs = get_all_regs(varargin)
-            regs = {InternalContinuityRegularization(varargin{:}),...
-                    ExternalContinuityRegularization(varargin{:}),...
-                    CoherenceRegularization(varargin{:}),...
-                    ConsistencyRegularization(varargin{:}),...
-                    KinematicRegularization(varargin{:})};
-            siz = cellfun(@size, regs, 'UniformOutput',false);
-            assert(isequal(siz{:}),...
-                'Size of generated regularizations should be equal')
-            siz = siz{1};
-            if isequal(siz, [1 1])
-                return
-            end
-            out = cell(siz);
-            for co = 1:numel(out)
-                tmp = cellfun(@(x) x(co), regs, 'UniformOutput',false);
-                tmp = [tmp{:}];
-                out{co} = tmp;
-            end
-            regs = out;
-        end
+    methods(Static, Abstract)
+        % Return all availabl regularizations
+        get_all_regs()
     end
 
     methods(Sealed)
@@ -169,9 +147,10 @@ classdef Regularization <...
 
         function W = assemble_weights(obj)
             % scaling for Coherence -> CoherenceRegularization
-            par_names = obj.flatten_names;
+            % par_names = obj.flatten_names;
             Np = sum(obj.model.npars);
-            w = ones([Np,1]);
+            ncells = obj.mesh.ncells;
+            w = ones([Np*ncells,1]);
 
             % Apply enhanced regularization for small singular value features using
             % characteristic spatial scales
@@ -181,6 +160,9 @@ classdef Regularization <...
 
             % Automatically assign weights to smoothness of different parameters
             % Important due to orientation of main flow
+            
+            f_vertvel = obj.find_par([0 1 2],'w');
+            w(f_vertvel) = w(f_vertvel)*horscale/vertscale;
 
             for i = 1:Np
                 if contains(par_names{i}, 'w')

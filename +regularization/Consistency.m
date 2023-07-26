@@ -1,7 +1,7 @@
-classdef ConsistencyRegularization < TaylorBasedRegularization
+classdef Consistency < regularization.TaylorBased
 methods(Access = protected)
     function assemble_matrix_private(obj)
-            assemble_matrix_private@TaylorBasedRegularization(obj);
+            assemble_matrix_private@regularization.TaylorBased(obj);
             if ~obj.model_is_taylor
                 return
             end
@@ -13,7 +13,7 @@ methods(Access = protected)
                     ) ...
                     )
                 % This condition may be relaxed a bit.
-                warning('ConsistencyRegularization:TaylorOrderTooLow',...
+                warning('Consistency:TaylorOrderTooLow',...
                     ['No consistency matrix assembled: order of Taylor',...
                     'expansions too low.'])
                 return

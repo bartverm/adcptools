@@ -1,24 +1,13 @@
-classdef ExternalContinuityRegularization < TaylorBasedRegularization
-
+classdef ExternalContinuity < regularization.TaylorBased &...
+        regularization.Velocity
     properties
         nscale(1,1) double {mustBeFinite, mustBeReal} = 1;
         sscale(1,1) double {mustBeFinite, mustBeReal} = 1;
     end
     methods (Access = protected)
         function assemble_matrix_private(obj)
-            assemble_matrix_private@TaylorBasedRegularization(obj);
-            if ~obj.model_is_taylor
-                return
-            end
-            if obj.model.s_order(1) < 1
-                warning(['ExternalContinuityRegularization:',...
-                    'TaylorOrderTooLow'],...
-                    ['For external continuity regularization, Taylor ',...
-                    'expansion in along channel direction of ',...
-                    'downstream velocity component should be',...
-                    ' at least of first order.'])
-                return
-            end
+            assemble_matrix_private@regularization.TaylorBased(obj);
+
             wl = obj.bathy.water_level;
             D0 = obj.get_subtidal_depth();
             D0s = -obj.zbsn(1,:);
@@ -48,7 +37,7 @@ classdef ExternalContinuityRegularization < TaylorBasedRegularization
             npars = obj.model.npars;
             npars_total = sum(npars) * ncells;
 
-            par_idx = [...
+            par_idx = [...min_order
                 find(obj.find_par(1,'u','s')),...
                 find(obj.find_par(0,'u')),...
                 find(obj.find_par(0,'v')),...
@@ -111,6 +100,16 @@ classdef ExternalContinuityRegularization < TaylorBasedRegularization
                 val(:),...
                 n_in*npars_ne,...
                 npars_total);
+        end
+    end
+    methods(Static, Access = protected)
+        function val = get_min_order()
+            val = [...
+                0 0 0;... % time
+                1 0 0;... % s: du/ds required
+                0 0 0;... % n
+                0 0 0;... % z
+                0 0 0];   % sigma
         end
     end
 end

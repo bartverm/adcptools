@@ -1,4 +1,5 @@
-classdef KinematicRegularization < TaylorBasedRegularization
+classdef Kinematic < regularization.TaylorBased &...
+        regularization.Velocity
     methods(Access = protected)
         function assemble_matrix_private(obj)
             assemble_matrix_private@TaylorBasedRegularization(obj);

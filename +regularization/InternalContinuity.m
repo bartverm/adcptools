@@ -1,4 +1,6 @@
-classdef InternalContinuityRegularization < TaylorBasedRegularization
+classdef InternalContinuity <...
+        regularization.TaylorBased &...
+        regularization.Velocity
 % Impose continuity within a mesh cell
     properties
         nscale(1,1) double {mustBeFinite, mustBeReal} = 1;
@@ -6,24 +8,9 @@ classdef InternalContinuityRegularization < TaylorBasedRegularization
     end
     methods(Access=protected)
         function assemble_matrix_private(obj)
-            assemble_matrix_private@TaylorBasedRegularization(obj);
-            assert(obj.model_is_velocity,...
-                "Regularization requires a VelocityModel");
+            assemble_matrix_private@regularization.TaylorBased(obj);
             assert(isa(obj.mesh, 'SigmaZetaMesh'), ...
                 "Only SigmaZetaMesh supported")
-
-            min_order = ...
-                [0 0 0;... % t
-                 1 0 1;... % s
-                 0 1 1;... % n
-                 0 0 0;... % z
-                 0 0 1]; % sigma
-
-            assert(all(obj.model.lumped_orders >= min_order,"all"),...
-                ['First order expansion needed for:\n',...
-                'u to s and sigma,\n',...
-                'v to n and sigma,\n',...
-                'w to sigma']);
 
             % Function that assembles cell-based continuity equation
             wl = obj.bathy.water_level;
@@ -88,8 +75,15 @@ classdef InternalContinuityRegularization < TaylorBasedRegularization
                 npars_total);
 
         end
-        function val = model_is_velocity(obj)
-            val = isa(obj.model,'VelocityModel');
+    end
+    methods(Static, Access = protected)
+        function val = get_min_order()
+            val = ...
+                [0 0 0;... % t 
+                 1 0 1;... % s: du/ds and du/dsig required
+                 0 1 1;... % n: dv/dn and dv/dsig required
+                 0 0 0;... % z
+                 0 0 1]; % sigma: dw/dsig required
         end
     end
 end
