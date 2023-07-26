@@ -56,7 +56,7 @@ classdef TaylorBased < regularization.Regularization
 
     methods(Access = protected)
         function mustBeTaylorModel(obj)
-            assert(all(cellfun(@(x) isa(x,"TaylorModel"), obj.model),...
+            assert(all(cellfun(@(x) isa(x,"TaylorModel"), {obj.model}),...
                 "all"), "Regularization requires a TaylorModel");
         end
         function mustMeetOrderCriteria(obj)
