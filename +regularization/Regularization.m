@@ -145,37 +145,6 @@ classdef Regularization <...
             IM = IM + IM';
         end
 
-        function W = assemble_weights(obj)
-            % scaling for Coherence -> CoherenceRegularization
-            % par_names = obj.flatten_names;
-            Np = sum(obj.model.npars);
-            ncells = obj.mesh.ncells;
-            w = ones([Np*ncells,1]);
-
-            % Apply enhanced regularization for small singular value features using
-            % characteristic spatial scales
-
-            vertscale = max(obj.mesh.z_patch,[], 'all') - min(obj.mesh.z_patch, [], 'all');
-            horscale = max(obj.mesh.n_patch, [], 'all') - min(obj.mesh.n_patch, [], 'all'); %Typical scales
-
-            % Automatically assign weights to smoothness of different parameters
-            % Important due to orientation of main flow
-            
-            f_vertvel = obj.find_par([0 1 2],'w');
-            w(f_vertvel) = w(f_vertvel)*horscale/vertscale;
-
-            for i = 1:Np
-                if contains(par_names{i}, 'w')
-                    w(i) = w(i)*horscale/vertscale;
-                end
-                if contains(par_names{i}, 'dy') || contains(par_names{i}, 'dx')
-                    w(i) = w(i)*horscale;
-                end
-            end
-            wj = cell(1,obj.mesh.ncells);
-            wj(:)= {diag(w)};
-            W = helpers.spblkdiag(wj{:});
-        end
 
         function gramian_matrix(obj)
             obj.Cg = obj.C'*obj.C;

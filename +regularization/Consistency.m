@@ -1,6 +1,6 @@
 classdef Consistency < regularization.TaylorBased
-methods(Access = protected)
-    function assemble_matrix_private(obj)
+    methods(Access = protected)
+        function assemble_matrix_private(obj)
             assemble_matrix_private@regularization.TaylorBased(obj);
             if ~obj.model_is_taylor
                 return
@@ -18,7 +18,7 @@ methods(Access = protected)
                     'expansions too low.'])
                 return
             end
-            
+
             const_names = obj.get_const_names(); % Cell array
 
             nb = obj.neighbors;
@@ -44,7 +44,7 @@ methods(Access = protected)
                         obj.findn(pnames, ['cell ',num2str(cell_idx),': d^1v/dsig^1', const_names{eq}]) , ...
                         obj.findn(pnames, ['cell ',num2str(nb(2, cell_idx)),': v0', const_names{eq}]) , ...
                         obj.findn(pnames, ['cell ',num2str(nb(4, cell_idx)),': v0', const_names{eq}]) , ...
-                        obj.findn(pnames, ['cell ',num2str(cell_idx),': d^1w/dsig^1', const_names{eq}]) , ...                        
+                        obj.findn(pnames, ['cell ',num2str(cell_idx),': d^1w/dsig^1', const_names{eq}]) , ...
                         obj.findn(pnames, ['cell ',num2str(nb(2, cell_idx)),': w0', const_names{eq}]), ...
                         obj.findn(pnames, ['cell ',num2str(nb(4, cell_idx)),': w0', const_names{eq}])];
 
@@ -54,7 +54,7 @@ methods(Access = protected)
                         1, -1/(dn(cell_idx)), 1/(dn(cell_idx)),...
                         1, -1/(dsig(cell_idx)), 1/(dsig(cell_idx)), 1, -1/(dsig(cell_idx)), 1/(dsig(cell_idx)),...
                         1, -1/(dsig(cell_idx)), 1/(dsig(cell_idx))]; % Value, always the same (but look at order of magnitudes difference between the values...)
-                    
+
                     rows = [rows row(keep_idx{cell_idx})];
                     cols = [cols col(keep_idx{cell_idx})];%(keep_idx{cell_idx})];
                     terms = [terms term(keep_idx{cell_idx})];
@@ -65,5 +65,12 @@ methods(Access = protected)
             end
             obj.C = sparse(rows, cols, terms, 6*obj.mesh.ncells*numel(const_names), obj.mesh.ncells*sum(obj.model.npars));
         end
-end
+
+    end
+    methods(Access = protected)
+        function val = get_min_order(obj)
+            nc = obj.model.ncomponents;
+            val = zeros([5,nc]);
+        end
+    end
 end

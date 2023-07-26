@@ -1,4 +1,7 @@
-classdef Coherence < regularization.Regularization
+classdef Coherence < regularization.Regularization &...
+        regularization.TaylorBased
+% Impose spatial coherence between neighboring cells
+
     methods(Access = protected)
         function assemble_matrix_private(obj)
             Np = sum(obj.model.npars);
@@ -52,6 +55,36 @@ classdef Coherence < regularization.Regularization
 
             obj.C = W*obj.C;
 
+        end
+
+        function W = assemble_weights(obj)
+            % scaling factors based on characteristic scales
+
+            % par_names = obj.flatten_names;
+            npars = sum(obj.model.npars)*obj.mesh.ncells;
+            w = ones([npars,1]);
+
+            if ~isa(obj.model,'TaylorModel')
+                return
+            end
+
+            % Apply enhanced regularization for small singular value features using
+            % characteristic spatial scales
+
+            horscale = max(obj.mesh.n_patch, [], 'all') - min(obj.mesh.n_patch, [], 'all'); %Typical scales
+
+            % Automatically assign weights to smoothness of different parameters
+            % Important due to orientation of main flow
+            f_horz_der = obj.find_par(1,[],{'n','s'});
+
+            w(f_horz_der) = w(f_horz_der)*horscale;
+            W = spdiags(w, 0, npars, npars);
+        end
+    end
+    methods(Access = protected)
+        function val = get_min_order(obj)
+            nc = obj.model.ncomponents;
+            val = zeros(5,nc);
         end
     end
 end

@@ -6,8 +6,12 @@ classdef ExternalContinuity < regularization.TaylorBased &...
     end
     methods (Access = protected)
         function assemble_matrix_private(obj)
-            assemble_matrix_private@regularization.TaylorBased(obj);
-
+            obj.mustBeVelocityModel()
+            obj.mustBeTaylorModel()
+            obj.mustMeetOrderCriteria()
+            assert(isa(obj.mesh, 'SigmaZetaMesh'), ...
+                "Only SigmaZetaMesh supported")
+            
             wl = obj.bathy.water_level;
             D0 = obj.get_subtidal_depth();
             D0s = -obj.zbsn(1,:);
@@ -102,8 +106,8 @@ classdef ExternalContinuity < regularization.TaylorBased &...
                 npars_total);
         end
     end
-    methods(Static, Access = protected)
-        function val = get_min_order()
+    methods(Access = protected)
+        function val = get_min_order(~)
             val = [...
                 0 0 0;... % time
                 1 0 0;... % s: du/ds required

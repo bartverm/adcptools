@@ -63,4 +63,14 @@ classdef Kinematic < regularization.TaylorBased &...
             obj.rhs = sparse(cell2mat(rhsj));
         end
     end
+    methods(Access = protected)
+        function val = get_min_order(~)
+            val = [...
+                0 0 0,... % time
+                0 0 0,... % s
+                0 0 0,... % n
+                0 0 0,... % z
+                1 1 1];   % sigma: requires du/dsig, dv/dsig, dw/dsig
+        end
+    end
 end

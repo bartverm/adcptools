@@ -2,11 +2,13 @@ classdef TaylorBased < regularization.Regularization
 % Regularization requiring a Taylor model
     properties(SetAccess=protected, Dependent)
         min_order (5,:) double {mustBeFinite, mustBeReal, mustBeInteger}
-        min_time_order
-        min_s_order
-        min_n_order
-        min_z_order
-        min_sig_order
+        min_time_order (5,:) double {mustBeFinite, mustBeReal,...
+            mustBeInteger}
+        min_s_order (5,:) double {mustBeFinite, mustBeReal, mustBeInteger}
+        min_n_order (5,:) double {mustBeFinite, mustBeReal, mustBeInteger}
+        min_z_order (5,:) double {mustBeFinite, mustBeReal, mustBeInteger}
+        min_sig_order (5,:) double {mustBeFinite, mustBeReal,...
+            mustBeInteger}
     end
     methods
         function val = get.min_order(obj)
@@ -51,20 +53,20 @@ classdef TaylorBased < regularization.Regularization
             val = repmat(val, [obj.mesh.ncells,1]);
         end
     end
+
     methods(Access = protected)
-        function assemble_matrix_private(obj,varargin)
-            assert(obj.model_is_taylor,...
-                    "Regularization requires a TaylorModel");
+        function mustBeTaylorModel(obj)
+            assert(all(cellfun(@(x) isa(x,"TaylorModel"), obj.model),...
+                "all"), "Regularization requires a TaylorModel");
+        end
+        function mustMeetOrderCriteria(obj)
             assert(all(obj.model.lumped_orders > obj.min_order, 'all'),...
                 ['Taylor model does not meet minimum required ',...
                  'expansion orders. Check the object''s min_order',...
                  'properties.'])
         end
-        function tf = model_is_taylor(obj)
-            tf = isa(obj.model,"TaylorModel");
-        end
     end
-    methods(Static, Access = protected, Abstract)
-        get_min_order()
+    methods(Access = protected, Abstract)
+        get_min_order(obj)
     end
 end

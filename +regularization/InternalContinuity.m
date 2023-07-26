@@ -8,7 +8,9 @@ classdef InternalContinuity <...
     end
     methods(Access=protected)
         function assemble_matrix_private(obj)
-            assemble_matrix_private@regularization.TaylorBased(obj);
+            obj.mustBeVelocityModel()
+            obj.mustBeTaylorModel()
+            obj.mustMeetOrderCriteria()
             assert(isa(obj.mesh, 'SigmaZetaMesh'), ...
                 "Only SigmaZetaMesh supported")
 
@@ -76,8 +78,8 @@ classdef InternalContinuity <...
 
         end
     end
-    methods(Static, Access = protected)
-        function val = get_min_order()
+    methods(Access = protected)
+        function val = get_min_order(~)
             val = ...
                 [0 0 0;... % t 
                  1 0 1;... % s: du/ds and du/dsig required

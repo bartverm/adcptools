@@ -3,8 +3,6 @@ classdef Velocity <...
         matlab.mixin.Heterogeneous
     methods
         function obj = Velocity(varargin)
-            assert(obj.model_is_velocity,...
-                "Regularization requires a VelocityModel");
         end
     end
     methods(Static)
@@ -31,8 +29,10 @@ classdef Velocity <...
         end
     end
     methods(Access = protected)
-        function val = model_is_velocity(obj)
-            val = isa(obj.model,'VelocityModel');
+        function mustBeVelocityModel(obj)
+            val = all(cellfun(@(x) isa(x,'VelocityModel'), {obj.model}),...
+                'all');
+            assert(val, "Regularization requires a VelocityModel");
         end
     end
 end
