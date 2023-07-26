@@ -73,7 +73,8 @@ classdef Solver < helpers.ArraySupport
         %   empty object will be created.
         %
         %   see also: Solver, DataModel
-        regularization (1,:) Regularization = Regularization
+        regularization (1,:) regularization.Regularization =...
+            regularization.Regularization
 
 
         % Solver/opts
@@ -310,18 +311,21 @@ classdef Solver < helpers.ArraySupport
             assert(isscalar(reg_pars) || isequal(siz_reg{:}),...
                 'Weights of regression objects must have the same size')
             reg_pars = vertcat(reg_pars{:});
-            n_sols = size(reg_pars,1);
-            n_regs = size(reg_pars,2);
+            n_sols = size(reg_pars,2);
+            n_regs = size(reg_pars,1);
             p = nan([Np,n_sols]);
             Mg = M'*M; % Expensive operation -> minimize number of calls
+            rhs = M'*b;
             for idx = n_sols
-                rp = reg_pars(idx,:);
+                rp = reg_pars(:,idx);
                 Cg = sparse(0);
                 for reg_idx = 1:n_regs
                     Cg = Cg + rp(reg_idx)*obj.regularization(reg_idx).Cg;
+                    rhs = rhs + ...
+                        rp(reg_idx)*obj.regularization(reg_idx).C'*...
+                        obj.regularization(reg_idx).rhs;
                 end
                 A = Mg + Cg; % Data plus constraints
-                rhs = M'*b + rp(end)*obj.regularization.C{end}'*obj.regularization.rhs;
                 [p(:,idx), flag] = obj.solve_single(A, rhs);
                 disp(['Obtained solution using lambda = [', num2str(rp), ']^T after ', num2str(flag), ' iterations.'])
             end

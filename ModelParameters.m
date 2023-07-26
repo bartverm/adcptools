@@ -15,7 +15,7 @@ classdef ModelParameters < handle & helpers.ArraySupport
 
         cov_pars (:,:,:) double;
 
-        regularization (1,:) Regularization
+        regularization (1,:) regularization.Regularization
 
         opts (1,1) SolverOptions
 

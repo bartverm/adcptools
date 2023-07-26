@@ -243,8 +243,8 @@ classdef ArraySupport < handle
                 if ~isequal(cell_classes{:})
                     continue
                 end
-                cur_class = cell_classes{1};
-                fmatch = strcmp(cur_class, hpropclass);
+                % cur_class = cell_classes{1};
+                fmatch = cellfun(@(x) isa(cur_cell{1}, x), hpropclass);
                 if any(fmatch)
                     prop_names(cc) = hpropnames(fmatch);
                     cell_is_assignable(cc) = true;

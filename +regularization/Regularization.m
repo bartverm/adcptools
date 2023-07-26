@@ -23,7 +23,7 @@ classdef Regularization <...
     properties(GetAccess = public, SetAccess = private, Dependent)
         Cg_weight (:,:) double
         rhs_weight (:,:) double
-        names_all (1,:) cell
+        % names_all (1,:) cell
         neighbors (:,1) cell
         domains (:,1) cell
         zb0 (1,:) double
@@ -54,9 +54,11 @@ classdef Regularization <...
             obj.assembled = true;
         end
     end
-    methods(Static, Abstract)
-        % Return all availabl regularizations
-        get_all_regs()
+    methods(Static)
+        % Return all available regularizations
+        function obj = get_all_regs(varargin)
+            obj = regularization.Regularization(varargin{:});
+        end
     end
 
     methods(Sealed)
@@ -73,15 +75,15 @@ classdef Regularization <...
         end
     end
     methods
-        function names_all = get.names_all(obj)
-            % -> TaylorBasedRegular.
-            flat_names = obj.flatten_names();
-            cells_vec = cell([1,obj.mesh.ncells]);
-            for idx = 1:obj.mesh.ncells % loop trough every cell
-                cells_vec{1,idx} = sprintf('cell %i: ', idx);
-            end
-            names_all = helpers.kron_modified_cell(cells_vec, flat_names);
-        end
+        % function names_all = get.names_all(obj)
+        %     % -> TaylorBasedRegular.
+        %     flat_names = obj.flatten_names();
+        %     cells_vec = cell([1,obj.mesh.ncells]);
+        %     for idx = 1:obj.mesh.ncells % loop trough every cell
+        %         cells_vec{1,idx} = sprintf('cell %i: ', idx);
+        %     end
+        %     names_all = helpers.kron_modified_cell(cells_vec, flat_names);
+        % end
 
         function neighbors = get.neighbors(obj)
             % get neighbors for each mesh cell -> Mesh
@@ -133,61 +135,61 @@ classdef Regularization <...
 
     end
     methods(Access = protected)
-        function IM = assemble_incidence(obj)
-            % unused -> remove?
-            obj.mesh = obj.mesh;
-            IM = zeros(obj.mesh.ncells);
-            for j = 1:obj.mesh.ncells % loop trough every cell
-                nbreal = obj.neighbors(j,~isnan(obj.neighbors(j,:)));
-                nbreal = nbreal(nbreal>j);
-                IM(j, nbreal) = 1;
-            end
-            IM = IM + IM';
-        end
+        % function IM = assemble_incidence(obj)
+        %     % unused -> remove?
+        %     obj.mesh = obj.mesh;
+        %     IM = zeros(obj.mesh.ncells);
+        %     for j = 1:obj.mesh.ncells % loop trough every cell
+        %         nbreal = obj.neighbors(j,~isnan(obj.neighbors(j,:)));
+        %         nbreal = nbreal(nbreal>j);
+        %         IM(j, nbreal) = 1;
+        %     end
+        %     IM = IM + IM';
+        % end
 
 
         function gramian_matrix(obj)
             obj.Cg = obj.C'*obj.C;
         end
         
-        function keep_idx = dom2keep_idx(obj)
-            % -> ConsistencyRegularization
-            keep_idx = cell([obj.mesh.ncells,1]);
-            dom = obj.domains;
-            for cell_idx = 1:obj.mesh.ncells
-                if dom(cell_idx) == 0
-                    keep_idx{cell_idx} = 1:18;
-                elseif dom(cell_idx) == 1
-                    keep_idx{cell_idx} = 10:18;
-                elseif dom(cell_idx) == 2
-                    keep_idx{cell_idx} = [];
-                elseif dom(cell_idx) == 3
-                    keep_idx{cell_idx} = 1:9;
-                elseif dom(cell_idx) == 4
-                    keep_idx{cell_idx} = [];
-                elseif dom(cell_idx) == 5
-                    keep_idx{cell_idx} = 10:18;
-                elseif dom(cell_idx) == 6
-                    keep_idx{cell_idx} = [];
-                elseif dom(cell_idx) == 7
-                    keep_idx{cell_idx} = 1:9;
-                elseif dom(cell_idx) == 8
-                    keep_idx{cell_idx} = [];
-                end
-            end
-        end
-        function const_names = get_const_names(obj)
-            if isa(obj.model, 'TidalModel')
-                const_names{1} = ': M0'; % Subtidal always included
-                for c = 1:numel(obj.model.constituents)
-                    const_names{2*c} = [': ', obj.model.constituents{c}, 'a'];
-                    const_names{2*c+1} = [': ', obj.model.constituents{c}, 'b'];
-                end
-            else
-                const_names{1} = [];
-            end
-
-        end
+        % function keep_idx = dom2keep_idx(obj)
+        %     % -> ConsistencyRegularization
+        %     keep_idx = cell([obj.mesh.ncells,1]);
+        %     dom = obj.domains;
+        %     for cell_idx = 1:obj.mesh.ncells
+        %         if dom(cell_idx) == 0
+        %             keep_idx{cell_idx} = 1:18;
+        %         elseif dom(cell_idx) == 1
+        %             keep_idx{cell_idx} = 10:18;
+        %         elseif dom(cell_idx) == 2
+        %             keep_idx{cell_idx} = [];
+        %         elseif dom(cell_idx) == 3
+        %             keep_idx{cell_idx} = 1:9;
+        %         elseif dom(cell_idx) == 4
+        %             keep_idx{cell_idx} = [];
+        %         elseif dom(cell_idx) == 5
+        %             keep_idx{cell_idx} = 10:18;
+        %         elseif dom(cell_idx) == 6
+        %             keep_idx{cell_idx} = [];
+        %         elseif dom(cell_idx) == 7
+        %             keep_idx{cell_idx} = 1:9;
+        %         elseif dom(cell_idx) == 8
+        %             keep_idx{cell_idx} = [];
+        %         end
+        %     end
+        % end
+        % function const_names = get_const_names(obj)
+        %     if isa(obj.model, 'TidalModel')
+        %         const_names{1} = ': M0'; % Subtidal always included
+        %         for c = 1:numel(obj.model.constituents)
+        %             const_names{2*c} = [': ', obj.model.constituents{c}, 'a'];
+        %             const_names{2*c+1} = [': ', obj.model.constituents{c}, 'b'];
+        %         end
+        %     else
+        %         const_names{1} = [];
+        %     end
+        % 
+        % end
         function D0 = get_subtidal_depth(obj)
             if isprop(obj.bathy.water_level, 'model') % If wl has a tidal model
                 if isa(obj.bathy.water_level.model, 'TidalModel')
@@ -198,29 +200,14 @@ classdef Regularization <...
             end
         end
 
-        function flat_names = flatten_names(obj)
-            flat_names = obj.model.all_names;
-        end
+        % function flat_names = flatten_names(obj)
+        %     flat_names = obj.model.all_names;
+        % end
 
         function res = findn(obj, cell_of_str, str)
             res = find(strcmp(cell_of_str, str));
             if isempty(res)
                 res = nan;
-            end
-        end
-
-        function rhsj = water_level2rhs_element(obj)
-            const_names = obj.get_const_names();
-            wl = obj.bathy.water_level;
-            
-            rhsj = zeros([numel(const_names),1]);
-            rhsj(1,1) = 0; % subtidal
-            if numel(const_names) > 1
-                omega = wl.model.get_omega;
-                for eq = 1:numel(wl.model.constituents)
-                    rhsj(2*eq, 1) = omega(eq)*wl.parameters(2*eq+1);
-                    rhsj(2*eq + 1, 1) = -omega(eq)*wl.parameters(2*eq);
-                end
             end
         end
 
