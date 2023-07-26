@@ -31,6 +31,18 @@ classdef Regularization <...
         zbsn (2,:) double
     end
     methods
+        function val = get.C(obj)
+            obj.assemble_matrices
+            val = obj.C;
+        end
+        function val = get.Cg(obj)
+            obj.assemble_matrices
+            val = obj.Cg;
+        end
+        function val = get.rhs(obj)
+            obj.assemble_matrices
+            val = obj.rhs;
+        end
         function val = get.Cg_weight(obj)
             if isscalar(obj)
                 val = obj.Cg .* shiftdim(obj.weight, -1);
@@ -51,7 +63,7 @@ classdef Regularization <...
                 'Weights of regression objects must have the same size')
         end
         function assemble_matrix_private(obj)
-            obj.assembled = true;
+
         end
     end
     methods(Static)
@@ -67,9 +79,9 @@ classdef Regularization <...
                 obj.run_method('assemble_matrices');
             else
                 if obj.assembled == false
+                    obj.assembled = true;
                     obj.assemble_matrix_private();
                     obj.gramian_matrix;
-                    obj.assembled = true;
                 end
             end
         end

@@ -48,12 +48,14 @@ classdef Coherence < regularization.Regularization &...
             val = val(~fbad);
 
             % construct the matrix
-            obj.C = speye(Np*ncells) +... % identity matrix
+            C = speye(Np*ncells) +... % identity matrix
                 sparse(row, col, val, ncells*Np, ncells*Np);
 
             W = obj.assemble_weights();
 
-            obj.C = W*obj.C;
+            obj.C = W*C;
+
+            obj.rhs = sparse([],[],[],ncells*Np,1,0);
 
         end
 

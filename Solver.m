@@ -240,13 +240,13 @@ classdef Solver < helpers.ArraySupport
                     MP.p = MP.pars2p();
                 case "pcg"
                     xform = xform*obj.data_model.rotation_matrix;
-                    Mb0 = [M(:,:,1).*xform(:,1),...
-                        M(:,:,2).*xform(:,2),...
-                        M(:,:,3).*xform(:,3)]; %Model matrix times unit vectors q
+                    npars=obj.data_model.npars;
+                    Mb0 = [M(:,1:npars(1),1).*xform(:,1),...
+                        M(:,1:npars(2),2).*xform(:,2),...
+                        M(:,1:npars(3),3).*xform(:,3)]; %Model matrix times unit vectors q
                     disp('Assembled parameter - data mapping')
-                    [M, b, cell_idx_shuffled, ns] = obj.reorder_model_matrix(Mb0, dat, cell_idx);
-                    MP = ModelParameters(M = M, b = b,...
-                        opts = obj.opts, cell_idx = cell_idx_shuffled,...
+                    [M, b, ns] = obj.reorder_model_matrix(Mb0, dat, cell_idx);
+                    MP = ModelParameters(M = M, b = b, opts = obj.opts,...
                         regularization = obj.regularization);
                     MP.p = obj.solve(M,b);
                     MP.ns = ns;
@@ -315,10 +315,10 @@ classdef Solver < helpers.ArraySupport
             n_regs = size(reg_pars,1);
             p = nan([Np,n_sols]);
             Mg = M'*M; % Expensive operation -> minimize number of calls
-            rhs = M'*b;
             for idx = n_sols
                 rp = reg_pars(:,idx);
                 Cg = sparse(0);
+                rhs = M'*b;
                 for reg_idx = 1:n_regs
                     Cg = Cg + rp(reg_idx)*obj.regularization(reg_idx).Cg;
                     rhs = rhs + ...
@@ -327,7 +327,7 @@ classdef Solver < helpers.ArraySupport
                 end
                 A = Mg + Cg; % Data plus constraints
                 [p(:,idx), flag] = obj.solve_single(A, rhs);
-                disp(['Obtained solution using lambda = [', num2str(rp), ']^T after ', num2str(flag), ' iterations.'])
+                disp(['Obtained solution using lambda = [', num2str(rp'), ']^T after ', num2str(flag), ' iterations.'])
             end
         end
 
@@ -342,21 +342,16 @@ classdef Solver < helpers.ArraySupport
 
 
 
-        function [M, b, cell_idx_shuff, ns] = reorder_model_matrix(obj, Mb0, dat, cell_idx)
-            Mj = cell([obj.mesh.ncells,1]);
-            ns = zeros([obj.mesh.ncells,1]);
-            bj = cell([obj.mesh.ncells,1]);
-            idx = cell([obj.mesh.ncells,1]);
-            cell_idx_shuff = cell([obj.mesh.ncells,1]);
-            for j = 1:obj.mesh.ncells
-                idx{j} = (cell_idx == j);
-                Mj{j} = Mb0(idx{j}, :);
-                ns(j) = sum(idx{j});
-                bj{j} = dat(idx{j});
-                cell_idx_shuff{j} = cell_idx(idx{j});
-            end
-            b = vertcat(bj{:});
-            M = helpers.spblkdiag(Mj{:});
+        function [M, b, ns] = reorder_model_matrix(obj, Mb0, dat, cell_idx)
+            ncells = obj.mesh.ncells;
+            npars = size(Mb0,2);
+            nbvels = size(Mb0,1);
+            col_idx = (cell_idx - 1) * npars + (1 : npars);
+            row_idx = repmat((1 : nbvels)', 1, npars);
+            b = sparse(dat);
+            M = sparse(row_idx(:), col_idx(:), Mb0(:),...
+                nbvels, npars * ncells);
+            ns = accumarray(cell_idx,ones(size(cell_idx)),[ncells, 1]);
         end
     end
 

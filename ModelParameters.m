@@ -346,13 +346,10 @@ classdef ModelParameters < handle & helpers.ArraySupport
 
         function pars = p2pars(obj)
             [np, ne] = size(obj.p);
-            ncells = obj.regularization.mesh.ncells;
+            ncells = obj.regularization(1).mesh.ncells;
             npars = np/ncells;
-            pars = zeros(ncells, npars, ne); % could be done using one reshape() call, %TODO chatGPT
-            for n = 1:ne
-                pars(:,:,n) = reshape(obj.p(:,n) ,[npars, ncells])';
-            end
-            obj.pars = pars;
+            pars = reshape(obj.p, npars, ncells, ne);
+            pars = permute(pars, [2 1 3]);
         end
 
         function p = pars2p(obj)

@@ -22,6 +22,8 @@ classdef Consistency < regularization.TaylorBased
                 [val_n(:); val_s(:)],...
                 neq,...
                 ncells * npars);
+
+            obj.rhs = sparse([],[],[],neq,1,0);
         end
 
     end
