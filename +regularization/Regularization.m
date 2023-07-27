@@ -99,18 +99,15 @@ classdef Regularization <...
 
         function neighbors = get.neighbors(obj)
             % get neighbors for each mesh cell -> Mesh
-            neighbors = zeros([4,obj.mesh.ncells]);
-            for idx = 1:obj.mesh.ncells % loop trough every cell
-                [neighbors(:,idx), ~] = obj.mesh.get_neighbors(idx);
-            end
+            neighbors = obj.mesh.neighbors;
+            % neighbors = zeros([4,obj.mesh.ncells]);
+            % for idx = 1:obj.mesh.ncells % loop trough every cell
+            %     [neighbors(:,idx), ~] = obj.mesh.get_neighbors(idx);
+            % end
         end
 
         function domains = get.domains(obj)
-            % get domain -> Mesh
-            domains = zeros([1,obj.mesh.ncells]);
-            for idx = 1:obj.mesh.ncells % loop trough every cell
-                [~, domains(1,idx)] = obj.mesh.get_neighbors(idx);
-            end
+            domains = obj.mesh.domains;
         end
 
         function zb0 = get.zb0(obj)

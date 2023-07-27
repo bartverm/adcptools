@@ -257,7 +257,7 @@ classdef Solver < helpers.ArraySupport
             end
         end
 
-        function [varargout] = get_data(obj, varargin)
+        function [varargout] = get_data(obj, mp, varargin)
             %   Get data from model parameters
             %
             %   vel=get_data(obj)
@@ -272,14 +272,8 @@ classdef Solver < helpers.ArraySupport
             end
 
             % scalar call
-            if nargin == 1
+            if nargin < 2
                 mp = get_parameters(obj);
-            end
-            if nargin > 1
-                if nargin - 1 < nargout
-                    error('VelocitySolver:WrongInputNumber',...
-                        'Please pass no input other than object, or as many inputs as required outputs')
-                end
             end
             varargout = cell(1,nargout);
             [varargout{:}] = ...
@@ -346,9 +340,15 @@ classdef Solver < helpers.ArraySupport
             ncells = obj.mesh.ncells;
             npars = size(Mb0,2);
             nbvels = size(Mb0,1);
+
+            % sort cells, to diaganolize matrix
+            [cell_idx, srt_idx] = sort(cell_idx);
+            Mb0 = Mb0(srt_idx,:);
+            b = sparse(dat(srt_idx));
+
+            % build sparse matrix indices
             col_idx = (cell_idx - 1) * npars + (1 : npars);
             row_idx = repmat((1 : nbvels)', 1, npars);
-            b = sparse(dat);
             M = sparse(row_idx(:), col_idx(:), Mb0(:),...
                 nbvels, npars * ncells);
             ns = accumarray(cell_idx,ones(size(cell_idx)),[ncells, 1]);

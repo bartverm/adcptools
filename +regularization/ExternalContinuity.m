@@ -20,8 +20,8 @@ classdef ExternalContinuity < regularization.TaylorBased &...
             sig_center = reshape(obj.mesh.sig_center,1,[]);
             n_center = obj.mesh.n_middle(obj.mesh.col_to_cell);
 
-            nb = obj.neighbors;
-            dom = obj.domains;
+            nb = obj.neighbors';
+            dom = obj.domains';
 
             is_in = dom == 0;
             n_in = sum(is_in);

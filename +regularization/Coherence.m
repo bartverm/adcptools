@@ -9,7 +9,7 @@ classdef Coherence < regularization.Regularization &...
             
             % index of four neighbors for each cell. If no neighbor is
             % present nb holds a NaN
-            nb = obj.neighbors; 
+            nb = obj.neighbors'; 
 
             % number of neighbors for each cell
             num_neighbors = sum(isfinite(nb),1);

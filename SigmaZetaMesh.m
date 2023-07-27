@@ -126,6 +126,12 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         cell_to_mat (:,1) double {mustBeInteger, mustBeFinite mustBeReal}
         row_to_cell (:,1) double {mustBeInteger, mustBeFinite mustBeReal}
         col_to_cell (:,1) double {mustBeInteger, mustBeFinite mustBeReal}
+
+        neighbors (:,4) double {mustBeReal}
+        domains (:,1) double {mustBeInteger, mustBeFinite, mustBeReal,...
+            mustBeNonnegative, mustBeLessThanOrEqual(domains,8)}
+
+        jacobian (:,2,2) double {mustBeReal}
     end
     properties (Dependent, SetAccess=protected, GetAccess=public)
         x_left
@@ -277,15 +283,42 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
 
             for cm=1:numel(mesh)
                 if ~constant_z
-                    mesh(cm).z_bottom_left=obj.sigma_to_z(obj.sig_bottom_left, reshape(obj.zb_left(obj.col_to_cell),[],1),target_wl(cm));
-                    mesh(cm).z_top_left=obj.sigma_to_z(obj.sig_top_left, reshape(obj.zb_left(obj.col_to_cell),[],1),target_wl(cm));
-                    mesh(cm).z_bottom_mid=obj.sigma_to_z(obj.sig_bottom_mid, reshape(obj.zb_middle(obj.col_to_cell),[],1),target_wl(cm));
-                    mesh(cm).z_top_mid=obj.sigma_to_z(obj.sig_top_mid, reshape(obj.zb_middle(obj.col_to_cell),[],1),target_wl(cm));
-                    mesh(cm).z_bottom_right=obj.sigma_to_z(obj.sig_bottom_right, reshape(obj.zb_right(obj.col_to_cell),[],1),target_wl(cm));
-                    mesh(cm).z_top_right=obj.sigma_to_z(obj.sig_top_right, reshape(obj.zb_right(obj.col_to_cell),[],1),target_wl(cm));
+                    mesh(cm).z_bottom_left = obj.sigma_to_z(...
+                        obj.sig_bottom_left,...
+                        reshape(obj.zb_left(obj.col_to_cell),[],1),...
+                        target_wl(cm));
+                    mesh(cm).z_top_left=obj.sigma_to_z(...
+                        obj.sig_top_left,...
+                        reshape(obj.zb_left(obj.col_to_cell),[],1),...
+                        target_wl(cm));
+                    mesh(cm).z_bottom_mid=obj.sigma_to_z(...
+                        obj.sig_bottom_mid,...
+                        reshape(obj.zb_middle(obj.col_to_cell),[],1),...
+                        target_wl(cm));
+                    mesh(cm).z_top_mid=obj.sigma_to_z(...
+                        obj.sig_top_mid,...
+                        reshape(obj.zb_middle(obj.col_to_cell),[],1),...
+                        target_wl(cm));
+                    mesh(cm).z_bottom_right=obj.sigma_to_z(...
+                        obj.sig_bottom_right,...
+                        reshape(obj.zb_right(obj.col_to_cell),[],1),...
+                        target_wl(cm));
+                    mesh(cm).z_top_right=obj.sigma_to_z(...
+                        obj.sig_top_right,...
+                        reshape(obj.zb_right(obj.col_to_cell),[],1),...
+                        target_wl(cm));
 
                     % set the target water level in the mesh
                     mesh(cm).water_level=target_wl(cm);
+
+                    % regenerate neighbors
+                    mesh(cm).neighbors =...
+                        SigmaZetaMeshGenerator.get_neighbors_and_domain(...
+                        mesh(cm));
+
+                    % regenerate jacobian
+                    mesh(cm).jacobian =...
+                        SigmaZetaMeshGenerator.get_jacobian(mesh(cm));
                 end
             end
 
@@ -324,45 +357,6 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
             end
         end
 
-        function [nb, domain] = get_neighbors(obj, cell_idx)
-            % Function that provides indices of neighbors of cell_idx
-            % [nb, domain] = get_neighbors(cell_idx)
-            % nb: array of neighboring indices anti clockwise from 3 o
-            % clock, to 12, to 9, to 6
-            % domain: interior (0), right (1), top right (2), and anti
-            % clockwise up to bottom right (8)
-            %
-            n = obj.n_middle(obj.col_to_cell(cell_idx));
-            sig = obj.sig_center(cell_idx);
-            dn = obj.dn_cells(obj.col_to_cell(cell_idx));
-            dsig = 2*(obj.sig_top_mid(cell_idx)-sig);
-            nb = [obj.index(n+dn, sig), obj.index(n, sig+dsig),...
-                obj.index(n-dn, sig), obj.index(n, sig-dsig)];
-            d=0;
-            if isnan(nb(1))
-                d = 1;
-                if isnan(nb(2))
-                    d = 2;
-                end
-                if isnan(nb(4))
-                    d = 8;
-                end
-            elseif isnan(nb(2))
-                d = 3;
-                if isnan(nb(3))
-                    d = 4;
-                end
-            elseif isnan(nb(3))
-                d = 5;
-                if isnan(nb(4))
-                    d = 6;
-                end
-            elseif isnan(nb(4))
-                d = 7;
-            end
-            domain = d;
-        end
-
         function varargout = plot(obj,varargin)
             % Plot the mesh optionally colored with a variable
             %
@@ -383,6 +377,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
             end
             inp = inputParser;
             inp.KeepUnmatched = true;
+            inp.addOptional('ax', []);
             inp.addOptional('var',[]);
             inp.addParameter('AspectRatio',1,@(x) isscalar(x) && isfinite(x));
             inp.addParameter('FixAspectRatio',false,@(x) isscalar(x) && islogical(x));
@@ -530,6 +525,35 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
             hrat = max(da(1:2))/da(3);
             daspect([hrat hrat 1])
             view(30,30)
+        end
+        function varargout=plot_neighbors(obj,varargin)
+            varargout = cell(1,nargout);
+            if ~isscalar(obj)
+                tiledlayout("flow");
+                [varargout{:}] = obj.run_method('plot_neighbors', varargin{:});
+                return
+            end
+            ax = nexttile;
+            obj.plot(ax, 'sigma', true);
+            hold on
+            n = obj.n_middle(obj.col_to_cell);
+            sig = reshape(obj.sig_center,1,[]);
+            plot(n,sig,'b.')
+            text(n,sig,cellfun(@num2str,num2cell(1:obj.ncells),'UniformOutput',false))
+            nb = obj.neighbors;
+            cols = ax.ColorOrder;
+            cidx = ax.ColorOrderIndex;
+            ncols = size(cols,1);
+            lwidth = [1 1 1 1];
+            for cq = 1:4
+                isf = isfinite(nb(:,cq));
+                dn = n(nb(isf,cq)) - n(isf);
+                dsig = sig(nb(isf,cq)) - sig(isf);
+                plot([n(isf); n(isf) + dn/3],...
+                    [sig(isf); sig(isf) + dsig/3],...
+                    'color', cols(mod(cidx+cq, ncols)+1,:),...
+                    'linewidth', lwidth(cq))
+            end
         end
     end
     methods(Access=protected)

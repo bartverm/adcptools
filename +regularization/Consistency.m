@@ -12,14 +12,24 @@ classdef Consistency < regularization.TaylorBased
             [row_s, col_s, val_s] = obj.make_idx_val('sig', [2 4], sig_c);
             row_s = row_s + size(row_n,1);
 
+            % combine n and simga derivatives
+            row = [row_n; row_s];
+            col = [col_n; col_s];
+            val = [val_n; val_s];
+
+            % diagonalize matrix
+            [~, srt_idx] = sort(mean(col,2));
+            col = col(srt_idx,:);
+            val = val(srt_idx,:);
+
             % build matrix
             npars = sum(obj.model.npars);
             ncells = obj.mesh.ncells;
-            neq = size(row_n,1) + size(row_s,1);
+            neq = size(row,1);
             obj.C = sparse(...
-                [row_n(:); row_s(:)],...
-                [col_n(:); col_s(:)],...
-                [val_n(:); val_s(:)],...
+                row(:),...
+                col(:),...
+                val(:),...
                 neq,...
                 ncells * npars);
 
@@ -70,7 +80,7 @@ classdef Consistency < regularization.TaylorBased
             % initialize column indices that will refer to derivative of
             % parameter and the parameter in the cell to the right and to
             % the left
-            nb = obj.neighbors;
+            nb = obj.neighbors';
             has_neighbors = all(isfinite(nb(nb_idx,:)),1);
             n_in = sum(has_neighbors);
             col = nan(n_comp, npars_ne, n_in, 3);

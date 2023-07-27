@@ -8,12 +8,9 @@ classdef Kinematic < regularization.TaylorBased &...
 
             % Function that assembles cell-based kinematic boundary conditions.
 
-            % const_names = obj.get_const_names(); % Cell array
             zbs = obj.zbsn(1,:);
             zbn = obj.zbsn(2,:);
-            dom = obj.domains;
-            % col = cell([1, numel(const_names)]);
-            % pnames = obj.flatten_names();
+            dom = obj.domains';
 
             npars_ne = obj.model.npars_not_expanded;
             assert(all(npars_ne == npars_ne(1)),...
