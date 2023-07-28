@@ -52,15 +52,17 @@ classdef TaylorTidalModel < TaylorModel & TidalModel
             pos_tayl = 1;
             pos_tayltid = 1;
             pos_tid = 1;
+            n_tid = 1 + obj.nconstituents * 2;
             for cc = 1:obj.ncomponents
                 for par = 1:np_tayl(cc)
                     if f_tayl(pos_tayl)
-                        val(pos_tayltid+(0:2)) = f_tid(pos_tid+(0:2));
+                        val(pos_tayltid+(0:n_tid - 1)) =...
+                            f_tid(pos_tid+(0:n_tid - 1));
                     end
-                    pos_tayltid = pos_tayltid + 3;
+                    pos_tayltid = pos_tayltid + n_tid;
                     pos_tayl = pos_tayl + 1; 
                 end
-                pos_tid = pos_tid + 3;
+                pos_tid = pos_tid + n_tid;
             end
         end
         function M = get_model(obj, d_t, d_s, d_n, d_z, d_sigma)
@@ -89,11 +91,12 @@ classdef TaylorTidalModel < TaylorModel & TidalModel
         function names = get_names(obj)
             tayl_names = get_names@TaylorModel(obj);
             tid_names = get_names@TidalModel(obj);
+            comp_names = obj.component_names;
             names = cell([obj.ncomponents, 1]);
             for dim = 1:obj.ncomponents
-                names{dim,1} = helpers.kron_modified_cell(tayl_names{dim, 1}, helpers.remove_chars(tid_names{dim, 1}, 1));
+                names{dim,1} = helpers.kron_modified_cell(tayl_names{dim, 1},...
+                    helpers.remove_chars(tid_names{dim, 1}, numel(comp_names{1})));
             end
-
         end
         function val = get_npars(obj)
             ntay = get_npars@TaylorModel(obj);
