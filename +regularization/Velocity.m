@@ -17,6 +17,7 @@ classdef Velocity <...
                 'Size of generated regularizations should be equal')
             siz = siz{1};
             if isequal(siz, [1 1])
+                regs = [regs{:}];
                 return
             end
             out = cell(siz);
