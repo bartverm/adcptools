@@ -633,13 +633,21 @@ classdef ADCP < ADCP
             val=double(obj.raw.salinity);
         end
         function val=get_pressure(obj)
+            if any(obj.type == rdi.ADCP_Type.STREAMPRO_31)
+                warning('Streampro does not record pressure')
+            end
             funderflow=obj.raw.pressure>3e9;
             val=double(obj.raw.pressure);
             val(funderflow)=val(funderflow)-double(intmax('uint32'));
             val=val*10;
         end
         function t=get_time(obj)
-            t=reshape(datetime(obj.raw.timeV,'TimeZone',obj.timezone),1,[]);
+            timeV = obj.raw.timeV;
+            timeV1C = obj.raw.timeV1C;
+            is_streampro = obj.type == rdi.ADCP_Type.STREAMPRO_31;
+            timeV(is_streampro, :) =...
+                timeV1C(is_streampro, :) + [2000 0 0 0 0 0];
+            t=reshape(datetime(timeV,'TimeZone',obj.timezone),1,[]);
         end
         function db1=get_distmidfirstcell(obj)
             if isfield(obj.raw,'sp_mid_bin1') % streampro leader support (more accurate)
