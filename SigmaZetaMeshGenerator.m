@@ -68,11 +68,12 @@ classdef SigmaZetaMeshGenerator < handle
             if nargout < 2
                 return
             end
-            domain = zeros(mesh.ncells,1);
+            domain = ones(mesh.ncells,1)*9;
             nbnan = isnan(nb);
             nnan = sum(nbnan,2);
             is_corn = nnan == 2;
             is_side = nnan ==1;
+            domain(nnan == 0) = 0;
             domain(is_side & nbnan(:,1)) = 1;
             domain(is_side & nbnan(:,2)) = 3;
             domain(is_side & nbnan(:,3)) = 5;

@@ -1,9 +1,10 @@
 classdef TaylorVelocityModel < VelocityModel & TaylorModel
 % Taylor expanded velocity model
     methods
-        function varargout = get_model(varargin)
-            varargout = cell(nargout,1);
-            [varargout{:}] = get_model@TaylorModel(varargin{:});
+        function M = get_model(varargin)
+            Mv = get_model@VelocityModel(varargin{:});
+            Mt = get_model@TaylorModel(varargin{:});
+            M = Mv.*Mt;
         end
     end
     methods(Access = protected)

@@ -56,12 +56,8 @@ classdef VelocityModel < DataModel
                 R = R';
             end
             Mrot = zeros(size(M));
-            if numel(R) == 1
-                Mrot = M; % Scalar quantity is not rotated
-            else
-                for dim = 1:obj.ncomponents
-                    Mrot(:,:,dim) = R(dim,1)*M(:,:,1) + R(dim,2)*M(:,:,2) + R(dim,3)*M(:,:,3); % Vector quantity
-                end
+            for dim = 1:obj.ncomponents
+                Mrot(:,:,dim) = R(dim,1)*M(:,:,1) + R(dim,2)*M(:,:,2) + R(dim,3)*M(:,:,3); % Vector quantity
             end
         end
 

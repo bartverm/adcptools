@@ -1,9 +1,10 @@
 classdef TidalVelocityModel < TidalModel & VelocityModel
 % Tidal velocity model
     methods
-        function varargout = get_model(varargin)
-            varargout = cell(nargout,1);
-            [varargout{:}] = get_model@TidalModel(varargin{:});
+        function M = get_model(varargin)
+            Mv = get_model@VelocityModel(varargin{:});
+            Mt = get_model@TidalModel(varargin{:});
+            M = Mv.*Mt;
         end
     end
     methods(Access = protected)

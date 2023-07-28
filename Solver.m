@@ -239,7 +239,6 @@ classdef Solver < helpers.ArraySupport
                     MP.ns = vertcat(t_n_bvels{:});
                     MP.p = MP.pars2p();
                 case "pcg"
-                    xform = xform*obj.data_model.rotation_matrix;
                     npars=obj.data_model.npars;
                     Mb0 = [M(:,1:npars(1),1).*xform(:,1),...
                         M(:,1:npars(2),2).*xform(:,2),...

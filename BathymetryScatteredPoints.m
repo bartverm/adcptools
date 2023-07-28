@@ -86,13 +86,13 @@ classdef BathymetryScatteredPoints < Bathymetry
             end
 
             if construct_from_vmadcp && has_vmadcp
+                f_exp = find(strcmp('NoExpand',varargin));
+                f_adcp = find(cellfun(@(x) isa(x, 'VMADCP'), varargin));
+                args_idx = sort([f_exp f_adcp]);
                 if ~has_filt
-                    f_exp = find(strcmp('NoExpand',varargin));
-                    f_adcp = find(cellfun(@(x) isa(x, 'VMADCP'), varargin));
-                    args_idx = sort([f_exp f_adcp]);
                     filter = EnsembleFilter(varargin{args_idx});
                 end
-                obj.known_from_vmadcp(vadcp, filter)
+                obj.known_from_vmadcp(filter, varargin{args_idx})
             end
             if construct_water_level && has_vmadcp
                 wls = {vadcp.water_level_object};

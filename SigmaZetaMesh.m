@@ -129,7 +129,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
 
         neighbors (:,4) double {mustBeReal}
         domains (:,1) double {mustBeInteger, mustBeFinite, mustBeReal,...
-            mustBeNonnegative, mustBeLessThanOrEqual(domains,8)}
+            mustBeNonnegative, mustBeLessThanOrEqual(domains,9)}
 
         jacobian (:,2,2) double {mustBeReal}
     end
