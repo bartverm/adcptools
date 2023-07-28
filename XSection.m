@@ -361,7 +361,9 @@ classdef XSection < handle & helpers.ArraySupport
             %   obj.revert() reverts the direction of the cross-section
             %
             %   see also: XSection
-            obj.direction=-obj.direction;
+            dir = -[obj.direction];
+            dir = num2cell(dir,1);
+            [obj.direction]=deal(dir{:});
         end
     end
 end

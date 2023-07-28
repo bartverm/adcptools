@@ -250,7 +250,7 @@ classdef Solver < helpers.ArraySupport
                     MP.p = obj.solve(M,b);
                     MP.ns = ns;
                     disp('Finished')
-                    MP.pars = MP.p2pars();
+                    MP.pars = obj.p2pars(MP.p);
                 otherwise
                     error("Enter correct algorithm in SolverOptions: lscov (only data, cell-based) or pcg (regularized, global)")
             end
@@ -282,6 +282,14 @@ classdef Solver < helpers.ArraySupport
     end
 
     methods(Access=protected)
+        function pars = p2pars(obj,p)
+            [np, ne] = size(p);
+            ncells = obj.mesh.ncells;
+            npars = np/ncells;
+            pars = reshape(p, npars, ncells, ne);
+            pars = permute(pars, [2 1 3]);
+        end
+
         function [idx_mesh,idx_ef]=make_indices(obj)
             nrp=max(numel(obj.ensemble_filter),numel(obj.mesh));
             idx_mesh=ones(nrp,1);

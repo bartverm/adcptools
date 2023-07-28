@@ -344,14 +344,6 @@ classdef ModelParameters < handle & helpers.ArraySupport
         %         end
 
 
-        function pars = p2pars(obj)
-            [np, ne] = size(obj.p);
-            ncells = obj.regularization(1).mesh.ncells;
-            npars = np/ncells;
-            pars = reshape(obj.p, npars, ncells, ne);
-            pars = permute(pars, [2 1 3]);
-        end
-
         function p = pars2p(obj)
             p = reshape(obj.pars', 1, [])';
             obj.p = p;
