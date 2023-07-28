@@ -49,7 +49,11 @@ classdef TimeBasedVelocitySolver < VelocitySolver
                 CoordinateSystem.Earth,... destination: Earth
                 CoordinateSystem.Earth); % source: Earth
             xform(:,:,:,4)=[]; % remove Error velocity
-
+            
+            % rotate transformation
+            xform = helpers.matmult(xform,...
+                shiftdim(obj.rotation_matrix,-2));
+            
             % filter and vectorize
             [vdat, xform] = obj.filter_and_vectorize(vdat, xform);
         end

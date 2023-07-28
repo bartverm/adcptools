@@ -2,9 +2,7 @@ classdef TidalVelocityModel < TidalModel & VelocityModel
 % Tidal velocity model
     methods
         function M = get_model(varargin)
-            Mv = get_model@VelocityModel(varargin{:});
-            Mt = get_model@TidalModel(varargin{:});
-            M = Mv.*Mt;
+            M = get_model@TidalModel(varargin{:});
         end
     end
     methods(Access = protected)

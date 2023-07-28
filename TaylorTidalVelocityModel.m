@@ -2,9 +2,7 @@ classdef TaylorTidalVelocityModel < TaylorTidalModel & VelocityModel
 % Taylor expanded tidal velocity model
     methods
         function M = get_model(varargin)
-            Mv = get_model@VelocityModel(varargin{:});
-            Mtt = get_model@TaylorTidalModel(varargin{:});
-            M = Mv.*Mtt;
+            M = get_model@TaylorTidalModel(varargin{:});
         end
     end
     methods(Access = protected)

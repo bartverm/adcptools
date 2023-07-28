@@ -61,7 +61,14 @@ classdef XSection < handle & helpers.ArraySupport
         %
         % see also: XSection, origin, direction
         direction_orthogonal (2,1) double {mustBeFinite}
+        
+        %XSection/angle (read only)
+        %
+        % Angle in radians of the direction orthogonal to the cross-section
+        %
+        % see also: XSection, origin, direction
         angle (1,1) double
+        
     end
     methods
         function obj=XSection(varargin)

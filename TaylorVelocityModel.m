@@ -1,10 +1,8 @@
 classdef TaylorVelocityModel < VelocityModel & TaylorModel
 % Taylor expanded velocity model
     methods
-        function M = get_model(varargin)
-            Mv = get_model@VelocityModel(varargin{:});
-            Mt = get_model@TaylorModel(varargin{:});
-            M = Mv.*Mt;
+        function M = get_model(obj,varargin)
+            M = obj.get_model@TaylorModel(varargin{:});
         end
     end
     methods(Access = protected)

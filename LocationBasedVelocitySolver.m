@@ -45,6 +45,10 @@ classdef LocationBasedVelocitySolver < VelocitySolver
                 'Geometry', true); % Force use of tilts
             xform(:,:,:,4)=[]; % remove Error velocity to beam transformation
             
+            % rotate transformation
+            xform = helpers.matmult(xform,...
+                shiftdim(obj.rotation_matrix,-2));
+
             % filter and vectorize
             [vdat, xform] = obj.filter_and_vectorize(vdat, xform);
         end

@@ -425,12 +425,12 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
                 zb = obj.nb_all * 0;
                 zw = [1 1];
                 zpatch = obj.sig_patch;
-                zcenter = obj.z_center;
+                zcenter = obj.sig_center;
             else
                 zb = obj.zb_all;
                 zw = obj.nw*0+obj.water_level;
                 zpatch = obj.z_patch;
-                zcenter = obj.sig_center;
+                zcenter = obj.z_center;
             end
             hbed = plot(ax,obj.nb_all,zb*aspect_ratio,'k','Linewidth',2);
             set(ax,'NextPlot','add')
