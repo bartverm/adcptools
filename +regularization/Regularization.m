@@ -63,7 +63,7 @@ classdef Regularization <...
                 'Weights of regression objects must have the same size')
         end
         function assemble_matrix_private(obj)
-
+            obj.C = sparse(0);
         end
     end
     methods(Static)
@@ -160,45 +160,7 @@ classdef Regularization <...
         function gramian_matrix(obj)
             obj.Cg = obj.C'*obj.C;
         end
-        
-        % function keep_idx = dom2keep_idx(obj)
-        %     % -> ConsistencyRegularization
-        %     keep_idx = cell([obj.mesh.ncells,1]);
-        %     dom = obj.domains;
-        %     for cell_idx = 1:obj.mesh.ncells
-        %         if dom(cell_idx) == 0
-        %             keep_idx{cell_idx} = 1:18;
-        %         elseif dom(cell_idx) == 1
-        %             keep_idx{cell_idx} = 10:18;
-        %         elseif dom(cell_idx) == 2
-        %             keep_idx{cell_idx} = [];
-        %         elseif dom(cell_idx) == 3
-        %             keep_idx{cell_idx} = 1:9;
-        %         elseif dom(cell_idx) == 4
-        %             keep_idx{cell_idx} = [];
-        %         elseif dom(cell_idx) == 5
-        %             keep_idx{cell_idx} = 10:18;
-        %         elseif dom(cell_idx) == 6
-        %             keep_idx{cell_idx} = [];
-        %         elseif dom(cell_idx) == 7
-        %             keep_idx{cell_idx} = 1:9;
-        %         elseif dom(cell_idx) == 8
-        %             keep_idx{cell_idx} = [];
-        %         end
-        %     end
-        % end
-        % function const_names = get_const_names(obj)
-        %     if isa(obj.model, 'TidalModel')
-        %         const_names{1} = ': M0'; % Subtidal always included
-        %         for c = 1:numel(obj.model.constituents)
-        %             const_names{2*c} = [': ', obj.model.constituents{c}, 'a'];
-        %             const_names{2*c+1} = [': ', obj.model.constituents{c}, 'b'];
-        %         end
-        %     else
-        %         const_names{1} = [];
-        %     end
-        % 
-        % end
+
         function D0 = get_subtidal_depth(obj)
             if isprop(obj.bathy.water_level, 'model') % If wl has a tidal model
                 if isa(obj.bathy.water_level.model, 'TidalModel')
@@ -209,9 +171,6 @@ classdef Regularization <...
             end
         end
 
-        % function flat_names = flatten_names(obj)
-        %     flat_names = obj.model.all_names;
-        % end
 
         function res = findn(obj, cell_of_str, str)
             res = find(strcmp(cell_of_str, str));

@@ -1,10 +1,6 @@
 classdef VelocityCoherence < regularization.Coherence &...
         regularization.Velocity
     methods(Access = protected)
-        function assemble_matrix_private(obj)
-            obj.assemble_matrix_private@regularization.Velocity
-            obj.assemble_matrix_private@regularization.Coherence
-        end
         function W = assemble_weights(obj)
             W = obj.assemble_weights@regularization.Coherence;
 

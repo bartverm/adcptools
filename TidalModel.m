@@ -187,10 +187,6 @@ classdef TidalModel < DataModel
 
     end
     methods(Access=protected)
-        function val = get_ncomponents(obj)
-            val = numel(obj.components);
-        end
-
         function names = get_names(obj)
 
             % Forms a cell array of dimensions 1xobj.ncomponents

@@ -30,7 +30,7 @@ classdef VaryingWaterLevel < WaterLevel
         
         
         % tidal property captures all variability of the waterlevel
-        model (1,1) TidalModel = TidalModel;
+        model (1,1) TidalModel = TidalScalarModel(scalar_name = 'eta');
                 
         % VaryingWaterLeve/water_level water level series
         %
