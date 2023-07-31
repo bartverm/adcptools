@@ -37,6 +37,8 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
     %   water_level - the water level for the mesh
     %   time - time of the mesh
     %   ncells - number of cells in the mesh
+    %   nverticals - number of columns in mesh
+    %   max_ncells_vertical - maximum number of cells in one vertical
     %   acells - area of cells in the mesh
     %
     %   * Edge Position
@@ -96,34 +98,203 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
 
 
     properties
+        % SigmaZetaMesh/time
+        %
+        %   scalar datetime object holding the time of the mesh. This is
+        %   mainly relevant when the waterlevel is changing in time
+        %
+        %   see also: SigmaZetaMesh
         time (1,1) datetime
     end
     properties (SetAccess=?SigmaZetaMeshGenerator)
+
+        nverticals
+
+        max_ncells_vertical
+
+
+        % SigmaZetaMesh/xs
+        %
+        %   cross section on which the mesh is generated. Scalar XSection
+        %   object
+        %
+        %   see also:SigmaZetaMesh
         xs (1,1) XSection
+
+        % SigmaZetaMesh/water_level
+        %
+        %   scalar double value holding the water level for the mesh.
+        %
+        % see also: SigmaZetaMesh
         water_level (1,1) double
 
+        % SigmaZetaMesh/z_bottom_left
+        %
+        %   z-coordinates of bottom left vertex of mesh cells.
+        %   size: ncells x 1
+        %
+        % see also: SigmaZetaMesh       
         z_bottom_left (:,1) double {mustBeFinite, mustBeReal}
+
+        % SigmaZetaMesh/z_top_left
+        %
+        %   z-coordinates of top left vertex of mesh cells.
+        %   size: ncells x 1
+        %
+        % see also: SigmaZetaMesh 
         z_top_left (:,1) double {mustBeFinite, mustBeReal}
+
+        % SigmaZetaMesh/z_bottom_mid
+        %
+        %   z-coordinates of bottom center vertex of mesh cells.
+        %   size: ncells x 1
+        %
+        % see also: SigmaZetaMesh 
         z_bottom_mid (:,1) double {mustBeFinite, mustBeReal}
+
+        % SigmaZetaMesh/z_top_mid
+        %
+        %   z-coordinates of top central vertex of mesh cells.
+        %   size: ncells x 1
+        %
+        % see also: SigmaZetaMesh 
         z_top_mid (:,1) double {mustBeFinite, mustBeReal}
+
+        % SigmaZetaMesh/z_bottom_right
+        %
+        %   z-coordinates of bottom right vertex of mesh cells.
+        %   size: ncells x 1
+        %
+        % see also: SigmaZetaMesh 
         z_bottom_right (:,1) double {mustBeFinite, mustBeReal}
+
+        % SigmaZetaMesh/z_top_right
+        %
+        %   z-coordinates of top right vertex of mesh cells.
+        %   size: ncells x 1
+        %
+        % see also: SigmaZetaMesh 
         z_top_right (:,1) double {mustBeFinite, mustBeReal}
+
+        % SigmaZetaMesh/n_left
+        %
+        %   n-coordinates of left vertices of mesh cells.
+        %   size: 1 x nverticals
+        %
+        % see also: SigmaZetaMesh 
         n_left (1,:) double {mustBeFinite, mustBeReal}
+
+        % SigmaZetaMesh/n_middle
+        %
+        %   n-coordinates of the central vertices of mesh cells.
+        %   size: 1 x nverticals
+        %
+        % see also: SigmaZetaMesh 
         n_middle (1,:) double {mustBeFinite, mustBeReal}
+
+        % SigmaZetaMesh/n_left
+        %
+        %   n-coordinates of right vertices of mesh cells.
+        %   size: 1 x nverticals
+        %
+        % see also: SigmaZetaMesh 
         n_right (1,:) double {mustBeFinite, mustBeReal}
 
+        % SigmaZetaMesh/zb_left
+        %
+        %   bed elevation below the right edges of mesh cells.
+        %   size: 1 x nverticals
+        %
+        % see also: SigmaZetaMesh 
         zb_left (1,:) double {mustBeFinite, mustBeReal}
+
+        % SigmaZetaMesh/zb_middle
+        %
+        %   bed elevation below the central vertices of mesh cells.
+        %   size: 1 x nverticals
+        %
+        % see also: SigmaZetaMesh 
         zb_middle (1,:) double {mustBeFinite, mustBeReal}
+
+        % SigmaZetaMesh/zb_right
+        %
+        %   bed elevation below the right edges of mesh cells.
+        %   size: 1 x nverticals
+        %
+        % see also: SigmaZetaMesh 
         zb_right (1,:) double {mustBeFinite, mustBeReal}
+
+        % SigmaZetaMesh/zb_all
+        %
+        %   bed elevation below the left, center, and right verticels of 
+        %   mesh cells. Usefull to plot bed elevation
+        %   size: 1 x (1 + 2 * nverticals)
+        %
+        % see also: SigmaZetaMesh, nb_all
         zb_all (1,:) double {mustBeFinite, mustBeReal}
+
+        % SigmaZetaMesh/nb_all
+        %
+        %   n-coordinate below the left, center, and right verticels of 
+        %   mesh cells. Usefull to plot bed elevation
+        %   size: 1 x (1 + 2 * nverticals)
+        %
+        % see also: SigmaZetaMesh, zb_all
         nb_all (1,:) double {mustBeFinite, mustBeReal}
 
+
+        % SigmaZetaMesh/nw
+        %
+        %   n-coordinates of water surface boundaries
+        %
+        % see also: SigmaZetaMesh, zb_all
         nw (2,:) double {mustBeFinite, mustBeReal}
 
+        % SigmaZetaMesh/col_to_mat
+        %
+        % map column based data to matrix layout. Typical use: you want to
+        % have matrix with one value for each cell. To get the n-coordinate
+        % of the left vertices you can e.g. use:
+        %   mesh.n_left(mesh.col_to_mat)
+        %
+        %   see also: SigmaZetaMesh
         col_to_mat (:,:) double {mustBeInteger, mustBeFinite mustBeReal}
+
+        % SigmaZetaMesh/row_to_mat
+        %
+        % map row based data to matrix layout.
+        %
+        %   see also: SigmaZetaMesh
         row_to_mat (:,:) double {mustBeInteger, mustBeFinite mustBeReal}
+
+        % SigmaZetaMesh/mat_to_cell
+        %
+        % map matrix to cell vector layout. Typical use, you want to fill a
+        % matrix representing the mesh, with mesh values, such as the
+        % z-coordinate of the top_left vertex:
+        %
+        %   ZTopLeft = nan(mesh.max_ncells_vertica, mesh.nverticals);
+        %   ZTopLeft(mesh.mat_to_cell) = mesh.z_top_left;
+        %
+        %   see also: SigmaZetaMesh
         mat_to_cell (:,1) logical
+
+        % SigmaZetaMesh/cell_to_mat
+        %
+        %  map cell vector layout to matrix layout. Typical use: I have a
+        %  matrix of size nverticals x max_ncells_vertical:
+        %
+        %   MyVel = zeros(mesh.nverticals, mesh.max_ncells_vertical);
+        %
+        %   This can be mapped to a vector with a value for each cell as
+        %   follows:
+        %   
+        %   vels_vec = MyVel(mesh.cell_to_mat);
+        %
+        %   see also: SigmaZetaMesh       
         cell_to_mat (:,1) double {mustBeInteger, mustBeFinite mustBeReal}
+
+        
         row_to_cell (:,1) double {mustBeInteger, mustBeFinite mustBeReal}
         col_to_cell (:,1) double {mustBeInteger, mustBeFinite mustBeReal}
 
@@ -161,6 +332,12 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         dn_cells
     end
     methods
+        function val = get.nverticals(obj)
+            val = size(obj.col_to_mat,2);
+        end
+        function val = get.max_ncells_vertical(obj)
+            val = size(obj.col_to_mat,1);
+        end
         function val=get.x_left(obj)
             [val,~]=obj.xs.sn2xy(obj.n_left*0, obj.n_left);
         end

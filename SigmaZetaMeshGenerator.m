@@ -13,19 +13,45 @@ classdef SigmaZetaMeshGenerator < handle
     
     methods(Static)
         function [nb, domain] = get_neighbors_and_domain(mesh)
-            % Function that provides indices of neighbors of cell_idx
-            % [nb, domain] = get_neighbors(cell_idx)
-            % nb: array of neighboring indices anti clockwise from 3 o
-            % clock, to 12, to 9, to 6
-            % domain: interior (0), right (1), top right (2), and anti
-            % clockwise up to bottom right (8)
+            % provides neighbors of cells in mesh
+            %
+            % [nb, domain] = get_neighbors_and_domain(mesh) returns the 
+            % % array nb with size 4 x ncells holding the index of the 
+            % % neighbor to right, top left and bottom in the first to 
+            % fourth row respectively.
+            %
+            %                     | 2 -> top    |
+            %           __________|_____________|___________
+            %                     |             |
+            %           3 -> left |    cell     | 1 -> right
+            %           __________|_____________|___________
+            %                     |             |
+            %                     | 4 -> bottom | 
+            %
+            % The domain array hold an index for each cell depending on
+            % where the cell is located in the mesh:
+            %
+            %               4 |         3         | 2
+            %              ___|___________________|___ 
+            %                 |                   |
+            %               5 |         0         | 1
+            %              ___|___________________|___
+            %                 |                   |
+            %               6 |         7         | 8
+            %
+            %   9: degenerate cell, i.e. having outer border on more than
+            %   two sides, or having it on the bottom and top or left and
+            %   right
+            %
+
             nb = nan(mesh.ncells,4);
             sig = reshape(mesh.sig_center,1,[]);
-            % dn = mean(diff(mesh.n_middle));
             Sig = nan(size(mesh.col_to_mat));
             cell_to_mat = mesh.cell_to_mat;
             idx_mat = nan(size(Sig));
             idx_mat(cell_to_mat) = 1:mesh.ncells;
+            min_idx = min(idx_mat,[],1,'omitnan');
+            max_idx = max(idx_mat,[],1,'omitnan');
             Sig(cell_to_mat) = sig;
             isnan_mat = isnan(Sig);
             dsig = mean(diff(Sig,1,1),1,'omitnan');
@@ -37,7 +63,8 @@ classdef SigmaZetaMeshGenerator < handle
             dsig = abs(dsig);
             adjustIdx_right = floor(dSig_right./dsig(2:end)+.5); 
             idx_right = idx_mat(:,2:end) + adjustIdx_right;
-            idx_right = min(idx_right, mesh.ncells);
+            idx_right = min(idx_right, max_idx(2:end));
+            idx_right = max(idx_right, min_idx(2:end));
             idx_right = [idx_right nan(size(idx_right,1),1)];
             idx_right(isnan_mat) = nan;
             nb(:,1) = idx_right(~isnan_mat);
@@ -52,7 +79,8 @@ classdef SigmaZetaMeshGenerator < handle
             dSig_left = -dSig_right;
             adjustIdx_left = floor(dSig_left./dsig(1:end-1)+.5); 
             idx_left = idx_mat(:,1:end-1) + adjustIdx_left;
-            idx_left = max(idx_left,1);
+            idx_left = min(idx_left, max_idx(1:end-1));
+            idx_left = max(idx_left, min_idx(1:end-1));
             idx_left = [nan(size(idx_left,1),1) idx_left];
             idx_left(isnan_mat) = nan;
             nb(:,3) = idx_left(~isnan_mat);

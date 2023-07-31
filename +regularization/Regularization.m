@@ -80,8 +80,13 @@ classdef Regularization <...
             else
                 if obj.assembled == false
                     obj.assembled = true;
-                    obj.assemble_matrix_private();
-                    obj.gramian_matrix;
+                    try
+                        obj.assemble_matrix_private();
+                        obj.gramian_matrix;
+                    catch err
+                        obj.assembled = false;
+                        rethrow(err)
+                    end
                 end
             end
         end
