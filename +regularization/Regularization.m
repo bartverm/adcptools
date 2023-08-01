@@ -1,29 +1,113 @@
 classdef Regularization <...
-        helpers.ArraySupport% &... % add array functionality
-        % matlab.mixin.Heterogeneous  % allow arrays of different subclasses
+        helpers.ArraySupport % add array functionality
+
+% Regularization of solution of ADCP data on a mesh
+%
+%   This is a generic class to define regularizations to be used when
+%   solving models of ADCP data on a mesh. 
+%
+%   regularization.Regularization properties:
+%   bathy - Bathymetry object defining the bathymetry
+%   xs - XSection object defining the cross-section
+%   mesh - Mesh object defining the mesh on which data is to be solved
+%   model - DataModel object defining the model to be solved with the data
+%   weight - weight to be used for the regularization
+%
+%   regularization.Regularization read only properties:
+%   C - regularization matrix
+%   Cg - gramian of the regularization matrix, i.e. C'*C
+%   rhs - right hand side term of the regularization
+%   assembled - whether the above matrices are already assembled
+%
+%   regularization.Regularization method:
+%   get_all_regs - returns all available regularizations
+%   assemble_matrices - assemble the regularization matrices
+%
+%   see also: Solver, DataModel, regularization.Velocity,
+%   regularization.TaylorBased
 
     properties(SetObservable)
+        % Regularization/bathy
+        %
+        %   Bathymetry object defining the bathymetry around the mesh on
+        %   which model is solved. Used to compute gradients in bathymetry
+        %
+        %   see also: Regularization
         bathy (1,1) Bathymetry = BathymetryScatteredPoints
+
+        % Regularization/xs
+        %
+        %   XSection object defining the cross-section where mesh is
+        %   defined on which model is being solved
+        %
+        %   see also: Regularization
         xs (1,1) XSection = XSection
+
+        % Regularization/mesh
+        %
+        %   Mesh on which model is being solved
+        %
+        %   see also: Regularization
         mesh (1,1) Mesh = SigmaZetaMesh
+
+        % Regularization/model
+        %
+        %   Data model that is to be solved
+        %
+        %   see also: Regularization
         model (1,1) DataModel = VelocityModel
+
+        % Regularization/weight
+        %
+        %   Weights to use in the regularization. This can be a vector
+        %   causing the Solver to produce different solutions. Setting
+        %   weight to zero will result in disabling the regularization.
+        %   The larger this value, the stronger the regularization is
+        %   imposed on the solution.
+        %
+        %   see also: Regularization
         weight (1,:) double {mustBeNonempty,...
             mustBeFinite,...
             mustBeNonnegative} = 1
-
     end
     properties(SetAccess = protected)
-        % Regularization/matrix
+        % Regularization/C
+        %
+        %   regularization matrix. Matrix is assembled on the fly when
+        %   needed.
+        %
+        %   see also: Regularization, assembled, Cg, rhs
         C (:,:) double {helpers.mustBeSparse} = sparse(0)
+
+        % Regularization/Cg
+        %
+        %  Gramian of the regularization matrix, i.e. C'*C.
+        %  Matrix is assembled on the fly when needed.
+        %
+        %   see also: Regularization, assembled, C, rhs
         Cg (:,:) double {helpers.mustBeSparse} = sparse(0)
+
+        % Regularization/rhs
+        %
+        %  Right hand side values for the regularization
+        %  Matrix is assembled on the fly when needed.
+        %
+        %   see also: Regularization, assembled, Cg, C
         rhs (:,1) double {helpers.mustBeSparse} = sparse(0)
+
+        % Regularization/assembled
+        %
+        %  logical value indicating whether matrices where already
+        %  assembled.
+        %  Matrices are only assembled when this value is false.
+        %
+        %   see also: Regularization, C, Cg, rhs
         assembled (1,1) logical = false
     end
 
-    properties(GetAccess = public, SetAccess = private, Dependent)
+    properties(GetAccess = protected, SetAccess = private, Dependent)
         Cg_weight (:,:) double
         rhs_weight (:,:) double
-        % names_all (1,:) cell
         neighbors (:,1) cell
         domains (:,1) cell
         zb0 (1,:) double
@@ -54,67 +138,12 @@ classdef Regularization <...
                 val = val + obj(co).Cg_weight;
             end
         end
-    end
-    methods(Access = protected)
-        function check_regpars(obj)
-            reg_pars = {obj.weight};
-            siz_reg = cellfun(@size,reg_pars,'UniformOutput',false);
-            assert(isscalar(reg_pars) || isequal(siz_reg{:}),...
-                'Weights of regression objects must have the same size')
-        end
-        function assemble_matrix_private(obj)
-            obj.C = sparse(0);
-        end
-    end
-    methods(Static)
-        % Return all available regularizations
-        function obj = get_all_regs(varargin)
-            obj = regularization.Regularization(varargin{:});
-        end
-    end
-
-    methods(Sealed)
-        function assemble_matrices(obj)
-            if ~isscalar(obj)
-                obj.run_method('assemble_matrices');
-            else
-                if obj.assembled == false
-                    obj.assembled = true;
-                    try
-                        obj.assemble_matrix_private();
-                        obj.gramian_matrix;
-                    catch err
-                        obj.assembled = false;
-                        rethrow(err)
-                    end
-                end
-            end
-        end
-    end
-    methods
-        % function names_all = get.names_all(obj)
-        %     % -> TaylorBasedRegular.
-        %     flat_names = obj.flatten_names();
-        %     cells_vec = cell([1,obj.mesh.ncells]);
-        %     for idx = 1:obj.mesh.ncells % loop trough every cell
-        %         cells_vec{1,idx} = sprintf('cell %i: ', idx);
-        %     end
-        %     names_all = helpers.kron_modified_cell(cells_vec, flat_names);
-        % end
-
         function neighbors = get.neighbors(obj)
-            % get neighbors for each mesh cell -> Mesh
             neighbors = obj.mesh.neighbors;
-            % neighbors = zeros([4,obj.mesh.ncells]);
-            % for idx = 1:obj.mesh.ncells % loop trough every cell
-            %     [neighbors(:,idx), ~] = obj.mesh.get_neighbors(idx);
-            % end
         end
-
         function domains = get.domains(obj)
             domains = obj.mesh.domains;
         end
-
         function zb0 = get.zb0(obj)
             % get bed elevation
             zb0(1,:) = obj.mesh.zb_middle(obj.mesh.col_to_cell);
@@ -145,6 +174,65 @@ classdef Regularization <...
             zbsn(2,:) = 1/(2*dn)*(obj.bathy.get_depth(obj.mesh.x_middle(obj.mesh.col_to_cell)+dn*nvec(1),obj.mesh.y_middle(obj.mesh.col_to_cell)+dn*nvec(2),obj.mesh.time)-...
                 obj.bathy.get_depth(obj.mesh.x_middle(obj.mesh.col_to_cell) - dn*nvec(1),obj.mesh.y_middle(obj.mesh.col_to_cell) - dn*svec(2),obj.mesh.time));
         end
+    end
+    methods(Access = protected)
+        function check_regpars(obj)
+            reg_pars = {obj.weight};
+            siz_reg = cellfun(@size,reg_pars,'UniformOutput',false);
+            assert(isscalar(reg_pars) || isequal(siz_reg{:}),...
+                'Weights of regression objects must have the same size')
+        end
+        function assemble_matrix_private(obj)
+            obj.C = sparse(0);
+        end
+    end
+    methods(Static)
+        function obj = get_all_regs(varargin)
+        % Return all available regularizations.
+        %
+        %   this returns Regularization, which is the default
+        %   regularization. Object are different for e.g.
+        %   regularizaton.Velocity, that will return all available velocity
+        %   regularizations.
+        %
+        %   See also: Regularization, regularization.Velocity.get_all_regs
+            obj = regularization.Regularization(varargin{:});
+        end
+    end
+
+    methods(Sealed)
+        function assemble_matrices(obj)
+        % assemble regularization matrices
+        %
+        %   obj.assemble_matrices(obj) constructs the regularization
+        %   matrices if they have not been constructed yet, i.e. if
+        %   obj.assembled is false. After successfull assembly, the
+        %   assembled property is set to true;
+        %
+        %   see also: Regularization, assembled
+            if ~isscalar(obj)
+                obj.run_method('assemble_matrices');
+            else
+                if obj.assembled == false
+                    % set assembled to true before assembling to avoid
+                    % infinite recursion.
+                    obj.assembled = true;
+                    % try, catch, to makes sure assembled is set to false
+                    % if assembly fails
+                    try
+                        obj.assemble_matrix_private(); 
+                        obj.gramian_matrix();
+                    catch err
+                        obj.assembled = false;
+                        rethrow(err)
+                    end
+                end
+            end
+        end
+    end
+    methods
+
+
 
 
     end

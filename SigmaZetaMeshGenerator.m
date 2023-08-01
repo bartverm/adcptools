@@ -16,8 +16,8 @@ classdef SigmaZetaMeshGenerator < handle
             % provides neighbors of cells in mesh
             %
             % [nb, domain] = get_neighbors_and_domain(mesh) returns the 
-            % % array nb with size 4 x ncells holding the index of the 
-            % % neighbor to right, top left and bottom in the first to 
+            % array nb with size 4 x ncells holding the index of the 
+            % neighbor to right, top left and bottom in the first to 
             % fourth row respectively.
             %
             %                     | 2 -> top    |

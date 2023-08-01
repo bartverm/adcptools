@@ -12,7 +12,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
     %   each cell will hold approximately the same number of adcp velocity
     %   estimates.
     %
-    %   Each mesh cell consists of six edges, called:
+    %   Each mesh cell consists of six vertices, called:
     %           *         ---> top-middle
     %         /   \
     %       /       \
@@ -24,11 +24,11 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
     %   | /           *   ---> bottom-right
     %   *                 ---> bottom-left
     %
-    %   Note that the left, middle and right edges are always vertically
+    %   Note that the left, middle and right vertices are always vertically
     %   stacked and share the same n-coordinate.
     %
-    %   Data can be stored either in a vector with a value for each cell or in
-    %   a matrix which has a toplogy similar to the mesh. The indexing
+    %   Data can be stored either in a vector with a value for each cell or 
+    %   in a matrix which has a toplogy similar to the mesh. The indexing
     %   properties (see below) help map between these formats.
     %
     %   SigmaZetaMesh properties (read only):
@@ -39,36 +39,41 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
     %   ncells - number of cells in the mesh
     %   nverticals - number of columns in mesh
     %   max_ncells_vertical - maximum number of cells in one vertical
-    %   acells - area of cells in the mesh
+    %   area_cells - area of cells in the mesh
+    %   dn_cells - lateral size of cells
     %
-    %   * Edge Position
-    %   z_bottom_left - z-coordinate of the bottom-left edge
-    %   z_top_left - z-coordinate of the top-left edge
-    %   z_bottom_mid - z-coordinate of the bottom-middle edge
-    %   z_top_mid - z-coordinate of the top-middle edge
-    %   z_bottom_right - z-coordinate of the bottom-right edge
-    %   z_top_right - z-coordinate of the top-right edge
-    %   sig_bottom_left - sigma-coordinate of the bottom-left edge
-    %   sig_top_left - sigma-coordinate of the top-left edge
-    %   sig_bottom_mid - sigma-coordinate of the bottom-middle edge
-    %   sig_top_mid - sigma-coordinate of the top-middle edge
-    %   sig_bottom_right - sigma-coordinate of the bottom-right edge
-    %   sig_top_right - sigma-coordinate of the top-right edge
-    %   n_left - n-coordinate of the left edges
-    %   n_middle - n-coordinate of the middle edges
-    %   n_right - n-coordinate of the right edges
-    %   x_left - x-coordinate of the left edges
-    %   x_middle - x-coordinate of the middle edges
-    %   x_right - x-coordinate of the right edges
-    %   y_left - y-coordinate of the left edges
-    %   y_middle - y-coordinate of the middle edges
-    %   y_right - y-coordinate of the right edges
+    %   * Vertex Positions
+    %   z_bottom_left - z-coordinate of the bottom-left vertex
+    %   z_top_left - z-coordinate of the top-left vertex
+    %   z_bottom_mid - z-coordinate of the bottom-middle vertex
+    %   z_top_mid - z-coordinate of the top-middle vertex
+    %   z_bottom_right - z-coordinate of the bottom-right vertex
+    %   z_top_right - z-coordinate of the top-right vertex
+    %   sig_bottom_left - sigma-coordinate of the bottom-left vertex
+    %   sig_top_left - sigma-coordinate of the top-left vertex
+    %   sig_bottom_mid - sigma-coordinate of the bottom-middle vertex
+    %   sig_top_mid - sigma-coordinate of the top-middle vertex
+    %   sig_bottom_right - sigma-coordinate of the bottom-right vertex
+    %   sig_top_right - sigma-coordinate of the top-right vertex
+    %   n_left - n-coordinate of the left vertices
+    %   n_middle - n-coordinate of the middle vertices
+    %   n_right - n-coordinate of the right vertices
+    %   x_left - x-coordinate of the left vertices
+    %   x_middle - x-coordinate of the middle vertices
+    %   x_right - x-coordinate of the right vertices
+    %   y_left - y-coordinate of the left vertices
+    %   y_middle - y-coordinate of the middle vertices
+    %   y_right - y-coordinate of the right vertices
     %
     %   * Bed position
-    %   zb_left - z-coordinate of bed at left edges
-    %   zb_middle - z-coordinate of bed at middle edges
-    %   zb_right - z-coordinate of bed at right edges
-    %   zb_all - z-coordinate of bed at all edges from left to right
+    %   zb_left - z-coordinate of bed at left vertices
+    %   zb_middle - z-coordinate of bed at middle vertices
+    %   zb_right - z-coordinate of bed at right vertices
+    %   zb_all - z-coordinate of bed at all vertices from left to right
+    %   nb_all - n-coordinate of bed at all vertices from left to right
+    %   xb_all - x-coordinate of bed at all vertices from left to right
+    %   yb_all - y-coordinate of bed at all vertices from left to right
+    
     %
     %   * Water surface position
     %   nw - n-coordinates of water surface boundaries
@@ -76,10 +81,10 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
     %   yw - y-coordinates of water surface boundaries
     %
     %   * Patch coordinates (for use with patch plotting function)
-    %   n_patch - n-coordinate of edges for use with patch function
-    %   x_patch - x-coordinate of edges for use with patch function
-    %   y_patch - y-coordinate of edges for use with patch function
-    %   z_patch - z-coordinate of edges for use with patch function
+    %   n_patch - n-coordinate of vertices for use with patch function
+    %   x_patch - x-coordinate of vertices for use with patch function
+    %   y_patch - y-coordinate of vertices for use with patch function
+    %   z_patch - z-coordinate of vertices for use with patch function
     %
     %   * Indexing
     %   col_to_mat - map column based data to matrix layout
@@ -89,13 +94,18 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
     %   row_to_cell - map row based data to cell layout
     %   col_to_cell - map column based data to cell layout
     %
+    %   * Mesh topology
+    %   neighbors - holds the index of neighboring cells
+    %   domains - domain cells belong to
+    %   jacobian - jacobian matrix for i,j to sigma,n coordinates
+    %
     %   SigmaZetaMesh methods:
     %   index - returns mesh cell indices for given positions
     %   plot - plot the mesh optionally coloring with a given variable
-    %   plot3 - plot the mesh optionally coloring with a given variable in 3D
+    %   plot3 - 3D plot the mesh optionally coloring with a given variable
+    %   plot_neighbors - plot the mesh connectivity and numbering
     %
-    %   see also: Mesh, VelocitySolver
-
+    %   see also: Mesh, Solver
 
     properties
         % SigmaZetaMesh/time
@@ -107,11 +117,21 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         time (1,1) datetime
     end
     properties (SetAccess=?SigmaZetaMeshGenerator)
-
+        % SigmaZetaMesh/nverticals
+        %
+        %   number of verticals in the mesh. In matrix representation this
+        %   is the number of columns.
+        %
+        % see also: SigmaZetaMesh 
         nverticals
 
+        % SigmaZetaMesh/max_ncells_vertical
+        %
+        %   Maximum number of cells in a vertical. This is also the number
+        %   of rows in the matrix representation of the mesh
+        %
+        % see also: SigmaZetaMesh 
         max_ncells_vertical
-
 
         % SigmaZetaMesh/xs
         %
@@ -202,7 +222,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
 
         % SigmaZetaMesh/zb_left
         %
-        %   bed elevation below the right edges of mesh cells.
+        %   bed elevation below the right vertices of mesh cells.
         %   size: 1 x nverticals
         %
         % see also: SigmaZetaMesh 
@@ -218,7 +238,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
 
         % SigmaZetaMesh/zb_right
         %
-        %   bed elevation below the right edges of mesh cells.
+        %   bed elevation below the right vertices of mesh cells.
         %   size: 1 x nverticals
         %
         % see also: SigmaZetaMesh 
@@ -294,41 +314,301 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   see also: SigmaZetaMesh       
         cell_to_mat (:,1) double {mustBeInteger, mustBeFinite mustBeReal}
 
-        
+        % SigmaZetaMesh/row_to_cell
+        %
+        %   map row based data to cell layout
+        %
+        %   see also: SigmaZetaMesh              
         row_to_cell (:,1) double {mustBeInteger, mustBeFinite mustBeReal}
+
+        % SigmaZetaMesh/col_to_cell
+        %
+        %   map column based data to cell layout. Typical use: if you want
+        %   to e.g. get the n-coordinate of the left vertices for each of
+        %   the cells you can use:
+        %
+        %   n_left_cells = mesh.n_left(obj.col_to_cell)
+        %
+        %   see also: SigmaZetaMesh              
         col_to_cell (:,1) double {mustBeInteger, mustBeFinite mustBeReal}
 
+        % SigmaZetaMesh.neighbors
+        %
+        %   array with size 4 x ncells holding the index of the 
+        %   neighbors to the right, top left and bottom in the first to 
+        %   fourth row respectively. The figure below shows the row number
+        %   where the indices of the specific neighbors end up:
+        %
+        %                     |   row 2 -> top  |
+        %           __________|_________________|___________
+        %                     |                 |
+        %       row 3 -> left |       cell      | row 1 -> right
+        %           __________|_________________|___________
+        %                     |                 |
+        %                     | row 4 -> bottom | 
+        %
+        %   If the neighbor does not exist, e.g. at the corners or sides of
+        %   the mesh, a NaN is returned.
+        %
+        %   see also: SigmaZetaMesh
         neighbors (:,4) double {mustBeReal}
+
+        % SigmaZetaMesh/domains
+        %
+        % The domain array hold an index for each cell depending on
+        % where the cell is located in the mesh:
+        %
+        %  4: top left corner   |    3: top side    | 2: top right corner
+        %  _____________________|___________________|_____________________ 
+        %                       |                   |
+        %     5: left side      |    0: interior    | 1: right side
+        %  _____________________|___________________|_____________________
+        %                       |                   |
+        %  6: bottom left corner|  7: bottom side   | 8: bottom right corn
+        %
+        %   9: degenerate cell, i.e. having outer border on more than
+        %   two sides, or having it on the bottom and top or left and
+        %   right
+        %        
+        %   see also: SigmaZetaMesh
         domains (:,1) double {mustBeInteger, mustBeFinite, mustBeReal,...
             mustBeNonnegative, mustBeLessThanOrEqual(domains,9)}
 
+        % SigmaZetaMesh/jacobian
+        %
+        %   jacobian of transformation from i,j to sigma,n coordinates,
+        %   with i being the cell number in the vertical (numbering from 
+        %   surface to bed and j the column number from left to right.
+        %
+        %   jacobian is an ncells x 2 x 2 with in the trailing dimensions
+        %   the jacobian matrix:
+        %        __          __
+        %       |   dn    dn   |
+        %       |   --    --   |
+        %       |   di    dj   |
+        %       |              |
+        %       |  dsig  dsig  |
+        %       |  ----  ----  |
+        %       |__ di    dj __|
+        %
+        %   see also: SigmaZetaMesh
         jacobian (:,2,2) double {mustBeReal}
     end
     properties (Dependent, SetAccess=protected, GetAccess=public)
+        % SigmaZetaMesh/x_left
+        %
+        %   x-coordinates of left vertices of mesh cells.
+        %   size: 1 x nverticals
+        %
+        % see also: SigmaZetaMesh 
         x_left
+
+        % SigmaZetaMesh/x_middle
+        %
+        %   x-coordinates of central vertices of mesh cells.
+        %   size: 1 x nverticals
+        %
+        % see also: SigmaZetaMesh 
         x_middle
+
+        % SigmaZetaMesh/x_right
+        %
+        %   x-coordinates of right vertices of mesh cells.
+        %   size: 1 x nverticals
+        %
+        % see also: SigmaZetaMesh 
         x_right
+
+        % SigmaZetaMesh/y_left
+        %
+        %   y-coordinates of left vertices of mesh cells.
+        %   size: 1 x nverticals
+        %
+        % see also: SigmaZetaMesh 
         y_left
+
+        % SigmaZetaMesh/y_middle
+        %
+        %   y-coordinates of central vertices of mesh cells.
+        %   size: 1 x nverticals
+        %
+        % see also: SigmaZetaMesh 
         y_middle
+
+        % SigmaZetaMesh/y_right
+        %
+        %   y-coordinates of right vertices of mesh cells.
+        %   size: 1 x nverticals
+        %
+        % see also: SigmaZetaMesh 
         y_right
+
+        % SigmaZetaMesh/z_center
+        %
+        %   z-coordinates of mesh cells center.
+        %   size: ncells x 1
+        %
+        % see also: SigmaZetaMesh 
         z_center
+
+        % SigmaZetaMesh/xb_all
+        %
+        %   x-coordinate of bed points below the left, center, and right 
+        %   vertices of mesh cells. Usefull to plot bed elevation
+        %   size: 1 x (1 + 2 * nverticals)
+        %
+        % see also: SigmaZetaMesh, nb_all
         xb_all
+
+        % SigmaZetaMesh/yb_all
+        %
+        %   y-coordinate of bed points below the left, center, and right 
+        %   vertices of mesh cells. Usefull to plot bed elevation
+        %   size: 1 x (1 + 2 * nverticals)
+        %
+        % see also: SigmaZetaMesh, nb_all
         yb_all
+
+        % SigmaZetaMesh/xw
+        %
+        %   x-coordinates of water surface boundaries
+        %
+        % see also: SigmaZetaMesh, nw
         xw
+
+        % SigmaZetaMesh/yw
+        %
+        %   y-coordinates of water surface boundaries
+        %
+        % see also: SigmaZetaMesh, nw
         yw
+
+        % SigmaZetaMesh/n_patch
+        %
+        %   n-coordinates of all vertices of mesh cells to be used for
+        %   plotting with the patch function
+        %
+        %   size: 7 x ncells, with 7 being the coordinates of the 6
+        %       vertices with the first being repeated to close the polygon
+        %
+        % see also: SigmaZetaMesh
         n_patch
+
+        % SigmaZetaMesh/x_patch
+        %
+        %   x-coordinates of all vertices of mesh cells to be used for
+        %   plotting with the patch function
+        %
+        %   size: 7 x ncells, with 7 being the coordinates of the 6
+        %       vertices with the first being repeated to close the polygon
+        %
+        % see also: SigmaZetaMesh
         x_patch
+
+        % SigmaZetaMesh/y_patch
+        %
+        %   y-coordinates of all vertices of mesh cells to be used for
+        %   plotting with the patch function
+        %
+        %   size: 7 x ncells, with 7 being the coordinates of the 6
+        %       vertices with the first being repeated to close the polygon
+        %
+        % see also: SigmaZetaMesh
         y_patch
+
+        % SigmaZetaMesh/z_patch
+        %
+        %   z-coordinates of all vertices of mesh cells to be used for
+        %   plotting with the patch function
+        %
+        %   size: 7 x ncells, with 7 being the coordinates of the 6
+        %       vertices with the first being repeated to close the polygon
+        %
+        % see also: SigmaZetaMesh
         z_patch
+
+        % SigmaZetaMesh/sig_patch
+        %
+        %   sigma-coordinates of all vertices of mesh cells to be used for
+        %   plotting with the patch function
+        %
+        %   size: 7 x ncells, with 7 being the coordinates of the 6
+        %       vertices with the first being repeated to close the polygon
+        %
+        % see also: SigmaZetaMesh
         sig_patch
-        sig_bottom_left
-        sig_top_left
-        sig_bottom_mid
-        sig_top_mid
-        sig_bottom_right
-        sig_top_right
+
+
+        % SigmaZetaMesh/sig_bottom_left
+        %
+        %   sigma-coordinates of bottom left vertex of mesh cells.
+        %   size: ncells x 1
+        %
+        % see also: SigmaZetaMesh       
+        sig_bottom_left (:,1) double {mustBeFinite, mustBeReal}
+
+        % SigmaZetaMesh/sig_top_left
+        %
+        %   sigma-coordinates of top left vertex of mesh cells.
+        %   size: ncells x 1
+        %
+        % see also: SigmaZetaMesh 
+        sig_top_left (:,1) double {mustBeFinite, mustBeReal}
+
+        % SigmaZetaMesh/sig_bottom_mid
+        %
+        %   sigma-coordinates of bottom center vertex of mesh cells.
+        %   size: ncells x 1
+        %
+        % see also: SigmaZetaMesh 
+        sig_bottom_mid (:,1) double {mustBeFinite, mustBeReal}
+
+        % SigmaZetaMesh/sig_top_mid
+        %
+        %   sigma-coordinates of top central vertex of mesh cells.
+        %   size: ncells x 1
+        %
+        % see also: SigmaZetaMesh 
+        sig_top_mid (:,1) double {mustBeFinite, mustBeReal}
+
+        % SigmaZetaMesh/sig_bottom_right
+        %
+        %   sigma-coordinates of bottom right vertex of mesh cells.
+        %   size: ncells x 1
+        %
+        % see also: SigmaZetaMesh 
+        sig_bottom_right (:,1) double {mustBeFinite, mustBeReal}
+
+        % SigmaZetaMesh/sig_top_right
+        %
+        %   sigma-coordinates of top right vertex of mesh cells.
+        %   size: ncells x 1
+        %
+        % see also: SigmaZetaMesh 
+        sig_top_right (:,1) double {mustBeFinite, mustBeReal}
+
+        % SigmaZetaMesh/sig_center
+        %
+        %   sigma-coordinates of mesh cell centers.
+        %   size: ncells x 1
+        %
+        % see also: SigmaZetaMesh 
         sig_center
+
+        % SigmaZetaMesh/area_cells
+        %
+        %   area of mesh cells.
+        %   size: ncells x 1
+        %
+        % see also: SigmaZetaMesh 
         area_cells
+        
+        % SigmaZetaMesh/dn_cells
+        %
+        %   delta n or lateral size of mesh cells
+        %   size: ncells x 1
+        %
+        % see also: SigmaZetaMesh 
         dn_cells
     end
     methods
