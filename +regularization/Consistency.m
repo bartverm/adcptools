@@ -1,4 +1,10 @@
 classdef Consistency < regularization.TaylorBased
+% Weakly imposes consistency of derivatives within cells and on the mesh
+%
+%   Class weakly imposes that derivatives estimated within a mesh cell are
+%   the same as derivatives estimated accross cells on the mesh.
+%
+%   see also: VelocityConsistency, Regularization
     methods(Access = protected)
         function assemble_matrix_private(obj)
             obj.mustBeTaylorModel;
@@ -45,7 +51,10 @@ classdef Consistency < regularization.TaylorBased
         function [row, col, val] = make_idx_val(obj, var_name, nb_idx, var)
             %%% make indices and values for derivatives
             % find components with derivatives in var_name direction
-            comp_in = find(obj.model.n_order > 0);
+            lo = obj.model.lumped_orders;
+            vnames = obj.model.var_names;
+            v_idx = find(strcmp(var_name, vnames));
+            comp_in = find(lo(v_idx,:) > 0);
             n_comp = numel(comp_in);
 
             % number of parameters, when not taylor expanded
@@ -66,8 +75,10 @@ classdef Consistency < regularization.TaylorBased
             f_par = nan(n_comp, npars_ne*n_cells, 2);
             for cc=1:numel(comp_in) % for each component
                 cur_comp = comp_names{comp_in(cc)}; % name of component
-                f_par(cc,:,1) = find(obj.find_par(1,cur_comp, var_name)); % dp/dvar
-                f_par(cc,:,2) = find(obj.find_par(0,cur_comp)); % p0
+                f_par(cc,:,1) = find(obj.find_par(order = 1,...
+                    component = cur_comp, variable = var_name)); % dp/dvar
+                f_par(cc,:,2) = find(obj.find_par(order = 0, ...
+                    component = cur_comp)); % p0
             end
 
             % reshape to be able to easily search for neigbors in next step

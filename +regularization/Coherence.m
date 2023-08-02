@@ -1,7 +1,12 @@
 classdef Coherence < regularization.Regularization &...
         regularization.TaylorBased
 % Impose spatial coherence between neighboring cells
-
+%
+%   This regularization imposes spatial coherence of model parameters
+%   between the cells. A larger weight will impose a larger spatial
+%   coherence resulting in a smoother solution in space.
+%
+%   see also: VelocityCoherence, Regularization
     methods(Access = protected)
         function assemble_matrix_private(obj)
             Np = sum(obj.model.npars);
@@ -77,7 +82,7 @@ classdef Coherence < regularization.Regularization &...
 
             % Automatically assign weights to smoothness of different parameters
             % Important due to orientation of main flow
-            f_horz_der = obj.find_par(1,[],{'n','s'});
+            f_horz_der = obj.find_par(order = 1, variable = {'n','s'});
 
             w(f_horz_der) = w(f_horz_der)*horscale;
             W = spdiags(w, 0, npars, npars);

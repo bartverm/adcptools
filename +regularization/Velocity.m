@@ -1,32 +1,47 @@
 classdef Velocity <...
         regularization.Regularization &...
         matlab.mixin.Heterogeneous
-    methods
-        function obj = Velocity(varargin)
-        end
-    end
+% Generic class for velocity regularization.
+%
+%   All classes derived for regularization.Velocity can be combined to
+%   weakly enforce several regularizations.
+%   
+%   methods:
+%   get_all_regs - return an object of all velocity regression classes
+%
+%   methods (protected):
+%   mustBeVelocityModel - throws an error if model is not a velocity model
+%
+%   Available velocity models:
+%   regularization.InternalContinuity - enforce continuity within cell
+%   regularization.ExternalContinuity - enforce continuity between cells
+%   regularization.VelocityCoherence - enforce equal values between cells
+%   regularization.VelocityConsistency - enforce equal derivatives
+%   regularization.Kinematic - enforce kinematic boundary conditions
+%
+%   class inherits properties and methods from
+%   regularization.Regularization
+%
+%   see also: regularization.Regularization, 
+%     regularization.InternalContinuity, regularization.ExternalContinuity,
+%     regularization.VelocityCoherence, regularization.VelocityConsistency,
+%     regularization.Kinematic 
     methods(Static)
         function regs = get_all_regs(varargin)
+        % returns all available velocity regularizations
+        %
+        %   regs = regularization.Velocity.get_all_regs(...) returns alls
+        %   velocity regularizations and passes given arguments to the
+        %   velocity regularization classes for construction.
+        %
+        %   see also: regularization.Velocity,
+        %       regularization.Regularization
             regs = {regularization.InternalContinuity(varargin{:}),...
                     regularization.ExternalContinuity(varargin{:}),...
                     regularization.VelocityCoherence(varargin{:}),...
                     regularization.VelocityConsistency(varargin{:}),...
                     regularization.Kinematic(varargin{:})};
-            siz = cellfun(@size, regs, 'UniformOutput',false);
-            assert(isequal(siz{:}),...
-                'Size of generated regularizations should be equal')
-            siz = siz{1};
-            if isequal(siz, [1 1])
-                regs = [regs{:}];
-                return
-            end
-            out = cell(siz);
-            for co = 1:numel(out)
-                tmp = cellfun(@(x) x(co), regs, 'UniformOutput',false);
-                tmp = [tmp{:}];
-                out{co} = tmp;
-            end
-            regs = out;
+            regs = regularization.Regularization.reorganize_regs(regs);
         end
     end
     methods(Access = protected)

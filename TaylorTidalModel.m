@@ -29,25 +29,35 @@ classdef TaylorTidalModel < TaylorModel & TidalModel
 
 
     methods
-        function val = find_par(obj, ord, comp, vars, const)
-            all_comps = obj.get_component_names;
-            all_vars = obj.var_names;
-            all_const = [{'M0'}, obj.constituents];
-            if nargin < 2 || isempty(ord)
-                ord = [0 1 2];
+        function val = find_par(obj, options)
+            arguments(Input)
+                obj
+                options.component(1,:) string ...
+                    {mustBeValidComponent(obj, options.component)} =...
+                    obj.get_component_names
+                options.constituent(1,:) string ...
+                    {mustBeValidConstituent(obj, options.constituent)} =...
+                    [{'M0'}, obj.supported_constituents]
+                options.sincos(1,:) string ...
+                    {mustBeSinOrCos(obj, options.sincos)} = ["sin" "cos"]
+                options.order (1,:) double...
+                    {mustBeMember(options.order,[0 1 2])} = [0 1 2];
+                options.variable (1,:) string...
+                    {mustBeValidVariable(obj, options.variable)} =...
+                    obj.var_names;
             end
-            if nargin < 3 || isempty(comp)
-                comp = all_comps;
-            end
-            if nargin < 4 || isempty(vars)
-                vars = all_vars;
-            end
-            if nargin < 5 || isempty(const)
-                const = all_const;
-            end
-            f_tayl = find_par@TaylorModel(obj, ord, comp, vars);
+            ord = options.order;
+            comp = options.component;
+            vars = options.variable;
+            const = options.constituent;
+            sincos = options.sincos;
+
+
+            f_tayl = find_par@TaylorModel(obj, order = ord,...
+                component = comp, variable = vars);
             np_tayl = obj.get_npars_tay();
-            f_tid = find_par@TidalModel(obj,comp, const);
+            f_tid = find_par@TidalModel(obj, component = comp,...
+                constituent = const, sincos = sincos);
             val = false(sum(obj.npars),1);
             pos_tayl = 1;
             pos_tayltid = 1;
@@ -88,6 +98,9 @@ classdef TaylorTidalModel < TaylorModel & TidalModel
 
 
     methods(Access=protected)
+        function mustBeValidComponent(obj, components)
+            mustBeValidComponent@TidalModel(obj, components)
+        end
         function names = get_names(obj)
             tayl_names = get_names@TaylorModel(obj);
             tid_names = get_names@TidalModel(obj);

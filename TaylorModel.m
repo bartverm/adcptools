@@ -162,69 +162,52 @@ classdef TaylorModel < DataModel
             obj.sigma_order = val;
         end
         function val = find_par(obj,...
-                order_in,... % expansion order
-                comp_in,... % component
-                vars_in)    % expansion variable
+                options)    % expansion variable
             % select given parameters
             %
-            % idx = obj.find_par(order) find index of terms with the given
-            %   order (0, 1 or 2). If it is empty, returns terms of all
-            %   orders
+            % idx = obj.find_par(name = value) returns index of parameters
+            % specified with the following name = value arguments:
             %
-            % idx = obj.find_par(order, comp) find index of terms of given
-            %   order and component (one of obj.component_names). If empty
-            %   returs all 
+            % order
+            %   specifies the order of the terms sought. This can be a
+            %   vector if different order are needed. Default is all ordes,
+            %   i.e. [0 1 2]. 
+            % components
+            %   specifies the requested components as an array of strings
+            %   or cell of char arrays with the name of the component. The
+            %   name of the components must be any of the names given in
+            %   obj.component_names. Default is obj.component_names
+            % variables
+            %   variables to which the component should be expanded. Can be
+            %   any of obj.var_names. Default is obj.var_names.
             %
-            % idx = obj.find_par(order, comp, var) find index of terms of
-            %   given order, component, and expanded to the given variable.
-            %   For second order, all double and cross-derivatives with the
-            %   given variable are returned
+            % Examples:
+            %       model.find_par(order = 0) % return all 0 order terms
+            %       model.find_par(order = 1, component = 'u',...
+            %           variable = 's') % returns all du/ds
+            %       model.all_names(model.find_par(order = 1)) % returns
+            %           % the names of all first order terms
+            %
+            % see also: TaylorModel
+            arguments(Input)
+                obj
+                options.order (1,:) double {mustBeMember(options.order,[0 1 2])} = [0 1 2];
+                options.component (1,:) string {mustBeValidComponent(obj, options.component)} = obj.get_component_names;
+                options.variable (1,:) string {mustBeValidVariable(obj, options.variable)} = obj.var_names;
+            end
+
             all_comps = obj.get_component_names;
-            all_vars = obj.var_names;
-            if nargin < 2
-                val = true(sum(obj.npars),1);
-                return
-            end
-            if isempty(order_in)
-                order_in = [0 1 2];
-            end
-            if nargin < 3 || isempty(comp_in)
-                comp_in = all_comps;
-            end
-            if nargin < 4 || isempty(vars_in)
-                vars_in = all_vars;
-            end
-            assert(iscellstr(comp_in) || ischar(comp_in),...
-                'Components should be given as char or cell of chars')
-            if ischar(comp_in)
-                comp_in = {comp_in};
-            end
-            assert(all(ismember(comp_in, all_comps)),...
-                ['Components should be one or more of ''',...
-                strjoin(all_comps),...
-                ''''])
-            assert(iscellstr(vars_in) || ischar(vars_in),...
-                'Expansion variable should be a char or a cell of chars')
-            if ischar(vars_in)
-                vars_in = {vars_in};
-            end
-            assert(all(ismember(vars_in, all_vars)),...
-                ['Expansion variables should be one or more of ''',...
-                strjoin(all_vars),...
-                ''''])
-            assert(isnumeric(order_in),'Order should be numeric')
-            assert(isreal(order_in), 'Order should be a real number')
-            assert(all(isfinite(order_in)), 'Order should be finite')
-            assert(all(order_in >= 0, 'all'), 'Order should not be negative')
-            assert(all(order_in < 3, 'all'), 'Order cannot be larger than two');
-            assert(all(floor(order_in)==order_in,'all'),...
-                'Order should contain only integer numbers')
+
             lo = obj.lump_orders();
             np = sum(obj.get_npars_tay);
             nc = obj.ncomponents;
             vnames = obj.var_names;
             val = false(np,1);
-           
+            
+            comp_in = options.component;
+            order_in = options.order;
+            vars_in = options.variable;
+
             pos = 1;
             for comp = 1:nc
                 comp_name = all_comps(comp);
@@ -339,6 +322,18 @@ classdef TaylorModel < DataModel
 
     end
     methods (Access = protected)
+        function mustBeValidComponent(obj, names)
+            assert(all(ismember(names,obj.get_component_names)),...
+            ['Components should be one or more of ''',...
+                strjoin(obj.get_component_names),...
+                ''''])
+        end
+        function mustBeValidVariable(obj, variables)
+            assert(all(ismember(variables, obj.var_names)),...
+            ['Expansion variables should be one or more of ''',...
+                strjoin(obj.var_names),...
+                ''''])
+        end
         function check_order(obj,val)
             assert(numel(val) == obj.ncomponents, 'The number of elements should match the number of components')
         end

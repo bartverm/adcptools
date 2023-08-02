@@ -55,33 +55,25 @@ classdef TidalModel < DataModel
                 'Not all given constituents are supported')
             obj.constituents = val;
         end
-        function val = find_par(obj, comp, const)
+        function val = find_par(obj, options)
+            arguments(Input)
+                obj
+                options.component(1,:) string ...
+                    {mustBeValidComponent(obj, options.component)} =...
+                    obj.get_component_names
+                options.constituent(1,:) string ...
+                    {mustBeValidConstituent(obj, options.constituent)} =...
+                    [{'M0'}, obj.supported_constituents]
+                options.sincos(1,:) string ...
+                    {mustBeSinOrCos(obj, options.sincos)} = ["sin" "cos"]
+            end
             all_comps = obj.get_component_names;
-            all_const = [{'M0'}, obj.supported_constituents];
-            if nargin < 3 || isempty(const)
-                const = obj.constituents;
-            end
-            if nargin < 2 || isempty(comp)
-                comp = obj.component_names;
-            end
-            assert(ischar(const) || iscellstr(const),...
-                'Give constituents as char or cell of chars') %#ok<ISCLSTR>
-            if ischar(const)
-                const = {const};
-            end
-            assert(all(ismember(const, all_const)),...
-                'Not all given constituents are supported')
             
-            assert(iscellstr(comp) || ischar(comp),...
-                'Components should be given as char or cell of chars') %#ok<ISCLSTR>
-            if ischar(comp)
-                comp = {comp};
-            end
-            assert(all(ismember(comp, all_comps)),...
-                ['Components should be one or more of ''',...
-                strjoin(all_comps),...
-                ''''])
-            
+            comp = options.component;
+            const = options.constituent;
+            sincos_offset = [0 1];
+            sincos = ismember({'cos', 'sin'},options.sincos);
+            sincos = sincos_offset(sincos);
             val = false(sum(obj.get_npars_tid),1);
             pos = 1;
             for cc = 1:obj.ncomponents
@@ -96,7 +88,7 @@ classdef TidalModel < DataModel
                     const_name = obj.constituents(ct);
                     if ismember(comp_name, comp) &&...
                         ismember(const_name, const)
-                        val(pos+[0 1]) = true;
+                        val(pos+sincos) = true;
                     end
                     pos = pos + 2;
                 end
@@ -187,6 +179,24 @@ classdef TidalModel < DataModel
 
     end
     methods(Access=protected)
+        function mustBeValidComponent(obj, components)
+            all_comps = obj.get_component_names;
+            assert(all(ismember(components, all_comps)),...
+                ['Components should be one or more of ''',...
+                strjoin(all_comps),...
+                ''''])
+        end
+        function mustBeValidConstituent(obj, constituents)
+            all_const = [{'M0'}, obj.supported_constituents];
+            assert(all(ismember(constituents, all_const)),...
+                'Not all given constituents are supported')
+        end
+        function mustBeSinOrCos(~, parameter)
+            all_pars = {'cos', 'sin'};
+            assert(all(ismember(parameter, all_pars)),...
+                'Value must be ''sin'', or ''cos''')
+        end
+
         function names = get_names(obj)
 
             % Forms a cell array of dimensions 1xobj.ncomponents

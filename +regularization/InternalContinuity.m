@@ -1,9 +1,36 @@
 classdef InternalContinuity <...
         regularization.TaylorBased &...
         regularization.Velocity
-% Impose continuity within a mesh cell
+% Impose continuity (mass conservation) within a mesh cell
+%
+%   This class uses derivatives of velocity components estimated from data
+%   within a mesh cell and weakly imposes continuity. For this
+%   regularization to work the following expension requirements must be met:
+%   - u must be expanded to at least first order with respect to the 
+%     s-coordinate and the sigma-coordinate. 
+%   - v must be expanded to at least first order with respect to the 
+%     n-coordinate and the sigma-coordinate. 
+%   - v must be expanded to at least first order with respect to the 
+%     sigma-coordinate. 
+%
+%   regularization.InternalContinuity properties:
+%   nscale - scaling of variables in n-direction
+%   sscale - scaling of variables in s-direction
+%
+%   see also: regularization.Velocity, regularization.ExternalContinuity
     properties
+        % regularization.InternalContinuity/nscale
+        %
+        %   scaling of variables in n-direction. Default value is 1.
+        %
+        %   see also: ExternalContinuity
         nscale(1,1) double {mustBeFinite, mustBeReal} = 1;
+
+        % regularization.InternalContinuity/sscale
+        %
+        %   scaling of variables in s-direction. Default value is 1.
+        %
+        %   see also: ExternalContinuity
         sscale(1,1) double {mustBeFinite, mustBeReal} = 1;
     end
     methods(Access=protected)
@@ -14,11 +41,8 @@ classdef InternalContinuity <...
             assert(isa(obj.mesh, 'SigmaZetaMesh'), ...
                 "Only SigmaZetaMesh supported")
 
-            % Function that assembles cell-based continuity equation
             wl = obj.bathy.water_level;
-
             D0 = reshape(obj.get_subtidal_depth(),1,[]);
-            % const_names = obj.get_const_names(); % Cell array
             D0s = reshape(-obj.zbsn(1,:),1,[]);
             D0n = reshape(-obj.zbsn(2,:),1,[]);
             sig = reshape(obj.mesh.sig_center,1,[]);
@@ -32,11 +56,16 @@ classdef InternalContinuity <...
             npars_total = sum(obj.model.npars) * ncells;
 
             % find indices of parameters in regularization matrix
-            col =[find(obj.find_par(1, 'u', 's' )),... % du/ds
-                    find(obj.find_par(1, 'u', 'sig')),... % du/dsig
-                    find(obj.find_par(1, 'v', 'n'  )),... % dv/dn
-                    find(obj.find_par(1, 'v', 'sig')),... % dv/dsig
-                    find(obj.find_par(1, 'w', 'sig'))]; % dw/dsig
+            col =[find(obj.find_par(order = 1, component = 'u',...
+                    variable = 's' )),... % du/ds
+                  find(obj.find_par(order = 1, component = 'u',...
+                    variable = 'sig')),... % du/dsig
+                  find(obj.find_par(order = 1, component = 'v',...
+                    variable = 'n'  )),... % dv/dn
+                  find(obj.find_par(order = 1, component = 'v',...
+                    variable = 'sig')),... % dv/dsig
+                  find(obj.find_par(order = 1, component = 'w',...
+                    variable = 'sig'))]; % dw/dsig
             col = reshape(col,npars_ne,ncells,5);
             row = repmat((1:npars_ne*ncells)',[1, 5]);
             row = reshape(row,npars_ne,ncells,5);

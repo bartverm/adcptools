@@ -199,6 +199,26 @@ classdef Regularization <...
             obj = regularization.Regularization(varargin{:});
         end
     end
+    methods(Static, Access = protected)
+        function regs = reorganize_regs(regs)
+            siz = cellfun(@size, regs, 'UniformOutput',false);
+            assert(isequal(siz{:}),...
+                'Size of generated regularizations should be equal')
+            siz = siz{1};
+            if isequal(siz, [1 1])
+                regs = [regs{:}];
+                return
+            end
+            out = cell(siz);
+            for co = 1:numel(out)
+                tmp = cellfun(@(x) x(co), regs, 'UniformOutput',false);
+                tmp = [tmp{:}];
+                out{co} = tmp;
+            end
+            regs = out;
+
+        end
+    end
 
     methods(Sealed)
         function assemble_matrices(obj)
@@ -230,30 +250,10 @@ classdef Regularization <...
             end
         end
     end
-    methods
-
-
-
-
-    end
     methods(Access = protected)
-        % function IM = assemble_incidence(obj)
-        %     % unused -> remove?
-        %     obj.mesh = obj.mesh;
-        %     IM = zeros(obj.mesh.ncells);
-        %     for j = 1:obj.mesh.ncells % loop trough every cell
-        %         nbreal = obj.neighbors(j,~isnan(obj.neighbors(j,:)));
-        %         nbreal = nbreal(nbreal>j);
-        %         IM(j, nbreal) = 1;
-        %     end
-        %     IM = IM + IM';
-        % end
-
-
         function gramian_matrix(obj)
             obj.Cg = obj.C'*obj.C;
         end
-
         function D0 = get_subtidal_depth(obj)
             if isprop(obj.bathy.water_level, 'model') % If wl has a tidal model
                 if isa(obj.bathy.water_level.model, 'TidalModel')
@@ -263,15 +263,12 @@ classdef Regularization <...
                 D0 = obj.bathy.water_level.level - obj.zb0;
             end
         end
-
-
         function res = findn(obj, cell_of_str, str)
             res = find(strcmp(cell_of_str, str));
             if isempty(res)
                 res = nan;
             end
         end
-
         function [dn, dsig] = dom2dndsig(obj)
             nb = obj.neighbors;
             dom = obj.domains;

@@ -1,5 +1,8 @@
 classdef Kinematic < regularization.TaylorBased &...
         regularization.Velocity
+% Imposes kinematic boundary conditions at the edges of the mesh
+%
+%   see also: Regularization
     methods(Access = protected)
         function assemble_matrix_private(obj)
             obj.mustBeTaylorModel;
@@ -20,12 +23,15 @@ classdef Kinematic < regularization.TaylorBased &...
             npars = sum(obj.model.npars);
 
             col = [...
-                find(obj.find_par(0,'u')),...       u0
-                find(obj.find_par(1,'u','sig')),... du/dsig
-                find(obj.find_par(0,'v')),...       v0
-                find(obj.find_par(1,'v','sig')),... dv/dsig
-                find(obj.find_par(0,'w')),...       w0
-                find(obj.find_par(1,'w','sig'))];  %dw/dsig
+                find(obj.find_par(order = 0, component = 'u')),...       u0
+                find(obj.find_par(order = 1, component = 'u',...
+                    variable = 'sig')),... du/dsig
+                find(obj.find_par(order = 0, component = 'v')),...       v0
+                find(obj.find_par(order = 1, component = 'v',...
+                    variable = 'sig')),... dv/dsig
+                find(obj.find_par(order = 0, component = 'w')),...       w0
+                find(obj.find_par(order = 1, component = 'w',...
+                    variable = 'sig'))];  %dw/dsig
             
             col = reshape(col,npars_ne,ncells,6);
 

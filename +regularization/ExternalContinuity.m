@@ -1,7 +1,32 @@
 classdef ExternalContinuity < regularization.TaylorBased &...
         regularization.Velocity
+% Impose continuity (mass conservation) between mesh cell
+%
+%   This class uses derivatives of velocity components estimated using 
+%   derivatives calculated between cells in the mesh and weakly imposes 
+%   continuity. For this regularization to work the following expension 
+%   requirements must be met:
+%   - u must be expanded to at least first order with respect to the 
+%     s-coordinate.
+%
+%   regularization.ExternalContinuity properties:
+%   nscale - scaling of variables in n-direction
+%   sscale - scaling of variables in s-direction
+%
+%   see also: regularization.Velocity, regularization.InternalContinuity
     properties
+        % regularization.ExternalContinuity/nscale
+        %
+        %   scaling of variables in n-direction. Default value is 1.
+        %
+        %   see also: InternalContinuity
         nscale(1,1) double {mustBeFinite, mustBeReal} = 1;
+
+        % regularization.ExternalContinuity/sscale
+        %
+        %   scaling of variables in s-direction. Default value is 1.
+        %
+        %   see also: InternalContinuity
         sscale(1,1) double {mustBeFinite, mustBeReal} = 1;
     end
     methods (Access = protected)
@@ -42,10 +67,11 @@ classdef ExternalContinuity < regularization.TaylorBased &...
             npars_total = sum(npars) * ncells;
 
             par_idx = [...min_order
-                find(obj.find_par(1,'u','s')),...
-                find(obj.find_par(0,'u')),...
-                find(obj.find_par(0,'v')),...
-                find(obj.find_par(0,'w'))
+                find(obj.find_par(order = 1, component = 'u', ...
+                variable = 's')),...
+                find(obj.find_par(order = 0, component = 'u')),...
+                find(obj.find_par(order = 0, component = 'v')),...
+                find(obj.find_par(order = 0, component = 'w'))
                 ];
             par_idx = reshape(par_idx, npars_ne, ncells, 4);
 

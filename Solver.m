@@ -240,9 +240,17 @@ classdef Solver < helpers.ArraySupport
                     MP.p = MP.pars2p();
                 case "pcg"
                     npars=obj.data_model.npars;
-                    Mb0 = [M(:,1:npars(1),1).*xform(:,1),...
-                        M(:,1:npars(2),2).*xform(:,2),...
-                        M(:,1:npars(3),3).*xform(:,3)]; %Model matrix times unit vectors q
+                    ncomp = obj.data_model.ncomponents; 
+                    Mb0 = nan(size(M,1), sum(npars));
+                    par_start = 1;
+                    for ccomp = 1:ncomp
+                        Mb0(:,par_start:par_start+npars(ccomp)-1) =...
+                            M(:,1:npars(1),ccomp).*xform(:,1);
+                        par_start = par_start + npars(ccomp);
+                    end
+                    % Mb0 = [M(:,1:npars(1),1).*xform(:,1),...
+                    %     M(:,1:npars(2),2).*xform(:,2),...
+                    %     M(:,1:npars(3),3).*xform(:,3)]; %Model matrix times unit vectors q
                     disp('Assembled parameter - data mapping')
                     [M, b, ns] = obj.reorder_model_matrix(Mb0, dat, cell_idx);
                     MP = ModelParameters(M = M, b = b, opts = obj.opts,...
