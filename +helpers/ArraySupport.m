@@ -160,17 +160,36 @@ classdef ArraySupport < handle
                 end
             end
         end
-        function propnames = find_assignable_properties(obj)
+        function propnames = find_assignable_properties(obj, access_class)
+            if nargin < 2 % if access object is given
+                access_class = obj; % if no access class is given check for 
+                    % itself
+            end
+
             mc = metaclass(obj);
             propnames = {mc.PropertyList.Name};
-            f_props = strcmp({mc.PropertyList.SetAccess},'public') & ...
+            f_props =...
+                ... access is one stated in access_list
+                (cellfun(@(x) ischar(x) &&...
+                ismember(x, {'public'}),...
+                {mc.PropertyList.SetAccess}) | ... 
+                ... obj is of class that has access
+                cellfun(@(x) iscell(x) &&...
+                any(cellfun(@(y) isa(access_class,y.Name), x)),...
+                {mc.PropertyList.SetAccess})) & ...
+                ... properties are not dependent
                 ~[mc.PropertyList.Dependent] & ...
+                ... properties are not constant
                 ~[mc.PropertyList.Constant] ;
             propnames = propnames(f_props);
         end
         function [propnames, props_class] =...
             find_assignable_handle_properties(obj)
             propnames = obj.find_assignable_properties();
+            if isempty(propnames)
+                props_class ={};
+                return
+            end
             mc = metaclass(obj);
             plist = mc.PropertyList;
             allprops = {plist.Name};

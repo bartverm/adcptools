@@ -1,46 +1,55 @@
-classdef ModelParameters < handle & helpers.ArraySupport
+classdef Solution < handle & helpers.ArraySupport
     %MODELPARAMETERS Class for capturing model parameters as output of
     %get_parameters
 
     %   Detailed explanation goes here
 
-    properties
+    properties(Access = ?Solver)
         M (:,:) double % matrix M such that b = Mp
 
-        b (:,1) double; %rhs of system of eqs (b = Mp)
+        b (:,1) double %rhs of system of eqs (b = Mp)
 
-        p (:,:) double; % model parameters (b = Mp)
+        p (:,:) double % model parameters (b = Mp)
 
-        pars double;
-
-        cov_pars (:,:,:) double;
+        mesh (1,1) Mesh = SigmaZetaMesh
 
         regularization (1,:) regularization.Regularization
+
+        model (1,1) DataModel = TaylorScalarModel
 
         opts (1,1) SolverOptions
 
         ns (:,:) double
 
-        cell_idx (:,1) cell
-
         vel_cmap (:,3) double = jet(20);
 
         s_cmap (:,3) double = jet(15);
 
-        cv_results (1,:) double
+        % cv_results (1,:) double
     end
     properties(Dependent)
+        pars
         phi_cmap
     end
     methods
-        function obj = ModelParameters(varargin)
+        function obj = Solution(varargin)
             obj = obj@helpers.ArraySupport(varargin{:})
             if helpers.load_brewermap_package
                 obj.vel_cmap = brewermap(20, 'RdBu');
                 obj.s_cmap = brewermap(15, 'YlOrBr');
             end
         end
-
+        function pars = get.pars(obj)
+            [np, nsols] = size(obj.p);
+            ncells = obj.mesh.ncells;
+            npars = np/ncells;
+            pars = reshape(obj.p, npars, ncells, nsols);
+            pars = permute(pars, [2 1 3]);
+        end
+        function varargout = get_data(obj)
+            varargout = cell(1,nargout);
+            [varargout{:}] = obj.model.get_data(obj.pars);
+        end
         function plot_solution(obj, names_selection, par_idx, varargin)
 
             if nargin < 2
@@ -174,25 +183,6 @@ classdef ModelParameters < handle & helpers.ArraySupport
             end
         end
 
-        function par_idx = get_par_idx(obj, names_selection)
-            par_idx = nan([1,numel(names_selection)]);
-            for name_idx = 1:numel(names_selection)
-                par_idx(name_idx) = find(strcmp([obj.regularization.model.names{:}], names_selection{name_idx}));
-            end
-        end
-
-        function mod_names = modify_names(obj, names_selection)
-            mod_names = names_selection;
-            for idx = 1:numel(names_selection)
-                mod_names{idx} = strrep(mod_names{idx}, 'sig', '\sigma');
-                mod_names{idx} = strrep(mod_names{idx}, '^1', '');
-                mod_names{idx} = strrep(mod_names{idx}, 'u0', 'u_0');
-                mod_names{idx} = strrep(mod_names{idx}, 'v0', 'v_0');
-                mod_names{idx} = strrep(mod_names{idx}, 'w0', 'w_0');
-                mod_names{idx} = strrep(mod_names{idx}, 'd', '\partial ');
-            end
-        end
-
 
         function training_idx = split_dataset(obj)
 
@@ -251,29 +241,7 @@ classdef ModelParameters < handle & helpers.ArraySupport
                 CV{rp} = mean((M1*p_avg{rp} - b1).^2);
                 disp(['Cross-validated generalization error: ', num2str(CV{rp})])
             end
-
-
-
-
-            %Continue here.
-            %
-            %             obj.cv_results
-            %             for rp = 1:numel(obj.opts.reg_pars)
-            %                 obj.cv_results(rp) = mean((b1 - p_avg).^2)
-            % Residuals and goodness of fit
-
-            %                     pe(1, rp, ep) = calc_res(b, M*p(:, rp, ep)); % Performance on full set
-            %                     pe(2, rp, ep) = calc_res(b0, M0*p(:, rp, ep)); % Performance on training set
-            %                     pe(3, rp, ep) = calc_res(b1, M1*p(:, rp, ep)); % Performance on validation set
-            %                     pe(4, rp, ep) = calc_res(0, C1*p(:, rp, ep)); % Performance on continuity
-            %                     pe(5, rp, ep) = calc_res(0, C2*p(:, rp, ep)); % Performance on gen. continuity
-            %                     pe(6, rp, ep) = calc_res(0, C3*p(:, rp, ep)); % Performance on smoothness
-            %                     pe(7, rp, ep) = calc_res(0, C4*p(:, rp, ep)); % Performance on consistency
-            %                     pe(8, rp, ep) = calc_res(bc, C5*p(:, rp, ep)); % Performance on boundary conditions
-            %
-            %                     pe(9,rp,ep) = condest(A);
-            %                     pe(10,rp,ep) = it;
-        end
+       end
 
 
 

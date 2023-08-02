@@ -21,7 +21,7 @@ classdef Solver < helpers.ArraySupport
     %   data_model - defines the velocity model to fit
     %
     %   Solver methods:
-    %   get_parameters - get velocity model parameters on mesh
+    %   get_solution - get velocity model parameters on mesh
     %   get_velocity - get velocity on mesh
     %   rotate_to_xs - rotates velocity to cross-section direction
     %
@@ -86,15 +86,10 @@ classdef Solver < helpers.ArraySupport
 
     end
     methods
-        % function obj=Solver(varargin)
-        %     obj = obj@helpers.ArraySupport(varargin{:})
-        %     obj.parse_class_params_inputs(varargin{:});
-        % end
-
-        function MP = get_parameters(obj)
+        function S = get_solution(obj)
             % Solve velocity model parameters
             %
-            %   [pars, cov_pars, n_vels]=get_parameters(obj) Obtain the
+            %   S = get_solution(obj) Obtain the
             %   parameters of the model by fitting it to the velocity data.
             %   cov_pars returns the covatiance matrix of the model
             %   parameters and n_vels returns the number of velocity
@@ -103,7 +98,7 @@ classdef Solver < helpers.ArraySupport
             % see also: Solver, get_velocity, Mesh, VMADCP
 
             if ~isscalar(obj)
-                MP = obj.run_method('get_parameters');
+                S = obj.run_method('get_solution');
                 return
             end
 
@@ -158,113 +153,54 @@ classdef Solver < helpers.ArraySupport
             M = obj.data_model.get_model(...
                 time, d_s, d_n, d_z, d_sig);
 
-            disp('Assembled model matrices')
+            % disp('Assembled model matrices')
             % From here, different solvers are used depending on the
             % SolverOptions opts
 
-            switch obj.opts.algorithm
-                case "lscov"
-                    % combine velocity input to earth matrix with velocity
-                    % model
-                    npars = obj.data_model.npars;
-                    assert(size(xform,2)<=size(M,3),...
-                        'Solver:WrongNComponents',...
-                        'More component in transformation matrix than in model matrix')
-
-                    ncomp = size(xform,2); % number of component in transformation matrix
-                    npars(ncomp+1:end)=[]; % only keep number of parameters for component in transformation matrix
-                    xformM = nan(size(xform,1), sum(npars));
-                    cum_pars= cumsum([0 npars]);
-
-                    for ccomp = 1 : size(xform,2)
-                        xformM(:,cum_pars(ccomp)+1:cum_pars(ccomp+1)) = ...
-                            M(:,1:npars(ccomp),ccomp).*xform(:,ccomp);
-                    end
-                    xform = xformM;
-
-                    %%% combine velocity input with transformation matrices and
-                    %%% prepare data to be combined in one cell element per
-                    %%% mesh cell
-                    dat = [dat xform];
-                    % number of columns in model matrix + one for velocity
-                    % component
-                    ndat=size(dat,2);
-                    % make an index to map each model matrix parameter to a
-                    % column in output cell array
-                    dat_idx = cumsum(ones(size(cell_idx, 1), ndat), 2);
-                    cell_idx = repmat(cell_idx, ndat, 1);
-                    dat = reshape(dat, [], 1);
-                    dat_idx = reshape(dat_idx, [], 1);
-
-
-                    % gather data in cell array: every row corresponds to a
-                    % mesh cell, every column to a model parameter. First
-                    % column holds velocity component
-                    gather_dat = accumarray({cell_idx,dat_idx},... % indices
-                        dat,... % velocity and model matrices
-                        [obj.mesh.ncells,ndat],... % output size
-                        @(x) {x},... % function collecting data in cell
-                        {},... % value to fill when no data is avilable
-                        false);  % output not sparse
-
-                    % reorganize gathered data into columns, which are
-                    % inputs to the model fitting function
-                    gather_dat = num2cell(gather_dat, 1);
-
-                    % fit model for each cell
-                    [t_pars, t_n_bvels, t_cov_pars] = cellfun( ...
-                        @obj.fit_model, ... % function to fit model
-                        gather_dat{:}, ... % input data for fitting
-                        'UniformOutput', false); % output is non-scalar
-
-                    % replace empty cell elements with array with NaN values
-                    f_empty = cellfun(@isempty, t_pars);
-                    t_pars(f_empty) = {nan(ndat - 1, 1)};
-                    t_cov_pars(f_empty) = {nan(ndat - 1, ndat - 1)};
-
-
-                    %%% construct matrix from output cell array
-                    % reshape to allow subsequent concatenation
-                    t_cov_pars = cellfun( ...
-                        @(x) shiftdim(x, -1), ...
-                        t_cov_pars, ...
-                        'UniformOutput',false);
-                    t_pars = cellfun( ...
-                        @(x) shiftdim(x, -1), ...
-                        t_pars, ...
-                        'UniformOutput',false);
-                    MP = ModelParameters(opts = obj.opts);
-                    MP.pars = vertcat(t_pars{:});
-                    MP.cov_pars = vertcat(t_cov_pars{:});
-                    MP.ns = vertcat(t_n_bvels{:});
-                    MP.p = MP.pars2p();
-                case "pcg"
-                    npars=obj.data_model.npars;
-                    ncomp = obj.data_model.ncomponents; 
-                    Mb0 = nan(size(M,1), sum(npars));
-                    par_start = 1;
-                    for ccomp = 1:ncomp
-                        Mb0(:,par_start:par_start+npars(ccomp)-1) =...
-                            M(:,1:npars(ccomp),ccomp).*xform(:,ccomp);
-                        par_start = par_start + npars(ccomp);
-                    end
-                    % Mb0 = [M(:,1:npars(1),1).*xform(:,1),...
-                    %     M(:,1:npars(2),2).*xform(:,2),...
-                    %     M(:,1:npars(3),3).*xform(:,3)]; %Model matrix times unit vectors q
-                    disp('Assembled parameter - data mapping')
-                    [M, b, ns] = obj.reorder_model_matrix(Mb0, dat, cell_idx);
-                    MP = ModelParameters(M = M, b = b, opts = obj.opts,...
-                        regularization = obj.regularization);
-                    MP.p = obj.solve(M,b);
-                    MP.ns = ns;
-                    disp('Finished')
-                    MP.pars = obj.p2pars(MP.p);
-                otherwise
-                    error("Enter correct algorithm in SolverOptions: lscov (only data, cell-based) or pcg (regularized, global)")
-            end
+                npars=obj.data_model.npars;
+                ncomp = obj.data_model.ncomponents; 
+                Mb0 = nan(size(M,1), sum(npars));
+                par_start = 1;
+                for ccomp = 1:ncomp
+                    Mb0(:,par_start:par_start+npars(ccomp)-1) =...
+                        M(:,1:npars(ccomp),ccomp).*xform(:,ccomp);
+                    par_start = par_start + npars(ccomp);
+                end
+                [M, b, ns] = obj.reorder_model_matrix(Mb0, dat, cell_idx);
+                p = obj.solve(M,b);
+                
+                S = Solution;
+                S.mesh = obj.mesh;
+                S.model = obj.data_model;
+                S.regularization = obj.regularization;
+                S.M = M;
+                S.p = p;
+                S.b = b;
+                S.ns = ns;
         end
+        function varargout = get_parameters(obj, S)
+            arguments
+                obj
+                S(:,:) Solution = obj.get_solution;
+            end
+            if ~isscalar(obj)
+                varargout = cell(1,nargout);
+                [varargout{:}] = obj.run_method('get_parameters', S);
+                return
+            end
+            
+            varargout = cell(1,nargout);
+            varargout{1} = S.pars;
+            if nargout > 1
+                warning('Covariance not yet implemented')
+                varargout{2} = nan(size(S.pars,[1 2 2 3]));
+            end
+            if nargout > 3
+                varargout{3} = S.ns;
+            end
 
-        function [varargout] = get_data(obj, mp, varargin)
+        end
+        function varargout = get_data(obj, varargin)
             %   Get data from model parameters
             %
             %   vel=get_data(obj)
@@ -272,32 +208,26 @@ classdef Solver < helpers.ArraySupport
             %   [vel,cov_vel] = get_data(obj)
 
             % Handle non-scalar call
-            varargout = cell(1,nargout);
             if ~isscalar(obj)
+                varargout = cell(1,nargout);
                 [varargout{:}] = obj.run_method('get_data',varargin{:});
                 return
             end
-
+            
+            varargout = cell(1,nargout);
             % scalar call
             if nargin < 2
-                mp = get_parameters(obj);
+                S = get_solution(obj);
+                pars = S.pars;
+            else
+                pars = varargin{1};
             end
-            varargout = cell(1,nargout);
-            [varargout{:}] = ...
-                obj.data_model.get_data(varargin{:});
+            [varargout{:}] = obj.data_model.get_data(pars);
         end
 
     end
 
     methods(Access=protected)
-        function pars = p2pars(obj,p)
-            [np, ne] = size(p);
-            ncells = obj.mesh.ncells;
-            npars = np/ncells;
-            pars = reshape(p, npars, ncells, ne);
-            pars = permute(pars, [2 1 3]);
-        end
-
         function [idx_mesh,idx_ef]=make_indices(obj)
             nrp=max(numel(obj.ensemble_filter),numel(obj.mesh));
             idx_mesh=ones(nrp,1);
@@ -324,7 +254,7 @@ classdef Solver < helpers.ArraySupport
             n_regs = size(reg_pars,1);
             p = nan([Np,n_sols]);
             Mg = M'*M; % Expensive operation -> minimize number of calls
-            for idx = n_sols
+            for idx = 1:n_sols
                 rp = reg_pars(:,idx);
                 Cg = sparse(0);
                 rhs = M'*b;
@@ -342,11 +272,10 @@ classdef Solver < helpers.ArraySupport
 
         function [p, iter] = solve_single(obj, A, rhs)
             if obj.opts.set_diagcomp
-                obj.opts.preconditioner_opts.diagcomp = max(sum(abs(A),2)./diag(A))-2;
+                obj.opts.preconditioner_opts.diagcomp = max(max(sum(abs(A),2)./diag(A))-2, 0);
             end
             L = ichol(A, obj.opts.preconditioner_opts);
             [p, ~, ~, iter, ~] = pcg(A, rhs, obj.opts.pcg_tol, obj.opts.pcg_iter, L, L');
-
         end
 
 

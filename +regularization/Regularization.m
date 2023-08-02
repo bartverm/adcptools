@@ -127,17 +127,6 @@ classdef Regularization <...
             obj.assemble_matrices
             val = obj.rhs;
         end
-        function val = get.Cg_weight(obj)
-            if isscalar(obj)
-                val = obj.Cg .* shiftdim(obj.weight, -1);
-                return
-            end
-            obj.check_regpars;
-            val = obj(1).Cg_weight;
-            for co = 2:numel(obj)
-                val = val + obj(co).Cg_weight;
-            end
-        end
         function neighbors = get.neighbors(obj)
             neighbors = obj.mesh.neighbors;
         end
@@ -261,39 +250,6 @@ classdef Regularization <...
                 end
             else
                 D0 = obj.bathy.water_level.level - obj.zb0;
-            end
-        end
-        function res = findn(obj, cell_of_str, str)
-            res = find(strcmp(cell_of_str, str));
-            if isempty(res)
-                res = nan;
-            end
-        end
-        function [dn, dsig] = dom2dndsig(obj)
-            nb = obj.neighbors;
-            dom = obj.domains;
-            dsig = zeros(size(dom));
-            dn = zeros(size(dom));
-
-            sig_center = obj.mesh.sig_center;
-            n_center = obj.mesh.n_middle(obj.mesh.col_to_cell);
-
-            for cell_idx = 1:obj.mesh.ncells
-                if dom(cell_idx)==0 || dom(cell_idx)==1 || dom(cell_idx) == 5 % Internal cells (in terms of sigma)
-                    dsig(cell_idx) = sig_center(nb(2, cell_idx))-sig_center(nb(4, cell_idx)); % central difference
-                elseif dom(cell_idx) ==2 || dom(cell_idx) == 3|| dom(cell_idx)==4 %Surface cells (deprecated: replaced by boundary condition matrix)
-                    dsig(cell_idx) = sig_center(cell_idx)-sig_center(nb(4, cell_idx)); % one-sided difference
-                else                                                        % Bottom cells (deprecated: replaced by boundary condition matrix)
-                    dsig(cell_idx) = sig_center(nb(2, cell_idx))-sig_center(cell_idx); % one-sided difference
-                end
-
-                if dom(cell_idx)==0 || dom(cell_idx)==3 || dom(cell_idx) == 7 % Internal cells (laterally)
-                    dn(cell_idx) = n_center(nb(1, cell_idx))-n_center(nb(3, cell_idx)); % central difference
-                elseif dom(cell_idx) ==1 || dom(cell_idx)==2|| dom(cell_idx)==8                           % Right side of domain (deprecated)
-                    dn(cell_idx) = n_center(cell_idx)-n_center(nb(3, cell_idx)); % one-sided difference
-                else                                                        % Left side of domain (deprecated)
-                    dn(cell_idx) = n_center(nb(1, cell_idx))-n_center(cell_idx); % one-sided difference
-                end
             end
         end
     end

@@ -57,8 +57,22 @@ classdef VelocitySolver < ADCPDataSolver
             %
             %   [vel,cov_vel] = get_velocity(obj) also returns the standard
             %   deviation in the velocity
+            if ~isscalar(obj)
+                varargout = cell(1,nargout);
+                [varargout{:}] = obj.run_method('get_velocity',varargin{:});
+                return
+            end
+
             varargout = cell(1,nargout);
             [varargout{:}] = obj.get_data(varargin{:});
+            R = shiftdim(obj.rotation_matrix',-1);
+            varargout{1} = helpers.matmult(R, varargout{1});
+
+            if nargout > 1
+                RT = shiftdim(obj.rotation_matrix,-1);
+                varargout{2} = helpers.matmult(RT,varargout{2});
+                varargout{2} = helpers.matmult(varargout{2}, R);
+            end
         end
 
         function [vel, cov]=rotate_to_xs(obj, orig_vel, orig_cov)
