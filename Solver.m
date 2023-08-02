@@ -245,7 +245,7 @@ classdef Solver < helpers.ArraySupport
                     par_start = 1;
                     for ccomp = 1:ncomp
                         Mb0(:,par_start:par_start+npars(ccomp)-1) =...
-                            M(:,1:npars(1),ccomp).*xform(:,1);
+                            M(:,1:npars(ccomp),ccomp).*xform(:,ccomp);
                         par_start = par_start + npars(ccomp);
                     end
                     % Mb0 = [M(:,1:npars(1),1).*xform(:,1),...
