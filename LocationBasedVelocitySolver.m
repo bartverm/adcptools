@@ -33,6 +33,10 @@ classdef LocationBasedVelocitySolver < VelocitySolver
     methods(Access=protected)
         function [vpos, vdat, xform, time, wl] = get_solver_input(obj)
             [vpos, ~, ~, time, wl] = get_solver_input@ADCPDataSolver(obj);
+            
+            vpos = reshape(vpos,[],3);
+            time = reshape(time,[],1);
+            wl = reshape(wl,[],1);
 
             % get velocity data
             vdat = obj.adcp.cat_property('water_velocity',...

@@ -33,10 +33,10 @@ classdef ADCPDataSolver < Solver
             wl = wl(ens_filt);
             wl = repmat(wl, size(vpos, 1), 1, size(vpos, 3));
             
-            % vectorize
-            time = reshape(time, [], 1);
-            vpos = reshape(vpos, [], 3);
-            wl = reshape(wl, [], 1);
+            % % vectorize
+            % time = reshape(time, [], 1);
+            % vpos = reshape(vpos, [], 3);
+            % wl = reshape(wl, [], 1);
         end
         function [vdat,xform] = filter_and_vectorize(obj,vdat, xform)
             ens_filt = ~obj.ensemble_filter.bad_ensembles;

@@ -271,8 +271,13 @@ classdef Solver < helpers.ArraySupport
         end
 
         function [p, iter] = solve_single(obj, A, rhs)
+            if isdiag(A)
+                p = 1./diag(A).*rhs;
+                iter = 1;
+                return
+            end
             if obj.opts.set_diagcomp
-                obj.opts.preconditioner_opts.diagcomp = max(max(sum(abs(A),2)./diag(A))-2, 0);
+                obj.opts.preconditioner_opts.diagcomp = max(sum(abs(A),2)./diag(A))-2;
             end
             L = ichol(A, obj.opts.preconditioner_opts);
             [p, ~, ~, iter, ~] = pcg(A, rhs, obj.opts.pcg_tol, obj.opts.pcg_iter, L, L');
