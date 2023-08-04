@@ -12,7 +12,7 @@ function out=readViseaExtern(adcp,filenames,rfiles,varargin)
 %       A scalar positive integer indicating the field width in the visea
 %       files (default is 25)
 %
-%   See also: readADCP 
+%   See also: readADCP
 
 %    Copyright 2014 Bart Vermeulen
 %
@@ -55,7 +55,7 @@ for cf=1:nFiles
     assert(fid~=-1,'readViseaExtern:FileNotOpen',['Could not open file:',filenames{cf}]); % check file has opened successfully
     head=fgetl(fid); % read header line
     if head==-1 % if head could not be read, fail quitly
-        fclose(fid); 
+        fclose(fid);
         continue
     end
     assert(strcmp(head(1:42),'[YYYY/MM/DD, HH:MM:SS.SSS] ENSEMBLE NUMBER'),'readViseaExtern:BadHead',['Could not read Visea exter file: ',filenames{cf}]) % Check the header looks familiar
@@ -70,14 +70,14 @@ for cf=1:nFiles
     % determine the corresponding ADCP-file
     rid = 0;
     for rdx=1:length(rfiles)
-	% compare until the r.000 suffix
-	if (strncmp(rfiles{rdx},filenames{cf},length(rfiles{rdx})-5))
-		rid = rdx;
-		break;
-	end % if strncmp
+        % compare until the r.000 suffix
+        if (strncmp(rfiles{rdx},filenames{cf},length(rfiles{rdx})-5))
+            rid = rdx;
+            break;
+        end % if strncmp
     end % for rdx
     if (rid == 0)
-    	warning(['Could not match visea-file ', filenames{cf},' with any adcp-file']);
+        warning(['Could not match visea-file ', filenames{cf},' with any adcp-file']);
     end % if rid == 0
 
     % match ensnum of corresponding adcp file
@@ -90,8 +90,8 @@ for cf=1:nFiles
     out.timeV(idx_adcp,:)=tmptime(idx_visea,:); % Store visea time in output structure
 
     for cfld=1:nFields % loop over all fields
-        if ~isfield(out,head{cfld}) % If field is not yet in output structure, add it 
-           out.(head{cfld})=nan(1,size(out.timeV,1)); % and initialize it
+        if ~isfield(out,head{cfld}) % If field is not yet in output structure, add it
+            out.(head{cfld})=nan(1,size(out.timeV,1)); % and initialize it
         end % if
         out.(head{cfld})(idx_adcp)=dat{cfld+7}(idx_visea); % store visea data in output structure
     end

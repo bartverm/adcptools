@@ -61,6 +61,14 @@ classdef XSection < handle & helpers.ArraySupport
         %
         % see also: XSection, origin, direction
         direction_orthogonal (2,1) double {mustBeFinite}
+        
+        %XSection/angle (read only)
+        %
+        % Angle in radians of the direction orthogonal to the cross-section
+        %
+        % see also: XSection, origin, direction
+        angle (1,1) double
+        
     end
     methods
         function obj=XSection(varargin)
@@ -88,6 +96,9 @@ classdef XSection < handle & helpers.ArraySupport
         end
         function set.direction_orthogonal(obj,val)
             obj.direction=[-val(2); val(1)];
+        end
+        function angle = get.angle(obj)
+            angle = atan2(obj.direction_orthogonal(2), obj.direction_orthogonal(1));
         end
         function [varargout]=xy2sn(obj,x,y,u,v)
             % Transform points and vectors from xy to sn coordinates
@@ -202,7 +213,6 @@ classdef XSection < handle & helpers.ArraySupport
             us = u * obj.direction_orthogonal(1) + v * obj.direction_orthogonal(2);
             un = u * obj.direction(1) + v * obj.direction(2);
         end
-        
         function [u,v]=sn2xy_vel(obj,us,un)
             % Transform vectors from sn to xy coordinates
             %
@@ -296,6 +306,7 @@ classdef XSection < handle & helpers.ArraySupport
             asp=get(gca,'dataaspectratio');
             set(gca,'dataaspectratio',[max(asp(1:2))*[1 1] asp(3)])
             set(gca,'nextplot',hold_stat)
+            legend('tangential', 'orthogonal')
             if nargout>0
                 varargout{1}=h;
             end
@@ -357,7 +368,9 @@ classdef XSection < handle & helpers.ArraySupport
             %   obj.revert() reverts the direction of the cross-section
             %
             %   see also: XSection
-            obj.direction=-obj.direction;
+            dir = -[obj.direction];
+            dir = num2cell(dir,1);
+            [obj.direction]=deal(dir{:});
         end
     end
 end

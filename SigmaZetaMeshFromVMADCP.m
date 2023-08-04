@@ -337,9 +337,14 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
             mesh.z_bottom_right=mesh.z_bottom_right(mesh.mat_to_cell);
             mesh.z_top_right=mesh.z_top_right(mesh.mat_to_cell);
             
+            % store neighbors information and compute jacobian
+            [mesh.neighbors, mesh.domains] =...
+                obj.get_neighbors_and_domain(mesh);
+            mesh.jacobian = obj.get_jacobian(mesh);
         end
     end
     methods(Access=protected, Static)
+
         function f=get_intersections(vec,lev)
             if vec(1) < lev
                 fstart=1;

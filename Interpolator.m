@@ -72,7 +72,6 @@ classdef Interpolator < handle
             %   see also: Interpolator
             validateattributes(query_position,{'numeric'},{'2d','real'},'interpolate','query_position',2)
             assert(size(query_position,1)==obj.n_dims,['query_position must have ',num2str(obj.n_dims),' dimensions'])
-            
         end
     end
 end

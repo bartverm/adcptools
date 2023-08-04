@@ -48,6 +48,8 @@ mmbend.plot_track_velocity
 %%
 figure
 mmbend.plot_velocity
+get(gca,'xlim')
+mmbend.time([1500 2500])
 set(gca,'xlim',mmbend.time([1500 2500])) % zooming in on portion of the data
 
 %%

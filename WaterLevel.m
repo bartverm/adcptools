@@ -1,4 +1,4 @@
-classdef WaterLevel < handle
+classdef WaterLevel < handle & matlab.mixin.Copyable
 % Defines ADCP vertical position based on the water level
 %
 %   Subclasses should implement the get_water_level method
@@ -13,12 +13,12 @@ classdef WaterLevel < handle
     end
     methods
         function depth=get_depth(obj,z,time)
-% Compute the depth for a given time and elevation
-%
-%   depth = get_depth(obj, z, time) get the depth for the elevation z at
-%       the given time
-%
-%   see also: WaterLevel
+            % Compute the depth for a given time and elevation
+            %
+            %   depth = get_depth(obj, z, time) get the depth for the elevation z at
+            %       the given time
+            %
+            %   see also: VaryingWaterLevel
             wl=obj.get_water_level(time);
             depth=wl-z;
         end

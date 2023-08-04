@@ -38,17 +38,31 @@ classdef TimeBasedVelocitySolver < VelocitySolver
 
             % Get velocity position and compute sigma coordinates
             vpos = mean(vpos, 3, 'omitnan'); % average position of four beams
-            vpos = repmat(vpos, [1, 1, 4, 1]); % replicate average position
+            vpos = repmat(vpos, [1 1 3]); % replicate average position
+            vpos = reshape(vpos,[],3);
+
+            time(:,:,4) = [];
+            time = reshape(time,[],1);
+
+            wl(:,:,4) = [];
+            wl = reshape(wl,[],1);
 
             % get velocity data
             vdat = obj.adcp.cat_property('water_velocity',...
                 CoordinateSystem.Earth); % get velocity data
+            vdat(:,:,4)=[]; % remove error velocity
 
             % get transformation matrix
             xform = obj.adcp.cat_property('xform',...
                 CoordinateSystem.Earth,... destination: Earth
                 CoordinateSystem.Earth); % source: Earth
-            xform(:,:,:,4)=[]; % remove Error velocity
+            xform(:,:,:,4)=[]; % remove error velocity
+            xform(:,:,4,:)=[]; % remove error velocity
+            
+            % rotate transformation
+            xform = helpers.matmult(xform,...
+                shiftdim(obj.rotation_matrix,-2));
+            
 
             % filter and vectorize
             [vdat, xform] = obj.filter_and_vectorize(vdat, xform);

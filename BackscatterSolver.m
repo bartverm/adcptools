@@ -1,8 +1,20 @@
 classdef BackscatterSolver < ADCPDataSolver
+    methods 
+        function obj = BackscatterSolver(varargin)
+            obj = obj@ADCPDataSolver(varargin{:});
+            if any(strcmp(obj(1).unassigned_properties,'data_model'))
+                obj.assign_property('data_model',...
+                    ScalarModel(scalar_name = 'Sv'))
+            end
+        end
+    end
     methods (Access = protected)
         function [vpos, vdat, xform, time, wl] = get_solver_input(obj)
             [vpos, ~, ~, time, wl] = get_solver_input@ADCPDataSolver(obj);             % call superclass method to get positions and time of adcp data
-          
+           
+            vpos = reshape(vpos, [], 3);
+            time = reshape(time, [] ,1);
+            wl = reshape(wl, [], 1);
             % get backscatter data
             vdat = obj.adcp.cat_property('backscatter');
 

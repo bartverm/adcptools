@@ -14,51 +14,9 @@ classdef ADCPDataSolver < Solver
         %   see also: Solver, EnsembleFilter
         ensemble_filter (1,1) EnsembleFilter
     end
-    methods
-        function obj=ADCPDataSolver(varargin)
-            obj = obj@Solver(varargin{:})
-            has_vmadcp = false;
-            exp_vmadcp = {};
-            has_bathy = false;
-            has_xs = false;
-            no_expand = {};
-            for cnt_arg = 1 : nargin
-                cur_arg = varargin{cnt_arg};
-                if isa(cur_arg,'VMADCP')
-                    has_vmadcp = true;
-                    exp_vmadcp = no_expand;
-                    var = 'adcp';
-                elseif isa(cur_arg, 'Bathymetry')
-                    has_bathy = true;
-                    continue
-                elseif isa(cur_arg,'Filter')
-                    var = 'ensemble_filter';
-                elseif isa(cur_arg,'XSection')
-                    has_xs = true;
-                    continue
-                elseif isa(cur_arg,'char') && strcmp(cur_arg,'NoExpand')
-                    no_expand = {'NoExpand'};
-                    continue
-                else 
-                    continue
-                end
-                obj.assign_property(var, cur_arg, no_expand{:})
-            end
-
-            if ~has_bathy && has_vmadcp
-                B = BathymetryScatteredPoints(exp_vmadcp{:}, obj.adcp);
-                obj.assign_property('bathy', B);
-            end
-            if ~has_xs && has_vmadcp
-                XS = XSection(obj.ensemble_filter, exp_vmadcp{:},...
-                    obj.adcp);
-                obj.assign_property('xs',XS);
-            end
-        end
-
-    end
     methods (Access=protected)
         function [vpos, vdat, xform, time, wl] = get_solver_input(obj)
+            assert(~isempty(obj.adcp),'Adcp property is empty, cannot continue')
             vpos = obj.adcp.cat_property('depth_cell_position'); % velocity positions
             vdat = [];
             xform = [];
@@ -75,10 +33,10 @@ classdef ADCPDataSolver < Solver
             wl = wl(ens_filt);
             wl = repmat(wl, size(vpos, 1), 1, size(vpos, 3));
             
-            % vectorize
-            time = reshape(time, [], 1);
-            vpos = reshape(vpos, [], 3);
-            wl = reshape(wl, [], 1);
+            % % vectorize
+            % time = reshape(time, [], 1);
+            % vpos = reshape(vpos, [], 3);
+            % wl = reshape(wl, [], 1);
         end
         function [vdat,xform] = filter_and_vectorize(obj,vdat, xform)
             ens_filt = ~obj.ensemble_filter.bad_ensembles;

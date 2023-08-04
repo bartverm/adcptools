@@ -10,7 +10,7 @@ classdef VelocitySolver < ADCPDataSolver
     %   Bathymetry -> obj.bathymetry
     %   XSection -> obj.xs
     %   Filter -> obj.ensemble_filter
-    %   VelocityModel -> obj.velocity_model 
+    %   VelocityModel -> obj.velocity_model
     %
     %  VelocitySolver properties:
     %   adcp - VMADCP object with the adcp data
@@ -27,8 +27,25 @@ classdef VelocitySolver < ADCPDataSolver
     %
     %   see also: VMADCP, Mesh, Bathymetry, XSection, Filter,
     %   TimeBasedVelocitySolver, LocationBasedVelocitySolver
-
-   methods
+    properties
+        % VelocityModel/rotation
+        %
+        %   Horizontal rotation applied to velocity. Value must be a
+        %   scalar, finite and real double.
+        %
+        % see also: VelocityModel
+        rotation(1,1) double {mustBeFinite, mustBeReal} = 0;
+    end
+    properties(Dependent, SetAccess=private)
+        % ncomponents x ncomponents rotation matrix
+        rotation_matrix (:,:) double {mustBeFiniate, mustBeReal}
+    end
+    methods
+        function rotation_matrix = get.rotation_matrix(obj)
+            rotation_matrix = [cos(obj.rotation), -sin(obj.rotation), 0;...
+                sin(obj.rotation), cos(obj.rotation), 0;...
+                0, 0, 1];
+        end
         function varargout = get_velocity(obj, varargin)
             %   Get velocity from model parameters
             %
@@ -40,20 +57,34 @@ classdef VelocitySolver < ADCPDataSolver
             %
             %   [vel,cov_vel] = get_velocity(obj) also returns the standard
             %   deviation in the velocity
+            if ~isscalar(obj)
+                varargout = cell(1,nargout);
+                [varargout{:}] = obj.run_method('get_velocity',varargin{:});
+                return
+            end
+
             varargout = cell(1,nargout);
             [varargout{:}] = obj.get_data(varargin{:});
+            R = shiftdim(obj.rotation_matrix',-1);
+            varargout{1} = helpers.matmult(R, varargout{1});
+
+            if nargout > 1
+                RT = shiftdim(obj.rotation_matrix,-1);
+                varargout{2} = helpers.matmult(RT,varargout{2});
+                varargout{2} = helpers.matmult(varargout{2}, R);
+            end
         end
 
         function [vel, cov]=rotate_to_xs(obj, orig_vel, orig_cov)
-        % Rotates velocity to direction of cross-section
-        %
-        %   vel=obj.rotate_to_xs(orig_vel) Rotates the velocity orig_vel
-        %   to the direction of the cross-section.
-        %
-        %   [vel, cov]=obj.rotate_to_xs(orig_vel, orig_cov) also rotates
-        %   the covariance matrix
-        %
-        % See also: VelocitySolver, get_velocity
+            % Rotates velocity to direction of cross-section
+            %
+            %   vel=obj.rotate_to_xs(orig_vel) Rotates the velocity orig_vel
+            %   to the direction of the cross-section.
+            %
+            %   [vel, cov]=obj.rotate_to_xs(orig_vel, orig_cov) also rotates
+            %   the covariance matrix
+            %
+            % See also: VelocitySolver, get_velocity
             xs = [obj.xs];
             u = cellfun(@(x) x(:,1),orig_vel,'UniformOutput',false);
             v = cellfun(@(x) x(:,2),orig_vel,'UniformOutput',false);

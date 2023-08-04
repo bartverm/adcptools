@@ -38,20 +38,20 @@ classdef Bathymetry < helpers.ArraySupport
         z = get_bed_elev(obj, x, y)
     end
     methods
-        function obj = Bathymetry(varargin)
-            obj = obj@helpers.ArraySupport(varargin{:});
-            varargin = obj(1).unprocessed_construction_inputs;
-            isprocessed = false(size(varargin));
-            for count_var = 1 : numel(varargin)
-                cvar = varargin{count_var};
-                if isa(cvar, 'WaterLevel')
-                    obj.assign_property('water_level', cvar);
-                    isprocessed(count_var) = true;
-                end
-            end
-            varargin(isprocessed) = [];
-            obj(1).unprocessed_construction_inputs = varargin;
-        end
+        % function obj = Bathymetry(varargin)
+            % obj = obj@helpers.ArraySupport(varargin{:});
+            % varargin = obj(1).unprocessed_construction_inputs;
+            % isprocessed = false(size(varargin));
+            % for count_var = 1 : numel(varargin)
+            %     cvar = varargin{count_var};
+            %     if isa(cvar, 'WaterLevel')
+            %         obj.assign_property('water_level', cvar);
+            %         isprocessed(count_var) = true;
+            %     end
+            % end
+            % varargin(isprocessed) = [];
+            % obj(1).unprocessed_construction_inputs = varargin;
+        % end
 
 
         function d = get_depth(obj, x, y, time)
