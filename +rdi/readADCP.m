@@ -873,6 +873,12 @@ dataout.rssiamp(cntens,1:4)=bt9(1:4);                       %Received signal str
 dataout.gain(cntens)=bt9(5);                           %Gain level for shallow water
 bt10=fread(fid,4,'uint8=>uint32');
 dataout.btrange(cntens,1:4)=reshape(bt10(1:4)*65636,[1,4])+dataout.btrange(cntens,1:4);     %Most significant byte of bt range in beam 1,2,3,4 in cm (65636-16777215)
+if ~dataout.firmver(cntens) == rdi.ADCP_Type.STREAMPRO_31
+    return % stop here if data is not from streampro
+end
+fseek(fid,4,0);
+bt11=fread(fid,4,'*uint8');
+dataout.sp_btrange_fract(cntens,1:4)=reshape(bt11,[1,4]);
 
 % Read variable leader
 function readVL(fid,fpos,cntens)
@@ -912,6 +918,9 @@ dataout.errorstat3(cntens,1:8)=vl4(17:24);                                      
 dataout.errorstat4(cntens,1:8)=vl4(25:32);                                      %Error status check (for explanation see manual)
 fseek(fid,2,0);                                                                 %Reserved for RDI
 vl5=fread(fid,2,'*uint32');
+if dataout.firmver(cntens) == rdi.ADCP_Type.STREAMPRO_31
+    return % for strempro, data ends here
+end
 dataout.pressure(cntens)=vl5(1);                                                %Pressure in decapascal (0-4'294'967'295)
 dataout.pressurevar(cntens)=vl5(2);                                             %Variance in pressure in decapascal (0-4'294'967'295)
 fseek(fid,1,0);                                                            %Spare byte
@@ -1432,6 +1441,7 @@ dataout.reflyrpergood=zeros([nens,4],'uint8');
 dataout.maxdepth=zeros(1,nens,'uint16');
 dataout.rssiamp=zeros([nens,4],'uint8');
 dataout.gain=zeros(1,nens,'uint8');
+dataout.sp_btrange_fract=zeros([nens,4],'uint8');
 
 %Initialize WinRiverII external GGA data
 function initNMEAGGA(nens,nblocks)

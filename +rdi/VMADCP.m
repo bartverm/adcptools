@@ -20,6 +20,12 @@ classdef VMADCP < VMADCP & rdi.ADCP
         function r=get_bt_vertical_range(obj)
             r=shiftdim(double(obj.raw.btrange)/100,-1);
             r(r==0)=nan;
+            f_streampro = obj.type == rdi.ADCP_Type.STREAMPRO_31;
+            if ~any(f_streampro)
+                return
+            end
+            r(1,f_streampro,:) = r(1,f_streampro,:) + ...
+                shiftdim(double(obj.raw.sp_btrange_fract(f_streampro,:))/100/256,-1);
         end
         function btvel=get_btvel(obj,dst)
             if nargin < 2
