@@ -1,4 +1,5 @@
-classdef VelocityModel < DataModel
+classdef VelocityModel < DataModel &...
+        matlab.mixin.Heterogeneous
     methods
         function M = get_model(obj, d_time, ~, ~, ~, ~)
             M = ones(numel(d_time), 1, obj.ncomponents);

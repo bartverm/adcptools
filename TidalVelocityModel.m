@@ -1,4 +1,4 @@
-classdef TidalVelocityModel < TidalModel & VelocityModel
+classdef TidalVelocityModel < VelocityModel & TidalModel
 % Tidal velocity model
     methods
         function M = get_model(varargin)

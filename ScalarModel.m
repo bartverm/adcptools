@@ -1,4 +1,5 @@
-classdef ScalarModel < DataModel
+classdef ScalarModel < DataModel &...
+        matlab.mixin.Heterogeneous
     properties
         scalar_name(1,:) char = 'eta'
     end

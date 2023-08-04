@@ -4,7 +4,7 @@ classdef Solution < handle & helpers.ArraySupport
 
     %   Detailed explanation goes here
 
-    properties(Access = ?Solver)
+    properties(SetAccess = ?Solver)
         M (:,:) double % matrix M such that b = Mp
 
         b (:,1) double %rhs of system of eqs (b = Mp)
