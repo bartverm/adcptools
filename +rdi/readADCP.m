@@ -136,7 +136,7 @@ disp('Reading data...')
 %warning is generated. Take care concatenating files with different
 %settings!!! All setting will be recorded once for each file
 
-
+f = waitbar(0,'Reading data...');
 dataout = initFL(nens, dataout);
 for cntens = 1:nens
     Ndatablock = find(DataHeader{cntens}(:,1) == 0, 1);
@@ -146,7 +146,10 @@ for cntens = 1:nens
         fpos = EnsStart{cntens} + DataOffset{cntens}(Ndatablock);
         dataout = readFL(fileid(cntens), fpos, cntens, dataout);
     end
+    disp(cntens)
+    waitbar(cntens/nens,f,'Reading data...');
 end
+close(f)
 
 % for cntfiles=1:nValidFiles
 %     dataout.FileNumber(fileid==ValidFilesId(cntfiles))=cntfiles;           %Record in output which ensembles belong to which FL setting field

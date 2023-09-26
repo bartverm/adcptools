@@ -169,6 +169,8 @@ classdef Solver < helpers.ArraySupport
                 [M, b, ns] = obj.reorder_model_matrix(Mb0, dat, cell_idx);
                 p = obj.solve(M,b);
                 
+                % Pass solution data to Solution class
+
                 S = Solution;
                 S.mesh = obj.mesh;
                 S.model = obj.data_model;
@@ -253,7 +255,7 @@ classdef Solver < helpers.ArraySupport
             n_sols = size(reg_pars,2);
             n_regs = size(reg_pars,1);
             p = nan([Np,n_sols]);
-            Mg = M'*M; % Expensive operation -> minimize number of calls
+            Mg = M'*M;
             for idx = 1:n_sols
                 rp = reg_pars(:,idx);
                 Cg = sparse(0);
@@ -282,8 +284,6 @@ classdef Solver < helpers.ArraySupport
             L = ichol(A, obj.opts.preconditioner_opts);
             [p, ~, ~, iter, ~] = pcg(A, rhs, obj.opts.pcg_tol, obj.opts.pcg_iter, L, L');
         end
-
-
 
         function [M, b, ns] = reorder_model_matrix(obj, Mb0, dat, cell_idx)
             ncells = obj.mesh.ncells;
