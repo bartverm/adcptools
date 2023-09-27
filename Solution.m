@@ -1,5 +1,5 @@
 classdef Solution < handle & helpers.ArraySupport
-    %MODELPARAMETERS Class for capturing model parameters as output of
+    %Solution Class for capturing model parameters as output of
     %get_parameters
 
     %   Detailed explanation goes here
@@ -40,9 +40,8 @@ classdef Solution < handle & helpers.ArraySupport
             varargout = cell(1,nargout);
             [varargout{:}] = obj.model.get_data(obj.pars);
         end
-
     end
-    methods(Access = protected)
+    methods(Access=protected)
         function b_pred = get_b_pred(obj)
             if ~isscalar(obj)
                 b_pred = obj.run_method('get_b_pred');
@@ -50,7 +49,7 @@ classdef Solution < handle & helpers.ArraySupport
             end
             b_pred = obj.M*obj.p;
         end
-        
+
         function [res, res_std, res_mean] = get_res(obj)
             if ~isscalar(obj)
                 [res, res_std, res_mean] = obj.run_method('get_res');
@@ -60,10 +59,10 @@ classdef Solution < handle & helpers.ArraySupport
             res_std = std(res);
             res_mean = mean(res);
         end
-        
+
         function ax = plot_mesh(obj, varargin)
 
-            ax = obj.regularization.mesh.plot(varargin{:});
+            ax = obj.mesh.plot(varargin{:});
 
             xlabel('y [m]')
             if any(strcmp(varargin,'sig')) %dirty
@@ -168,7 +167,7 @@ classdef Solution < handle & helpers.ArraySupport
                 obj.regularization.mesh.plot('var', var, 'FixAspectRatio', false)
                 amax = max(abs(var), [], 'omitnan');
                 %if strmp(meas_name, m)
-                caxis([-amax, amax])
+                clim([-amax, amax])
                 %end
             else
                 fi = strcat("c", meas_name, "m");
@@ -176,17 +175,17 @@ classdef Solution < handle & helpers.ArraySupport
                 amax = max(abs(var), [], 'omitnan');
                 %var(var==0) = nan;
                 obj.regularization.mesh.plot('var', var, 'FixAspectRatio', false)
-                caxis([-amax, amax])
-            end        
+                clim([-amax, amax])
+            end
         end
 
-%         function meas_tit = modify_titles(obj, )
+        %         function meas_tit = modify_titles(obj, )
 
 
         function plot_residuals(obj, var_idx)
             nreg = size(obj.p, 2);
             nn = numel(var_idx);
-            
+
             for fig_idx = 1:3
                 m = makefigure(20,3*numel(var_idx));
                 if nreg>1 % Compare different vectors
@@ -220,7 +219,7 @@ classdef Solution < handle & helpers.ArraySupport
                         set(c,'TickLabelInterpreter','latex')
                         colormap(gca, flipud(obj.vel_cmap))
                         c.FontSize = 12;
-                        
+
                         axis tight
                         set(gca, 'XDir','reverse') % Very important
 
@@ -234,7 +233,7 @@ classdef Solution < handle & helpers.ArraySupport
         end
 
         function plot_solution(obj, names_selection, par_idx, varargin)
-            
+
             if nargin < 2
                 names_selection = [obj.regularization.model.names{:}];
             end
@@ -294,7 +293,7 @@ classdef Solution < handle & helpers.ArraySupport
                     %plot(var(:,2:3))
                     %ylim([-armax(1), armax(1)])
                     hold on
-                    obj.regularization.mesh.plot('var', var, 'FixAspectRatio', false)
+                    obj.mesh.plot('var', var, 'FixAspectRatio', false)
                     if col == nreg
                         if ~contains(titles{row}, 'phi')
                             %amax = max(abs(var(:,1)), [], 'omitnan') + 1e-5;
@@ -705,109 +704,108 @@ classdef Solution < handle & helpers.ArraySupport
     end
 end
 
+    %         function SE = local_sensitivity(obj)
+    %         end
+    %
+    %         function SE = sensitivity_analysis(obj)
+    %
+    %         end
 
-%         function SE = local_sensitivity(obj)
-%         end
-%
-%         function SE = sensitivity_analysis(obj)
-%
-%         end
+    %         function phi_cmap = get.phi_cmap(obj)
+    %         phi_cmap = [obj.vel_cmap;  flipud(obj.vel_cmap)];
+    %         end
 
-%         function phi_cmap = get.phi_cmap(obj)
-%         phi_cmap = [obj.vel_cmap;  flipud(obj.vel_cmap)];
-%         end
-
-%     end
-
+    %     end
 
 
-% Bin
-%                 obj.velocity_model.get_parameter_names();
-%
-%                 % Internal continuity matrix
-%                 %                 for j = 1:obj.mesh.ncells
-%                 C1 = assembleC1(obj);
-%                 %                 end
-%                 C1p = C1'*C1;
-%
-%                 % External continuity matrix
-%                 C2 = assembleC2(obj);
-%                 C2p = C2'*C2;
-%
-%                 %Coherence matrix
-%                 C3 = assembleC3(obj);
-%                 C3p = C3'*C3;
-%
-%                 %Consistency matrix
-%                 C4 = assembleC4(obj);
-%                 C4p = C4'*C4;
-%
-%                 % Kinematic boundary condition matrix
-%                 [C5, bc] = assembleC5(obj);
-%                 C5p = C5'*C5;
-%
-%
-%                 % Data matrix: All data
-%                 [Mu, Mv, Mw] = obj.velocity_model.get_model(...
-%                     dt, cur_s, dn, dz, dsig);
-%                 Mb0 = [Mu.*cur_xform(:,1), Mv.*cur_xform(:,2), Mw.*cur_xform(:,3)]; %Model matrix times unit vectors q
-%
-%                 % If cross-validation is to be applied: Split data in two
-%                 % sets. All other operations before are data-independent
-%                 % and can thus be performed only once.
-%                 Mj = cell([obj.mesh.ncells,1]); ns = zeros([obj.mesh.ncells,1]); bj = cell([obj.mesh.ncells,1]);
-%                 for j = 1:obj.mesh.ncells
-%                     Mj{j} = Mb0(j==cell_idx,:);
-%                     ns(j) = sum(j == cell_idx);
-%                     bj{j} = cur_vel(j==cell_idx);
-%                 end
-%
-%                 b = vertcat(bj{:});
-%                 M = spblkdiag(Mj{:});
-%                 pcg_opts = struct('michol','on','type','ict','droptol',1e-3,'diagcomp',0);
-%
-%                 % Generate first guess for p
-%                 rpg0 = [opts.reg_pars0{:}];
-%                 A = M'*M + rpg0(1)*C1p + rpg0(2)*C2p + rpg0(3)*C3p + rpg0(4)*C4p + rpg0(5)*C5p;
-%                 alpha = max(sum(abs(A),2)./diag(A))-2;
-%                 pcg_opts.diagcomp = max(sum(abs(A),2)./diag(A))-2;
-%                 L = ichol(A, pcg_opts);
-%                 p0 = pcg(A, M'*b + rpg0(5)*C5'*bc, 1e-9, size(A,2), L, L'); % global, iterative inversion
-%                 np = length(p0);
-%
-%                 % Compute quantities of interest for comparison
-%                 rpg1 = opts.reg_pars1;
-%                 p1 = nan(np, size(rpg1,1));
-%                 for n = 1:length(rpg1{1})
-%                     A = M'*M + rpg1{1}(n)*C1p + rpg1{2}(n)*C2p + rpg1{3}(n)*C3p + rpg1{4}(n)*C4p + rpg1{5}(n)*C5p;
-%                     alpha = max(sum(abs(A),2)./diag(A))-2;
-%                     pcg_opts.diagcomp = max(sum(abs(A),2)./diag(A))-2;
-%                     p1(:,n) = pcg(A, M'*b + rpg1{5}(n)*C5'*bc, 1e-9, size(A,2), L, L'); % global, iterative inversion
-%                 end
 
-%                assignin("base", "dat", struct('M', M, 'C1', C1, 'C2', C2, 'C3', C3, 'C4', C4, 'C5', C5, 'bc', bc, ...
-%                    'IM', IM, 'p', p, 'p0', p0, 'p1', p1, 'b', b,...
-%                   'opts', opts, 'cell_idx', cell_idx, 'Pe', Pe, 'regP', regP))
+    % Bin
+    %                 obj.velocity_model.get_parameter_names();
+    %
+    %                 % Internal continuity matrix
+    %                 %                 for j = 1:obj.mesh.ncells
+    %                 C1 = assembleC1(obj);
+    %                 %                 end
+    %                 C1p = C1'*C1;
+    %
+    %                 % External continuity matrix
+    %                 C2 = assembleC2(obj);
+    %                 C2p = C2'*C2;
+    %
+    %                 %Coherence matrix
+    %                 C3 = assembleC3(obj);
+    %                 C3p = C3'*C3;
+    %
+    %                 %Consistency matrix
+    %                 C4 = assembleC4(obj);
+    %                 C4p = C4'*C4;
+    %
+    %                 % Kinematic boundary condition matrix
+    %                 [C5, bc] = assembleC5(obj);
+    %                 C5p = C5'*C5;
+    %
+    %
+    %                 % Data matrix: All data
+    %                 [Mu, Mv, Mw] = obj.velocity_model.get_model(...
+    %                     dt, cur_s, dn, dz, dsig);
+    %                 Mb0 = [Mu.*cur_xform(:,1), Mv.*cur_xform(:,2), Mw.*cur_xform(:,3)]; %Model matrix times unit vectors q
+    %
+    %                 % If cross-validation is to be applied: Split data in two
+    %                 % sets. All other operations before are data-independent
+    %                 % and can thus be performed only once.
+    %                 Mj = cell([obj.mesh.ncells,1]); ns = zeros([obj.mesh.ncells,1]); bj = cell([obj.mesh.ncells,1]);
+    %                 for j = 1:obj.mesh.ncells
+    %                     Mj{j} = Mb0(j==cell_idx,:);
+    %                     ns(j) = sum(j == cell_idx);
+    %                     bj{j} = cur_vel(j==cell_idx);
+    %                 end
+    %
+    %                 b = vertcat(bj{:});
+    %                 M = spblkdiag(Mj{:});
+    %                 pcg_opts = struct('michol','on','type','ict','droptol',1e-3,'diagcomp',0);
+    %
+    %                 % Generate first guess for p
+    %                 rpg0 = [opts.reg_pars0{:}];
+    %                 A = M'*M + rpg0(1)*C1p + rpg0(2)*C2p + rpg0(3)*C3p + rpg0(4)*C4p + rpg0(5)*C5p;
+    %                 alpha = max(sum(abs(A),2)./diag(A))-2;
+    %                 pcg_opts.diagcomp = max(sum(abs(A),2)./diag(A))-2;
+    %                 L = ichol(A, pcg_opts);
+    %                 p0 = pcg(A, M'*b + rpg0(5)*C5'*bc, 1e-9, size(A,2), L, L'); % global, iterative inversion
+    %                 np = length(p0);
+    %
+    %                 % Compute quantities of interest for comparison
+    %                 rpg1 = opts.reg_pars1;
+    %                 p1 = nan(np, size(rpg1,1));
+    %                 for n = 1:length(rpg1{1})
+    %                     A = M'*M + rpg1{1}(n)*C1p + rpg1{2}(n)*C2p + rpg1{3}(n)*C3p + rpg1{4}(n)*C4p + rpg1{5}(n)*C5p;
+    %                     alpha = max(sum(abs(A),2)./diag(A))-2;
+    %                     pcg_opts.diagcomp = max(sum(abs(A),2)./diag(A))-2;
+    %                     p1(:,n) = pcg(A, M'*b + rpg1{5}(n)*C5'*bc, 1e-9, size(A,2), L, L'); % global, iterative inversion
+    %                 end
 
-%               pars{1,1} = reshape(squeeze(p(:,1,1)) ,[size(Mb0,2), obj.mesh.ncells])'; % At this stage, pars are already known.
-%                cov_pars{1,1} = 0; n_vels{1,1} = ns;
+    %                assignin("base", "dat", struct('M', M, 'C1', C1, 'C2', C2, 'C3', C3, 'C4', C4, 'C5', C5, 'bc', bc, ...
+    %                    'IM', IM, 'p', p, 'p0', p0, 'p1', p1, 'b', b,...
+    %                   'opts', opts, 'cell_idx', cell_idx, 'Pe', Pe, 'regP', regP))
+
+    %               pars{1,1} = reshape(squeeze(p(:,1,1)) ,[size(Mb0,2), obj.mesh.ncells])'; % At this stage, pars are already known.
+    %                cov_pars{1,1} = 0; n_vels{1,1} = ns;
 
 
-%Continue here.
-%
-%             obj.cv_results
-%             for rp = 1:numel(obj.opts.reg_pars)
-%                 obj.cv_results(rp) = mean((b1 - p_avg).^2)
-% Residuals and goodness of fit
+    %Continue here.
+    %
+    %             obj.cv_results
+    %             for rp = 1:numel(obj.opts.reg_pars)
+    %                 obj.cv_results(rp) = mean((b1 - p_avg).^2)
+    % Residuals and goodness of fit
 
-%                     pe(1, rp, ep) = calc_res(b, M*p(:, rp, ep)); % Performance on full set
-%                     pe(2, rp, ep) = calc_res(b0, M0*p(:, rp, ep)); % Performance on training set
-%                     pe(3, rp, ep) = calc_res(b1, M1*p(:, rp, ep)); % Performance on validation set
-%                     pe(4, rp, ep) = calc_res(0, C1*p(:, rp, ep)); % Performance on continuity
-%                     pe(5, rp, ep) = calc_res(0, C2*p(:, rp, ep)); % Performance on gen. continuity
-%                     pe(6, rp, ep) = calc_res(0, C3*p(:, rp, ep)); % Performance on smoothness
-%                     pe(7, rp, ep) = calc_res(0, C4*p(:, rp, ep)); % Performance on consistency
-%                     pe(8, rp, ep) = calc_res(bc, C5*p(:, rp, ep)); % Performance on boundary conditions
-%
-%                     pe(9,rp,ep) = condest(A);
-%                     pe(10,rp,ep) = it;
+    %                     pe(1, rp, ep) = calc_res(b, M*p(:, rp, ep)); % Performance on full set
+    %                     pe(2, rp, ep) = calc_res(b0, M0*p(:, rp, ep)); % Performance on training set
+    %                     pe(3, rp, ep) = calc_res(b1, M1*p(:, rp, ep)); % Performance on validation set
+    %                     pe(4, rp, ep) = calc_res(0, C1*p(:, rp, ep)); % Performance on continuity
+    %                     pe(5, rp, ep) = calc_res(0, C2*p(:, rp, ep)); % Performance on gen. continuity
+    %                     pe(6, rp, ep) = calc_res(0, C3*p(:, rp, ep)); % Performance on smoothness
+    %                     pe(7, rp, ep) = calc_res(0, C4*p(:, rp, ep)); % Performance on consistency
+    %                     pe(8, rp, ep) = calc_res(bc, C5*p(:, rp, ep)); % Performance on boundary conditions
+    %
+    %                     pe(9,rp,ep) = condest(A);
+    %                     pe(10,rp,ep) = it;

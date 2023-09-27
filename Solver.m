@@ -245,6 +245,7 @@ classdef Solver < helpers.ArraySupport
         end
 
         function p = solve(obj, M, b)
+            disp('Solving...')
             Np = size(M,2);
             % Generate first guess for p <-> estimate parameters
             reg_pars = {obj.regularization.weight};
@@ -255,7 +256,7 @@ classdef Solver < helpers.ArraySupport
             n_sols = size(reg_pars,2);
             n_regs = size(reg_pars,1);
             p = nan([Np,n_sols]);
-            Mg = M'*M;
+            Mg = M'*M; % Inefficient: rather compute once.
             for idx = 1:n_sols
                 rp = reg_pars(:,idx);
                 Cg = sparse(0);
