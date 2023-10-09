@@ -1,7 +1,7 @@
 classdef TidalScalarModel < TidalModel & ScalarModel
 
     methods(Access = public)
-        function M = get_model(obj, d_time)
+        function M = get_model(obj, d_time, varargin)
             M = get_model@TidalModel(obj, d_time);
         end
     end
