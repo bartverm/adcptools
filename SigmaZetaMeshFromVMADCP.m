@@ -52,19 +52,36 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
 % SigmaZetaMeshFromVMADCP/deltan
 %
 %   scalar, positive double defining the horizontal (along the
-%   cross-section) resolution of the mesh. Default is 5.
+%   cross-section) spacing of the mesh. Default is 5.
 %
 %   see also:SigmaZetaFromVMADCP
         deltan (1,1) double {mustBeFinite, mustBePositive}= 5
         
 % SigmaZetaMeshFromVMADCP/
 %
-%   scalar, positive double defining the vertical resolution of the mesh
+%   scalar, positive double defining the vertical spacing of the mesh
 %   in m. Default is 1.
 %
 %   see also:SigmaZetaFromVMADCP
         deltaz (1,1) double {mustBeFinite, mustBePositive}= 1
+
+% SigmaZetaMeshFromVMADCP/deltan
+%
+%   scalar, positive double defining the horizontal (along the
+%   cross-section) resolution of the mesh. In the computations, one always
+%   has resn = B / deltan
+%
+%   see also:SigmaZetaFromVMADCP
+        resn (1,1) double {mustBeFinite, mustBePositive} = 30;
         
+% SigmaZetaMeshFromVMADCP/
+%
+%   scalar, positive double defining the vertical resolution of the mesh
+%   in 1/m. In the computations, one always has resz = H / deltaz
+%
+%   see also:SigmaZetaFromVMADCP
+        resz (1,1) double {mustBeFinite, mustBePositive} = 10;
+
 % SigmaZetaMeshFromVMADCP/xs
 %
 %   Scalar XSection object defining the cross-section. By default this is
@@ -179,7 +196,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
             t(obj.filter.bad_ensembles) = [];
             val = mean(t, 'omitnat');
         end
-        function mesh=get_mesh(obj)
+        function mesh=get_mesh(obj, varargin)
 % Construct the SigmaZetaMesh
 %
 %   mesh = get_mesh(obj) construct a SigmaZetaMesh. The generated mesh
@@ -187,6 +204,16 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
 %   and vertically between a minimum sigma coordinate, where adcp side-lobe
 %   interference is expected (determined based on the adcp beam angle) and
 %   the highest depth cell in the data.
+
+%   mesh = get_mesh(obj, varargin) construct a SigmaZetaMesh. The generated mesh
+%   spans from the minimum to the maximum n coordinate in the horizontal
+%   and vertically between a minimum sigma coordinate, where adcp side-lobe
+%   interference is expected (determined based on the adcp beam angle) and
+%   the highest depth cell in the data.
+%   varargin: enter name, value pairs such as get_mesh(resz = 10)
+%   possible names: resn, resz, deltan, deltaz. If conflicting res and
+%   delta values are provided, the delta takes precendence (to ensure
+%   backward compatibility)
 %
 %   see also: SigmaZetaMeshFromVMADCP, SigmaZetaMesh, VMADCP
 
@@ -199,6 +226,8 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
             mesh=SigmaZetaMesh;
             mesh.xs=obj.xs;
             mesh.time=obj.time;
+
+            dres = obj.d_or_res(varargin{:});
 
             % make n positions
             bpos = obj.vmadcp.cat_property('bed_position');
@@ -216,7 +245,11 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
             n(outside_as)=[]; % remove n-points outside alpha shape
             nmin = min(n, [], 'all','omitnan');  % compute minimum n coordinate of depth cells
             nmax = max(n, [], 'all','omitnan');  % compute maximum n coordinate of depth cells
-            nvec = [nmin : obj.deltan : nmax nmax];  % compute n position of cell edges
+            
+      
+           % deltan, deltaz = 
+
+            nvec = obj.get_nvec(dres, nmin, nmax);  % compute n position of cell edges
             
             
             % interpolate bathymetry to n positions
@@ -298,8 +331,8 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
             mesh.zb_all=zb_all;
                                  
             % create indices
-            nz=max(1,ceil((maxz-minz_mid)/obj.deltaz)); % compute number of cells in each vertical
-            max_num=max(nz); % get maximum number of cells in a vertical
+            nz = obj.get_nz(dres, maxz, minz_mid); % compute number of cells in each vertical
+            max_num=obj.resz; % get maximum number of cells in a vertical
             mesh.col_to_mat=repmat(1:size(nz,2),max_num,1);
             mesh.row_to_mat=repmat((1:max_num)',1,size(nz,2));
             mesh.mat_to_cell=reshape(mesh.row_to_mat<=nz,[],1);
@@ -341,6 +374,62 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
             [mesh.neighbors, mesh.domains] =...
                 obj.get_neighbors_and_domain(mesh);
             mesh.jacobian = obj.get_jacobian(mesh);
+        end
+    end
+
+    methods(Access=protected)
+        % Function to determine if mesh spacing ('d') or mesh resolution
+        % ('res') is being demanded by the user upon get_mesh call
+        % Default: mesh resolution "res"
+        function dres = d_or_res(obj, varargin)
+            dres = ["delta", "delta"]; %Default
+            if any(strcmp([varargin{:}], "resn"))
+                dres(1) = "res";
+                obj.resn = varargin{find(strcmp([varargin{:}], "resn")) + 1};
+            elseif any(strcmp([varargin{:}], "deltan"))
+                dres(1) = "delta";
+                obj.deltan = varargin{find(strcmp([varargin{:}], "deltan")) + 1};
+            else
+                warning("No delta_n or lateral resolution prescribed, assuming default delta_n of %d m", round(obj.deltan))
+            end
+            if any(strcmp([varargin{:}],"resz"))
+                dres(2) = "res";
+                obj.resz = varargin{find(strcmp([varargin{:}], "resz")) + 1};
+            elseif any(strcmp([varargin{:}], 'deltaz'))
+                dres(2) = "delta";
+                obj.deltaz = varargin{find(strcmp([varargin{:}], "deltaz")) + 1};
+            else
+                warning("No delta_z or vertical resolution prescribed, assuming default delta_z of %d m", round(10*obj.deltaz)/10)
+            end
+        end
+
+        function nvec = get_nvec(obj, dres, nmin, nmax)
+        if strcmp(dres(1), "delta")
+            obj.resn = ceil((nmax-nmin)/obj.deltan);
+            nvec = linspace(nmin, nmax, obj.resn + 1);
+            obj.deltan = nvec(2)-nvec(1);
+        elseif strcmp(dres(1), "res")
+            nvec = linspace(nmin, nmax, obj.resn + 1);
+            obj.deltan = nvec(2)-nvec(1);
+        else
+            error("Choose either vertical spacing (specifying deltan), " + ...
+                "or lateral resolution (specifying resn)")
+        end
+        assert(abs(obj.resn*obj.deltan - max(nmax-nmin)) < 1, "Lateral resolution and spacing do not match")
+        end
+
+        function nz = get_nz(obj, dres, maxz, minz_mid)
+        if strcmp(dres(2), "delta")
+            nz = ceil((maxz-minz_mid)/obj.deltaz);
+            obj.resz = max([1, nz]);
+        elseif strcmp(dres(2), "res")
+            obj.deltaz = max((maxz-minz_mid))/obj.resz;
+            nz = ceil((maxz-minz_mid)/obj.deltaz);
+        else
+            error("Choose either vertical spacing (specifying deltaz), or vertical resolution (specifying resz)")
+        end
+        % Check if resz = Hmax / dz
+        assert(abs(obj.resz*obj.deltaz - max(maxz-minz_mid)) < 1, "Vertical resolution and spacing do not match")
         end
     end
     methods(Access=protected, Static)
