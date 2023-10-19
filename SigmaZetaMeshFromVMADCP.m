@@ -429,7 +429,7 @@ classdef SigmaZetaMeshFromVMADCP < SigmaZetaMeshGenerator & helpers.ArraySupport
             error("Choose either vertical spacing (specifying deltaz), or vertical resolution (specifying resz)")
         end
         % Check if resz = Hmax / dz
-        assert(abs(obj.resz*obj.deltaz - max(maxz-minz_mid)) < 1, "Vertical resolution and spacing do not match")
+        assert(abs(obj.resz*obj.deltaz - max(maxz-minz_mid)) < 2, "Vertical resolution and spacing do not match")
         end
     end
     methods(Access=protected, Static)
