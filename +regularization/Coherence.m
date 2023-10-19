@@ -67,15 +67,15 @@ classdef Coherence < regularization.Regularization &...
         function W = assemble_weights(obj)
             % scaling factors based on characteristic scales
 
-            % par_names = obj.flatten_names;
             npars = sum(obj.model.npars)*obj.mesh.ncells;
             w = ones([npars,1]);
 
             if ~isa(obj.model,'TaylorModel')
+                W = spdiags(w, 0, npars, npars);
                 return
             end
 
-            % Apply enhanced regularization for small singular value features using
+            % Apply enhanced regularization for small variables using
             % characteristic spatial scales
 
             horscale = max(obj.mesh.n_patch, [], 'all') - min(obj.mesh.n_patch, [], 'all'); %Typical scales

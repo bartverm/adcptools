@@ -228,12 +228,19 @@ classdef Regularization <...
                     obj.assembled = true;
                     % try, catch, to makes sure assembled is set to false
                     % if assembly fails
+                    name = class(obj);
                     try
                         obj.assemble_matrix_private(); 
                         obj.gramian_matrix();
+                        disp(strcat("Assembled regularization matrix ", name(16:end)))
                     catch err
-                        obj.assembled = false;
-                        rethrow(err)
+                        %obj.assembled = false;
+                        %rethrow(err)
+                        warning(err.message)
+                        disp(strcat("Failed to assemble regularization matrix ", name(16:end), "-> using zero matrix"))
+                        obj.C = sparse(0);
+                        obj.Cg = sparse(0);
+                        obj.rhs = sparse(0);
                     end
                 end
             end

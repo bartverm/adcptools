@@ -4,6 +4,10 @@ classdef VelocityModel < DataModel &...
         function M = get_model(obj, d_time, ~, ~, ~, ~)
             M = ones(numel(d_time), 1, obj.ncomponents);
         end
+%         function val = find_par(obj, varargin)
+%             % select given parameters
+%             val=0;
+%         end
     end
     methods(Access=protected)
         function val = get_ncomponents(~)

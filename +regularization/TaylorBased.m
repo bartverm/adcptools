@@ -131,8 +131,9 @@ classdef TaylorBased < regularization.Regularization
 
     methods(Access = protected)
         function mustBeTaylorModel(obj)
+            name = class(obj);
             assert(all(cellfun(@(x) isa(x,"TaylorModel"), {obj.model}),...
-                "all"), "Regularization requires a TaylorModel");
+                "all"), strcat("Assembling the ", name(16:end), " matrix requires a TaylorModel"));
         end
         function mustMeetOrderCriteria(obj)
             assert(all(obj.model.lumped_orders >= obj.min_order, 'all'),...

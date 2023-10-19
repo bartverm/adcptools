@@ -12,9 +12,11 @@ classdef VelocityCoherence < regularization.Coherence &...
 
             vertscale = max(obj.mesh.z_patch,[], 'all') - min(obj.mesh.z_patch, [], 'all');
             horscale = max(obj.mesh.n_patch, [], 'all') - min(obj.mesh.n_patch, [], 'all'); %Typical scales
-            
-            f_vert_vel = obj.find_par(component = 'w');
-
+            if isa(obj.model, 'TaylorModel') || isa(obj.model, 'TidalModel')
+                f_vert_vel = obj.find_par(component = 'w');
+            else
+                f_vert_vel = 3:3:size(w,1);
+            end
             w(f_vert_vel) = w(f_vert_vel)*horscale/vertscale;
 
             % Replace diagonal with new values
