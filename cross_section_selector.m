@@ -9,7 +9,7 @@ function [ef, xs]=cross_section_selector(vmadcp)
 %
 %   see also: VMADCP, EnsembleFilter, XSection
     figure
-    vmadcp.plot_track('-','color',[.5 .5 .5]);
+    vmadcp.plot_track('.','color',[.5 .5 .5]);
     title('Press Enter to end selection')
     hpos=[vmadcp.horizontal_position];
     [xa,ya]=deal(hpos(1,:),hpos(2,:));

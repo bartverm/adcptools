@@ -296,11 +296,11 @@ classdef ADCP < ADCP
         function obj=ADCP(varargin)
             obj = obj@ADCP(varargin{:});
             obj.instrument_matrix_provider = [
-                rdi.InstrumentMatrixFromCalibration; 
+                rdi.InstrumentMatrixFromCalibration;
                 rdi.InstrumentMatrixFromBAngle
                 ];
             obj.heading_provider = [
-                rdi.HeadingProviderTFiles; 
+                rdi.HeadingProviderTFiles;
                 rdi.HeadingInternal
                 ];
             for ca=1:nargin
@@ -311,10 +311,13 @@ classdef ADCP < ADCP
             t = strsplit(string(obj.type(1)),'_');
             t = strcat(t(1:end-1));
             t = lower(t);
+            if ~isscalar(t)
+                t=[t{:}];
+            end
             obj.description = "RDI" + " " + t + " " +...
                 obj.frequency(1)/1000 + " KHz";
         end
-        
+
         %%% Set and Get methods %%%
         function file_id=get.fileid(obj)
             file_id=obj.raw.FileNumber;
