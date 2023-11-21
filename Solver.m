@@ -157,28 +157,28 @@ classdef Solver < helpers.ArraySupport
             % From here, different solvers are used depending on the
             % SolverOptions opts
 
-                npars=obj.data_model.npars;
-                ncomp = obj.data_model.ncomponents; 
-                Mb0 = nan(size(M,1), sum(npars));
-                par_start = 1;
-                for ccomp = 1:ncomp
-                    Mb0(:,par_start:par_start+npars(ccomp)-1) =...
-                        M(:,1:npars(ccomp),ccomp).*xform(:,ccomp);
-                    par_start = par_start + npars(ccomp);
-                end
-                [M, b, ns] = obj.reorder_model_matrix(Mb0, dat, cell_idx);
-                p = obj.solve(M,b);
-                
-                % Pass solution data to Solution class
+            npars=obj.data_model.npars;
+            ncomp = obj.data_model.ncomponents;
+            Mb0 = nan(size(M,1), sum(npars));
+            par_start = 1;
+            for ccomp = 1:ncomp
+                Mb0(:,par_start:par_start+npars(ccomp)-1) =...
+                    M(:,1:npars(ccomp),ccomp).*xform(:,ccomp);
+                par_start = par_start + npars(ccomp);
+            end
+            [M, b, ns] = obj.reorder_model_matrix(Mb0, dat, cell_idx);
+            p = obj.solve(M,b);
 
-                S = Solution;
-                S.mesh = obj.mesh;
-                S.model = obj.data_model;
-                S.regularization = obj.regularization;
-                S.M = M;
-                S.p = p;
-                S.b = b;
-                S.ns = ns;
+            % Pass solution data to Solution class
+
+            S = Solution;
+            S.mesh = obj.mesh;
+            S.model = obj.data_model;
+            S.regularization = obj.regularization;
+            S.M = M;
+            S.p = p;
+            S.b = b;
+            S.ns = ns;
         end
         function varargout = get_parameters(obj, S)
             arguments
@@ -190,7 +190,7 @@ classdef Solver < helpers.ArraySupport
                 [varargout{:}] = obj.run_method('get_parameters', S);
                 return
             end
-            
+
             varargout = cell(1,nargout);
             varargout{1} = S.pars;
             if nargout > 1
@@ -215,7 +215,7 @@ classdef Solver < helpers.ArraySupport
                 [varargout{:}] = obj.run_method('get_data',varargin{:});
                 return
             end
-            
+
             varargout = cell(1,nargout);
             % scalar call
             if nargin < 2
