@@ -158,8 +158,8 @@ classdef Solution < handle & helpers.ArraySupport
                 for nc = 1:5
                     [obj.GOF(n).cm{nc}, obj.GOF(n).cvar{nc}, obj.GOF(n).cmse{nc}, obj.GOF(n).ce{nc}]...
                         = obj.get_residual(obj.regularization(nc).C, obj.p(:,n), obj.regularization(nc).rhs);
-%                     [obj.GOF(n).cmm{nc}, obj.GOF(n).cvarm{nc}, obj.GOF(n).cmsem{nc}, obj.GOF(n).cem{nc}]...
-%                         = obj.get_residual_mesh(obj.regularization.C{nc}, obj.p(:,n), obj.regularization(nc).rhs, obj.regularization.neq{nc});
+                    %[obj.GOF(n).cmm{nc}, obj.GOF(n).cvarm{nc}, obj.GOF(n).cmsem{nc}, obj.GOF(n).cem{nc}]...
+                    %     = obj.get_residual_mesh(obj.regularization(nc).C, obj.p(:,n), obj.regularization(nc).rhs, obj.regularization.neq{nc});
                 end
             end
             gof = obj.GOF;

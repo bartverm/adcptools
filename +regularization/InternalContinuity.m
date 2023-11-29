@@ -10,7 +10,7 @@ classdef InternalContinuity <...
 %     s-coordinate and the sigma-coordinate. 
 %   - v must be expanded to at least first order with respect to the 
 %     n-coordinate and the sigma-coordinate. 
-%   - v must be expanded to at least first order with respect to the 
+%   - w must be expanded to at least first order with respect to the 
 %     sigma-coordinate. 
 %
 %   regularization.InternalContinuity properties:
