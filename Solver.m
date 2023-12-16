@@ -167,18 +167,21 @@ classdef Solver < helpers.ArraySupport
                 par_start = par_start + npars(ccomp);
             end
             [M, b, ns] = obj.reorder_model_matrix(Mb0, dat, cell_idx);
-            p = obj.solve(M,b);
-
-            % Pass solution data to Solution class
+            
+            
 
             S = Solution;
             S.mesh = obj.mesh;
             S.model = obj.data_model;
             S.regularization = obj.regularization;
             S.M = M;
-            S.p = p;
+            
             S.b = b;
             S.ns = ns;
+            % Pass solution data to Solution class
+            p = obj.solve(M, b);
+            S.solver = obj;
+            S.p = p;
         end
         function varargout = get_parameters(obj, S)
             arguments
@@ -267,8 +270,10 @@ classdef Solver < helpers.ArraySupport
                         rp(reg_idx)*obj.regularization(reg_idx).C'*...
                         obj.regularization(reg_idx).rhs;
                 end
-                A = Mg + Cg; % Data plus constraints
-                [p(:,idx), flag] = obj.solve_single(A, rhs);
+                [A, rhs, data] = obj.assemble_system(Mg, Cg, rhs);
+
+                [p(logical(data), idx), flag] = obj.solve_single(A, rhs);
+
                 disp(['Obtained solution using lambda = [', num2str(rp'), ']^T after ', num2str(flag), ' iterations.'])
             end
         end
@@ -285,6 +290,23 @@ classdef Solver < helpers.ArraySupport
             L = ichol(A, obj.opts.preconditioner_opts);
             [p, ~, ~, iter, ~] = pcg(A, rhs, obj.opts.pcg_tol, obj.opts.pcg_iter, L, L');
         end
+
+        function [A, rhs, data] = assemble_system(obj, Mg, Cg, rhs)
+            % Function that removes matrix columns if no data in that cell
+            % were present. Only active if problem is not regularized.
+            
+            % Determine if the problem is regularized
+            if any(any(Cg)) 
+                A = Mg + Cg; % Data plus constraints
+                rhs = rhs;
+                data = ones([size(Mg,1),1]);
+            else
+                data = full(any(Mg, 1))';
+                A = Mg(data, data);
+                rhs = rhs(data);
+            end
+        end
+                
 
         function [M, b, ns] = reorder_model_matrix(obj, Mb0, dat, cell_idx)
             ncells = obj.mesh.ncells;

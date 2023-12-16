@@ -415,7 +415,7 @@ classdef ArraySupport < handle
 %   array is produced instead of a cell
 %
 %   [...] = obj.run_method(method_name, ..., 'NoExpand', ...) Anything
-%   passed after the 'NoExpand' word is not expaned but passed as is to
+%   passed after the 'NoExpand' word is not expanded but passed as is to
 %   each call of the function.
 %
 %   See also:

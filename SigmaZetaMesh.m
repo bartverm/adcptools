@@ -27,7 +27,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
     %   Note that the left, middle and right vertices are always vertically
     %   stacked and share the same n-coordinate.
     %
-    %   Data can be stored either in a vector with a value for each cell or 
+    %   Data can be stored either in a vector with a value for each cell or
     %   in a matrix which has a toplogy similar to the mesh. The indexing
     %   properties (see below) help map between these formats.
     %
@@ -73,7 +73,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
     %   nb_all - n-coordinate of bed at all vertices from left to right
     %   xb_all - x-coordinate of bed at all vertices from left to right
     %   yb_all - y-coordinate of bed at all vertices from left to right
-    
+
     %
     %   * Water surface position
     %   nw - n-coordinates of water surface boundaries
@@ -122,7 +122,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   number of verticals in the mesh. In matrix representation this
         %   is the number of columns.
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         nverticals
 
         % SigmaZetaMesh/max_ncells_vertical
@@ -130,7 +130,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   Maximum number of cells in a vertical. This is also the number
         %   of rows in the matrix representation of the mesh
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         max_ncells_vertical
 
         % SigmaZetaMesh/xs
@@ -153,7 +153,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   z-coordinates of bottom left vertex of mesh cells.
         %   size: ncells x 1
         %
-        % see also: SigmaZetaMesh       
+        % see also: SigmaZetaMesh
         z_bottom_left (:,1) double {mustBeFinite, mustBeReal}
 
         % SigmaZetaMesh/z_top_left
@@ -161,7 +161,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   z-coordinates of top left vertex of mesh cells.
         %   size: ncells x 1
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         z_top_left (:,1) double {mustBeFinite, mustBeReal}
 
         % SigmaZetaMesh/z_bottom_mid
@@ -169,7 +169,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   z-coordinates of bottom center vertex of mesh cells.
         %   size: ncells x 1
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         z_bottom_mid (:,1) double {mustBeFinite, mustBeReal}
 
         % SigmaZetaMesh/z_top_mid
@@ -177,7 +177,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   z-coordinates of top central vertex of mesh cells.
         %   size: ncells x 1
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         z_top_mid (:,1) double {mustBeFinite, mustBeReal}
 
         % SigmaZetaMesh/z_bottom_right
@@ -185,7 +185,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   z-coordinates of bottom right vertex of mesh cells.
         %   size: ncells x 1
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         z_bottom_right (:,1) double {mustBeFinite, mustBeReal}
 
         % SigmaZetaMesh/z_top_right
@@ -193,7 +193,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   z-coordinates of top right vertex of mesh cells.
         %   size: ncells x 1
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         z_top_right (:,1) double {mustBeFinite, mustBeReal}
 
         % SigmaZetaMesh/n_left
@@ -201,7 +201,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   n-coordinates of left vertices of mesh cells.
         %   size: 1 x nverticals
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         n_left (1,:) double {mustBeFinite, mustBeReal}
 
         % SigmaZetaMesh/n_middle
@@ -209,7 +209,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   n-coordinates of the central vertices of mesh cells.
         %   size: 1 x nverticals
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         n_middle (1,:) double {mustBeFinite, mustBeReal}
 
         % SigmaZetaMesh/n_left
@@ -217,7 +217,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   n-coordinates of right vertices of mesh cells.
         %   size: 1 x nverticals
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         n_right (1,:) double {mustBeFinite, mustBeReal}
 
         % SigmaZetaMesh/zb_left
@@ -225,7 +225,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   bed elevation below the right vertices of mesh cells.
         %   size: 1 x nverticals
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         zb_left (1,:) double {mustBeFinite, mustBeReal}
 
         % SigmaZetaMesh/zb_middle
@@ -233,7 +233,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   bed elevation below the central vertices of mesh cells.
         %   size: 1 x nverticals
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         zb_middle (1,:) double {mustBeFinite, mustBeReal}
 
         % SigmaZetaMesh/zb_right
@@ -241,12 +241,12 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   bed elevation below the right vertices of mesh cells.
         %   size: 1 x nverticals
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         zb_right (1,:) double {mustBeFinite, mustBeReal}
 
         % SigmaZetaMesh/zb_all
         %
-        %   bed elevation below the left, center, and right verticels of 
+        %   bed elevation below the left, center, and right verticels of
         %   mesh cells. Usefull to plot bed elevation
         %   size: 1 x (1 + 2 * nverticals)
         %
@@ -255,7 +255,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
 
         % SigmaZetaMesh/nb_all
         %
-        %   n-coordinate below the left, center, and right verticels of 
+        %   n-coordinate below the left, center, and right verticels of
         %   mesh cells. Usefull to plot bed elevation
         %   size: 1 x (1 + 2 * nverticals)
         %
@@ -308,17 +308,17 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %
         %   This can be mapped to a vector with a value for each cell as
         %   follows:
-        %   
+        %
         %   vels_vec = MyVel(mesh.cell_to_mat);
         %
-        %   see also: SigmaZetaMesh       
+        %   see also: SigmaZetaMesh
         cell_to_mat (:,1) double {mustBeInteger, mustBeFinite mustBeReal}
 
         % SigmaZetaMesh/row_to_cell
         %
         %   map row based data to cell layout
         %
-        %   see also: SigmaZetaMesh              
+        %   see also: SigmaZetaMesh
         row_to_cell (:,1) double {mustBeInteger, mustBeFinite mustBeReal}
 
         % SigmaZetaMesh/col_to_cell
@@ -329,13 +329,13 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %
         %   n_left_cells = mesh.n_left(obj.col_to_cell)
         %
-        %   see also: SigmaZetaMesh              
+        %   see also: SigmaZetaMesh
         col_to_cell (:,1) double {mustBeInteger, mustBeFinite mustBeReal}
 
         % SigmaZetaMesh.neighbors
         %
-        %   array with size 4 x ncells holding the index of the 
-        %   neighbors to the right, top left and bottom in the first to 
+        %   array with size 4 x ncells holding the index of the
+        %   neighbors to the right, top left and bottom in the first to
         %   fourth row respectively. The figure below shows the row number
         %   where the indices of the specific neighbors end up:
         %
@@ -345,7 +345,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %       row 3 -> left |       cell      | row 1 -> right
         %           __________|_________________|___________
         %                     |                 |
-        %                     | row 4 -> bottom | 
+        %                     | row 4 -> bottom |
         %
         %   If the neighbor does not exist, e.g. at the corners or sides of
         %   the mesh, a NaN is returned.
@@ -359,7 +359,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         % where the cell is located in the mesh:
         %
         %  4: top left corner   |    3: top side    | 2: top right corner
-        %  _____________________|___________________|_____________________ 
+        %  _____________________|___________________|_____________________
         %                       |                   |
         %     5: left side      |    0: interior    | 1: right side
         %  _____________________|___________________|_____________________
@@ -369,7 +369,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   9: degenerate cell, i.e. having outer border on more than
         %   two sides, or having it on the bottom and top or left and
         %   right
-        %        
+        %
         %   see also: SigmaZetaMesh
         domains (:,1) double {mustBeInteger, mustBeFinite, mustBeReal,...
             mustBeNonnegative, mustBeLessThanOrEqual(domains,9)}
@@ -377,7 +377,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         % SigmaZetaMesh/jacobian
         %
         %   jacobian of transformation from i,j to sigma,n coordinates,
-        %   with i being the cell number in the vertical (numbering from 
+        %   with i being the cell number in the vertical (numbering from
         %   surface to bed and j the column number from left to right.
         %
         %   jacobian is an ncells x 2 x 2 with in the trailing dimensions
@@ -400,7 +400,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   x-coordinates of left vertices of mesh cells.
         %   size: 1 x nverticals
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         x_left
 
         % SigmaZetaMesh/x_middle
@@ -408,7 +408,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   x-coordinates of central vertices of mesh cells.
         %   size: 1 x nverticals
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         x_middle
 
         % SigmaZetaMesh/x_right
@@ -416,7 +416,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   x-coordinates of right vertices of mesh cells.
         %   size: 1 x nverticals
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         x_right
 
         % SigmaZetaMesh/y_left
@@ -424,7 +424,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   y-coordinates of left vertices of mesh cells.
         %   size: 1 x nverticals
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         y_left
 
         % SigmaZetaMesh/y_middle
@@ -432,7 +432,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   y-coordinates of central vertices of mesh cells.
         %   size: 1 x nverticals
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         y_middle
 
         % SigmaZetaMesh/y_right
@@ -440,7 +440,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   y-coordinates of right vertices of mesh cells.
         %   size: 1 x nverticals
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         y_right
 
         % SigmaZetaMesh/z_center
@@ -448,12 +448,12 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   z-coordinates of mesh cells center.
         %   size: ncells x 1
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         z_center
 
         % SigmaZetaMesh/xb_all
         %
-        %   x-coordinate of bed points below the left, center, and right 
+        %   x-coordinate of bed points below the left, center, and right
         %   vertices of mesh cells. Usefull to plot bed elevation
         %   size: 1 x (1 + 2 * nverticals)
         %
@@ -462,7 +462,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
 
         % SigmaZetaMesh/yb_all
         %
-        %   y-coordinate of bed points below the left, center, and right 
+        %   y-coordinate of bed points below the left, center, and right
         %   vertices of mesh cells. Usefull to plot bed elevation
         %   size: 1 x (1 + 2 * nverticals)
         %
@@ -544,7 +544,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   sigma-coordinates of bottom left vertex of mesh cells.
         %   size: ncells x 1
         %
-        % see also: SigmaZetaMesh       
+        % see also: SigmaZetaMesh
         sig_bottom_left (:,1) double {mustBeFinite, mustBeReal}
 
         % SigmaZetaMesh/sig_top_left
@@ -552,7 +552,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   sigma-coordinates of top left vertex of mesh cells.
         %   size: ncells x 1
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         sig_top_left (:,1) double {mustBeFinite, mustBeReal}
 
         % SigmaZetaMesh/sig_bottom_mid
@@ -560,7 +560,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   sigma-coordinates of bottom center vertex of mesh cells.
         %   size: ncells x 1
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         sig_bottom_mid (:,1) double {mustBeFinite, mustBeReal}
 
         % SigmaZetaMesh/sig_top_mid
@@ -568,7 +568,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   sigma-coordinates of top central vertex of mesh cells.
         %   size: ncells x 1
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         sig_top_mid (:,1) double {mustBeFinite, mustBeReal}
 
         % SigmaZetaMesh/sig_bottom_right
@@ -576,7 +576,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   sigma-coordinates of bottom right vertex of mesh cells.
         %   size: ncells x 1
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         sig_bottom_right (:,1) double {mustBeFinite, mustBeReal}
 
         % SigmaZetaMesh/sig_top_right
@@ -584,7 +584,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   sigma-coordinates of top right vertex of mesh cells.
         %   size: ncells x 1
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         sig_top_right (:,1) double {mustBeFinite, mustBeReal}
 
         % SigmaZetaMesh/sig_center
@@ -592,7 +592,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   sigma-coordinates of mesh cell centers.
         %   size: ncells x 1
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         sig_center
 
         % SigmaZetaMesh/area_cells
@@ -600,15 +600,15 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
         %   area of mesh cells.
         %   size: ncells x 1
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         area_cells
-        
+
         % SigmaZetaMesh/dn_cells
         %
         %   delta n or lateral size of mesh cells
         %   size: ncells x 1
         %
-        % see also: SigmaZetaMesh 
+        % see also: SigmaZetaMesh
         dn_cells
     end
     methods
@@ -823,7 +823,8 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
             %   colors the cells with the variable var and superimposes a quiver plot
             %   consisting of the 2nd and 3rd columns of var in n and z directions.
             %   plot(obj,...,"sigma",...) specify that the plot should be in sigma
-            %   coordinates instead of z coordinates.
+            %   coordinates instead of z coordinates. Does not work for
+            %   quiver plots yet.
             %
             %   see also: SigmaZetaMesh, plot3
             varargout = cell(1,nargout);
@@ -864,14 +865,14 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
                         'Only supports scalar axis handle')
                     ax = carg;
                     get_gca = false;
-        		elseif (isa(carg,'char') || isa(carg,'string')) &&...
-         		    ismember(carg,{'AspectRatio',...
-                    'FixAspectRatio', 'Sigma'})
-    			    varargin(ca)=[]; % skip next argument
+                elseif (isa(carg,'char') || isa(carg,'string')) &&...
+             		    ismember(carg,{'AspectRatio',...
+                        'FixAspectRatio', 'Sigma'})
+                    varargin(ca)=[]; % skip next argument
                     if ca + 1 > numel(varargin)
                         break
                     end
-    			    continue
+                    continue
                 end
             end
             if get_gca
@@ -897,6 +898,16 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
                 varargout = {hbed, hwater, hmesh};
             end
             if size(plot_var,2)==3
+                xl = get(gca,'xlim');
+                yl = get(gca,'ylim');
+                xpos = xl(1)+diff(xl)/10;
+                ypos = yl(1)+diff(yl)/10;
+                text(xpos,ypos,'0.2  m/s','HorizontalAlignment','left',...
+                    VerticalAlignment='top',BackgroundColor='w')
+                q=quiver([obj.n_middle(obj.col_to_cell)'; xpos], ...
+                    [obj.z_center*aspect_ratio; ypos], ...
+                    [plot_var(:,2); 0.2], [plot_var(:,3); 0], 'k');
+
                 hquiv = quiver(ax, obj.n_middle(obj.col_to_cell)',...
                     zcenter*aspect_ratio, plot_var(:,2), plot_var(:,3),...
                     'Color','k');
@@ -906,7 +917,7 @@ classdef SigmaZetaMesh < Mesh & helpers.ArraySupport & matlab.mixin.Copyable
                 shading(ax,'flat')
             end
             if fix_ratio
-        		axis equal
+                axis equal
             end
 
             ylab = cellfun(@str2num, get(gca,'YTickLabel'));
