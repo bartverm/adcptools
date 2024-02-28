@@ -110,8 +110,11 @@ classdef Solution < handle & helpers.ArraySupport
             obj.run_method('plot_solution');
             return
         end
-        if nargin < 2
-            names_selection = [obj.regularization.model.names{:}];
+        if nargin < 3
+            par_idx = 1:size(obj.p,2);
+            if nargin < 2
+                names_selection = [obj.model.all_names];
+            end
         end
         inp = inputParser;
         %inp.addOptional('var',[]);
@@ -130,8 +133,8 @@ classdef Solution < handle & helpers.ArraySupport
         P = obj.p(:, par_idx);
         nreg = size(P, 2);
         nn = length(names_selection);
-        nc = obj.regularization.mesh.ncells;
-        np = sum(obj.regularization.model.npars); % Number of parameters in each cell
+        nc = obj.mesh.ncells;
+        np = sum(obj.model.npars); % Number of parameters in each cell
         Np = size(P,1); %= nc*np;
         m = makefigure(20, 3*nn);
         if nreg>1 % Compare different vectors
@@ -215,7 +218,7 @@ classdef Solution < handle & helpers.ArraySupport
                 % colormap
                 if ~contains(titles{row}, 'phi')    % linear variable
                     caxis([-amax, amax])
-                    colormap(gca, obj.vel_cmap)
+%                     colormap(gca, obj.vel_cmap)
                     %                         if col == nreg
                     %                         if amax < 1e-2 % change colorbar ticklabels and ylabel to remove scientific notation
                     %                             c.Ticks = 100*c.Ticks;
@@ -226,7 +229,7 @@ classdef Solution < handle & helpers.ArraySupport
                     caxis([-180, 180])              % cyclic variable
                     temp = get(gca, 'Children');
                     temp(2).CData =  temp(2).CData*180/pi;
-                    colormap(gca, obj.phi_cmap)
+%                     colormap(gca, obj.phi_cmap)
                 end
 
                 axis tight
@@ -396,7 +399,7 @@ end
         function par_idx = get_par_idx(obj, names_selection)
             par_idx = nan([1,numel(names_selection)]);
             for name_idx = 1:numel(names_selection)
-                par_idx(name_idx) = find(strcmp([obj.regularization.model.names{:}], names_selection{name_idx}));
+                par_idx(name_idx) = find(strcmp(obj.model.all_names, names_selection{name_idx}));
             end
         end
 
