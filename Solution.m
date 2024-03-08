@@ -245,6 +245,16 @@ classdef Solution < handle & helpers.ArraySupport
         % NewPos = [Tight(1) Tight(2) 1-Tight(1)-Tight(3) 1-Tight(2)-Tight(4)]; %New plot position [X Y W H]
         % set(gca, 'Position', NewPos);
     end
+
+    function DEC = decomposeSolution(obj)
+        % Decompose cross-sectional solution data using Jongbloed et al
+        % 2024b - thickness-weighed averaging
+        
+
+
+
+
+
 end
 
     methods(Access=protected)
@@ -267,7 +277,6 @@ end
         end
 
         function ax = plot_mesh(obj, varargin)
-
             ax = obj.mesh.plot(varargin{:});
             xlabel('y [m]')
             if any(strcmp(varargin,'sig')) %dirty
@@ -723,6 +732,13 @@ end
         end
     end
 end
+
+
+
+
+
+
+
 
 %         function SE = local_sensitivity(obj)
 %         end
